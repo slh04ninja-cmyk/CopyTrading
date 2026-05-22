@@ -1,0 +1,110 @@
+name: Deploy OpenClaw
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: self-hosted  # Utilise ton propre runner (la machine RDP)
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install OpenClaw
+        run: pnpm install -g openclaw
+
+      - name: Setup OpenClaw
+        env:
+          XIAOMI_API_KEY: ${{ secrets.XIAOMI_API_KEY }}
+          OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_GATEWAY_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          # Créer la config OpenClaw
+          mkdir -p ~/.openclaw
+          
+          # Générer le fichier de config
+          node -e "
+          const fs = require('fs');
+          const config = {
+            agents: {
+              defaults: {
+                workspace: process.env.HOME + '/.openclaw/workspace',
+                models: {
+                  'xiaomi/mimo-v2-flash': { alias: 'Xiaomi' },
+                  'xiaomi/mimo-v2.5-pro': {}
+                },
+                model: { primary: 'xiaomi/mimo-v2.5-pro' }
+              }
+            },
+            gateway: {
+              mode: 'local',
+              auth: {
+                mode: 'token',
+                token: process.env.OPENCLAW_GATEWAY_TOKEN
+              },
+              port: parseInt(process.env.OPENCLAW_GATEWAY_PORT || '18789'),
+              bind: 'loopback',
+              controlUi: { allowInsecureAuth: true }
+            },
+            models: {
+              mode: 'merge',
+              providers: {
+                xiaomi: {
+                  baseUrl: 'https://api.xiaomimimo.com/v1',
+                  api: 'openai-completions',
+                  models: [
+                    { id: 'mimo-v2-flash', name: 'Xiaomi MiMo V2 Flash', reasoning: false, input: ['text'], contextWindow: 262144, maxTokens: 8192 },
+                    { id: 'mimo-v2-pro', name: 'Xiaomi MiMo V2 Pro', reasoning: true, input: ['text'], contextWindow: 1048576, maxTokens: 32000 },
+                    { id: 'mimo-v2-omni', name: 'Xiaomi MiMo V2 Omni', reasoning: true, input: ['text', 'image'], contextWindow: 262144, maxTokens: 32000 }
+                  ]
+                }
+              }
+            },
+            auth: {
+              profiles: {
+                'xiaomi:default': {
+                  provider: 'xiaomi',
+                  mode: 'api_key'
+                }
+              }
+            }
+          };
+          fs.writeFileSync(process.env.HOME + '/.openclaw/openclaw.json', JSON.stringify(config, null, 2));
+          "
+
+      - name: Configure Xiaomi API Key
+        env:
+          XIAOMI_API_KEY: ${{ secrets.XIAOMI_API_KEY }}
+        run: |
+          # Stocker la clé API Xiaomi
+          openclaw auth set xiaomi:default --api-key "$XIAOMI_API_KEY"
+
+      - name: Setup Telegram (optional)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
+            echo "Telegram bot token configured"
+          fi
+
+      - name: Start Gateway
+        run: |
+          openclaw gateway run &
+          sleep 10
+          openclaw gateway status
+
+      - name: Verify Installation
+        run: |
+          openclaw status
+          echo "OpenClaw deployed successfully!"
