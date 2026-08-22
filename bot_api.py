@@ -177,11 +177,23 @@ class BotProcess:
                         f.write(str(self.pid))
                 except Exception:
                     pass
+                self._log_action(f"Bot demarré via API — PID {self.pid}")
                 return {"status": "started", "pid": self.pid}
             except Exception as e:
                 self.status = "error"
                 self.last_error = str(e)
                 return {"status": "error", "message": str(e)}
+
+    def _log_action(self, message: str):
+        """Ecrire une action API dans le log du bot"""
+        try:
+            from datetime import datetime as dt
+            timestamp = dt.now().strftime("%Y-%m-%d %H:%M:%S")
+            line = f"{timestamp} [API]  {message}\n"
+            with open(LOG_FILE, "a", encoding="utf-8") as f:
+                f.write(line)
+        except Exception:
+            pass
 
     def stop(self) -> dict:
         with self._lock:
@@ -230,6 +242,7 @@ class BotProcess:
                     os.remove(PID_FILE)
             except Exception:
                 pass
+            self._log_action("Bot arrêté via API")
             return {"status": "stopped"}
 
     def get_status(self) -> dict:
