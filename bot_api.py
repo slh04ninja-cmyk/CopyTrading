@@ -144,8 +144,14 @@ class BotProcess:
 
     def start(self) -> dict:
         with self._lock:
+            # Verifier si deja en cours (via API ou processus existant)
             if self.process and self.process.poll() is None:
                 return {"status": "already_running", "pid": self.pid}
+            found = self._find_running_bot()
+            if found:
+                self.pid = found
+                self.status = "running"
+                return {"status": "already_running", "pid": found}
 
             try:
                 python_exe = sys.executable
@@ -179,30 +185,52 @@ class BotProcess:
 
     def stop(self) -> dict:
         with self._lock:
-            if not self.process or self.process.poll() is not None:
-                self.status = "stopped"
-                return {"status": "already_stopped"}
-
-            try:
-                self.process.terminate()
+            # Cas 1: bot lance via l'API
+            if self.process and self.process.poll() is None:
                 try:
-                    self.process.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    self.process.kill()
-                    self.process.wait(timeout=5)
-                self.status = "stopped"
-                self.pid = None
-                # Supprimer le fichier PID
-                try:
-                    if os.path.exists(PID_FILE):
-                        os.remove(PID_FILE)
+                    self.process.terminate()
+                    try:
+                        self.process.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        self.process.kill()
+                        self.process.wait(timeout=5)
                 except Exception:
                     pass
-                return {"status": "stopped"}
-            except Exception as e:
-                self.status = "error"
-                self.last_error = str(e)
-                return {"status": "error", "message": str(e)}
+                self.process = None
+
+            # Cas 2: bot trouve en cours (pas lance via l'API) — tuer par PID
+            elif self.pid:
+                try:
+                    subprocess.run(
+                        ["taskkill", "/F", "/PID", str(self.pid)],
+                        capture_output=True, timeout=10
+                    )
+                except Exception:
+                    pass
+
+            # Cas 3: aucun bot en cours
+            else:
+                found = self._find_running_bot()
+                if not found:
+                    self.status = "stopped"
+                    return {"status": "already_stopped"}
+                try:
+                    subprocess.run(
+                        ["taskkill", "/F", "/PID", str(found)],
+                        capture_output=True, timeout=10
+                    )
+                except Exception:
+                    pass
+
+            self.status = "stopped"
+            self.pid = None
+            self.process = None
+            try:
+                if os.path.exists(PID_FILE):
+                    os.remove(PID_FILE)
+            except Exception:
+                pass
+            return {"status": "stopped"}
 
     def get_status(self) -> dict:
         # 1. Vérifier si on a lancé le bot via l'API
