@@ -233,15 +233,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshDashboard() {
         lifecycleScope.launch {
-            val status = client.getStatus()
-            val dashboard = client.getDashboard()
+            try {
+                val status = client.getStatus()
+                val dashboard = client.getDashboard()
 
-            if (status != null) {
-                updateBotStatus(status)
-            }
+                android.util.Log.d("CopyTrading", "Status: $status")
+                android.util.Log.d("CopyTrading", "Dashboard: $dashboard")
 
-            if (dashboard != null) {
-                updateDashboard(dashboard)
+                if (status != null) {
+                    updateBotStatus(status)
+                }
+
+                if (dashboard != null) {
+                    updateDashboard(dashboard)
+                } else {
+                    android.util.Log.e("CopyTrading", "Dashboard est null!")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("CopyTrading", "Erreur refreshDashboard", e)
             }
 
             swipeRefresh.isRefreshing = false

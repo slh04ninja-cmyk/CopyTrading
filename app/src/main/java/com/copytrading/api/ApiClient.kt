@@ -63,7 +63,8 @@ class ApiClient(private val context: Context) {
             } else {
                 null
             }
-        } catch (e: IOException) {
+        } catch (e: Exception) {
+            e.printStackTrace()
             null
         }
     }
@@ -72,7 +73,8 @@ class ApiClient(private val context: Context) {
         try {
             val response = client.newCall(request).execute()
             response.body?.string()
-        } catch (e: IOException) {
+        } catch (e: Exception) {
+            e.printStackTrace()
             null
         }
     }
