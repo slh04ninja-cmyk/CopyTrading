@@ -237,9 +237,6 @@ class MainActivity : AppCompatActivity() {
                 val status = client.getStatus()
                 val dashboard = client.getDashboard()
 
-                android.util.Log.d("CopyTrading", "Status: $status")
-                android.util.Log.d("CopyTrading", "Dashboard: $dashboard")
-
                 if (status != null) {
                     updateBotStatus(status)
                 }
@@ -247,10 +244,13 @@ class MainActivity : AppCompatActivity() {
                 if (dashboard != null) {
                     updateDashboard(dashboard)
                 } else {
-                    android.util.Log.e("CopyTrading", "Dashboard est null!")
+                    // Afficher l'erreur dans l'UI
+                    tvDailyPnl.text = "ERR: null"
+                    tvDailyPnl.setTextColor(getColor(R.color.danger))
                 }
             } catch (e: Exception) {
-                android.util.Log.e("CopyTrading", "Erreur refreshDashboard", e)
+                tvDailyPnl.text = "ERR: ${e.message}"
+                tvDailyPnl.setTextColor(getColor(R.color.danger))
             }
 
             swipeRefresh.isRefreshing = false
