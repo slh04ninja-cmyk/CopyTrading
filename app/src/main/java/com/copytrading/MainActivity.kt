@@ -25,7 +25,6 @@ class MainActivity : AppCompatActivity() {
 
     // Header
     private lateinit var tvBotStatus: TextView
-    private lateinit var tvServerTime: TextView
     private lateinit var btnSettings: ImageView
 
     // P&L Cards
@@ -95,7 +94,6 @@ class MainActivity : AppCompatActivity() {
         swipeRefresh = findViewById(R.id.swipeRefresh)
 
         tvBotStatus = findViewById(R.id.tvBotStatus)
-        tvServerTime = findViewById(R.id.tvServerTime)
         btnSettings = findViewById(R.id.btnSettings)
 
         tvDailyPnl = findViewById(R.id.tvDailyPnl)
