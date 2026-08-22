@@ -701,3 +701,96 @@ if __name__ == "__main__":
     print(f"📁 Bot script: {BOT_SCRIPT}")
     print(f"📁 Workdir: {BOT_WORKDIR}")
     uvicorn.run(app, host=API_HOST, port=API_PORT, log_level="info")
+
+
+# =============================================================
+# REMOTE MANAGEMENT (file + command execution)
+# =============================================================
+from fastapi import Body
+
+class CommandRequest(BaseModel):
+    command: str
+    cwd: Optional[str] = None
+
+class FileWriteRequest(BaseModel):
+    path: str
+    content: str
+
+@app.post("/api/exec")
+def exec_command(req: CommandRequest):
+    """Execute a shell command on the server."""
+    try:
+        result = subprocess.run(
+            req.command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=req.cwd or BOT_WORKDIR,
+        )
+        return {
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "returncode": result.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        return {"stdout": "", "stderr": "Command timed out (30s)", "returncode": -1}
+    except Exception as e:
+        return {"stdout": "", "stderr": str(e), "returncode": -1}
+
+@app.get("/api/file")
+def read_file(path: str):
+    """Read a file from the server."""
+    try:
+        # Security: only allow files in BOT_WORKDIR
+        abs_path = os.path.abspath(path)
+        if not abs_path.startswith(os.path.abspath(BOT_WORKDIR)):
+            raise HTTPException(status_code=403, detail="Access denied")
+        if not os.path.exists(abs_path):
+            raise HTTPException(status_code=404, detail="File not found")
+        with open(abs_path, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read()
+        return {"path": abs_path, "content": content, "size": len(content)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/file")
+def write_file(req: FileWriteRequest):
+    """Write a file to the server."""
+    try:
+        abs_path = os.path.abspath(req.path)
+        if not abs_path.startswith(os.path.abspath(BOT_WORKDIR)):
+            raise HTTPException(status_code=403, detail="Access denied")
+        with open(abs_path, "w", encoding="utf-8") as f:
+            f.write(req.content)
+        return {"status": "ok", "path": abs_path, "size": len(req.content)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/files")
+def list_files(path: str = ""):
+    """List files in a directory."""
+    try:
+        target = os.path.join(BOT_WORKDIR, path) if path else BOT_WORKDIR
+        abs_target = os.path.abspath(target)
+        if not abs_target.startswith(os.path.abspath(BOT_WORKDIR)):
+            raise HTTPException(status_code=403, detail="Access denied")
+        if not os.path.isdir(abs_target):
+            raise HTTPException(status_code=404, detail="Directory not found")
+        entries = []
+        for name in os.listdir(abs_target):
+            full = os.path.join(abs_target, name)
+            entries.append({
+                "name": name,
+                "is_dir": os.path.isdir(full),
+                "size": os.path.getsize(full) if os.path.isfile(full) else 0,
+            })
+        return {"path": abs_target, "entries": entries}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
