@@ -350,22 +350,15 @@ def get_dashboard():
     losses = 0
 
     if deals:
-        open_magic = {}
-        for d in deals:
-            if d.entry == mt5.DEAL_ENTRY_IN:
-                open_magic[d.position_id] = d.magic
-
         for d in deals:
             if d.entry != mt5.DEAL_ENTRY_OUT:
                 continue
-            origin_magic = open_magic.get(d.position_id, d.magic)
-            if origin_magic == MAGIC_NUMBER:
-                daily_pnl += d.profit
-                trades_count += 1
-                if d.profit > 0:
-                    wins += 1
-                elif d.profit < 0:
-                    losses += 1
+            daily_pnl += d.profit
+            trades_count += 1
+            if d.profit > 0:
+                wins += 1
+            elif d.profit < 0:
+                losses += 1
 
     # Positions ouvertes
     positions = mt5.positions_get()

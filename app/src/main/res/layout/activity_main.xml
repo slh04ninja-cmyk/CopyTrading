@@ -514,17 +514,6 @@
                         android:backgroundTint="@color/success"
                         app:cornerRadius="12dp"/>
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnCloseAll"
-                        android:layout_width="0dp"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:layout_marginStart="4dp"
-                        android:text="❌ TOUT FERMER"
-                        android:textSize="14sp"
-                        android:backgroundTint="@color/danger"
-                        app:cornerRadius="12dp"
-                        style="@style/Widget.Material3.Button.OutlinedButton"/>
                 </LinearLayout>
 
                 
@@ -546,14 +535,31 @@
             android:orientation="vertical"
             android:padding="12dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="📋 Positions Ouvertes"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="📋 Positions Ouvertes"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCloseAll"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="TOUT FERMER"
+                    android:textSize="11sp"
+                    android:backgroundTint="@color/danger"
+                    app:cornerRadius="8dp"/>
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/tvNoPositions"
