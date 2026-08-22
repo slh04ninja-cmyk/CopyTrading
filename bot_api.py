@@ -37,9 +37,10 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
 
 import MetaTrader5 as mt5
 
@@ -52,7 +53,7 @@ ENV_FILE = os.path.join(BOT_WORKDIR, ".env")
 LOG_FILE = os.path.join(BOT_WORKDIR, "bot_trading.log")
 API_PORT = int(os.getenv("API_PORT", "8000"))
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
-API_TOKEN = os.getenv("API_TOKEN", "")  # Token d'authentification (optionnel)
+API_TOKEN = os.getenv("API_TOKEN", "")  # Token d'authentification (OBLIGATOIRE pour la sécurité)
 
 # MT5 connection (reprend les mêmes vars que le bot)
 from dotenv import load_dotenv
@@ -79,6 +80,42 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# =============================================================
+# AUTH MIDDLEWARE
+# =============================================================
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Endpoints publics (pas de token requis)
+        public_paths = ["/", "/docs", "/openapi.json", "/redoc"]
+        if request.url.path in public_paths:
+            return await call_next(request)
+
+        # Si aucun token configuré, tout est ouvert (mode dev)
+        if not API_TOKEN:
+            return await call_next(request)
+
+        # Vérifier le token dans le header Authorization
+        auth = request.headers.get("Authorization", "")
+        token_ok = False
+
+        if auth.startswith("Bearer "):
+            provided = auth[7:].strip()
+            if provided == API_TOKEN:
+                token_ok = True
+
+        # Aussi vérifier en query param (pour WebSocket)
+        if not token_ok:
+            qtoken = request.query_params.get("token", "")
+            if qtoken == API_TOKEN:
+                token_ok = True
+
+        if not token_ok:
+            raise HTTPException(status_code=401, detail="Token invalide ou manquant")
+
+        return await call_next(request)
+
+app.add_middleware(AuthMiddleware)
 
 # =============================================================
 # BOT PROCESS MANAGER
