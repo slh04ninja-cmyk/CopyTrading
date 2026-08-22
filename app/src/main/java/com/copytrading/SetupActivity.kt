@@ -35,7 +35,7 @@ class SetupActivity : AppCompatActivity() {
         // Charger les valeurs sauvegardées
         val prefs = getSharedPreferences("copytrading", Context.MODE_PRIVATE)
         etHost.setText(prefs.getString("server_host", ""))
-        etPort.setText(prefs.getString("server_port", "8000"))
+        etPort.setText(prefs.getString("server_port", "1097"))
         etToken.setText(prefs.getString("api_token", ""))
 
         // Si déjà configuré, tester directement

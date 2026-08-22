@@ -50,7 +50,7 @@ BOT_SCRIPT = os.getenv("BOT_SCRIPT", "telegram_listener_v17_1.py")
 BOT_WORKDIR = os.getenv("BOT_WORKDIR", os.path.dirname(os.path.abspath(__file__)))
 ENV_FILE = os.path.join(BOT_WORKDIR, ".env")
 LOG_FILE = os.path.join(BOT_WORKDIR, "bot_trading.log")
-API_PORT = int(os.getenv("API_PORT", "8000"))
+API_PORT = int(os.getenv("API_PORT", "1097"))
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_TOKEN = os.getenv("API_TOKEN", "")  # Token d'authentification (optionnel)
 

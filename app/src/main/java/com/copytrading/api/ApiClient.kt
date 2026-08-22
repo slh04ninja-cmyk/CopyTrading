@@ -24,7 +24,7 @@ class ApiClient(private val context: Context) {
     private fun getBaseUrl(): String {
         val prefs = context.getSharedPreferences("copytrading", Context.MODE_PRIVATE)
         val host = prefs.getString("server_host", "") ?: ""
-        val port = prefs.getString("server_port", "8000") ?: "8000"
+        val port = prefs.getString("server_port", "1097") ?: "1097"
         return "http://$host:$port"
     }
 
