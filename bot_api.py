@@ -50,6 +50,7 @@ BOT_SCRIPT = os.getenv("BOT_SCRIPT", "telegram_listener_v17_1.py")
 BOT_WORKDIR = os.getenv("BOT_WORKDIR", os.path.dirname(os.path.abspath(__file__)))
 ENV_FILE = os.path.join(BOT_WORKDIR, ".env")
 LOG_FILE = os.path.join(BOT_WORKDIR, "bot_trading.log")
+PID_FILE = os.path.join(BOT_WORKDIR, "bot.pid")
 API_PORT = int(os.getenv("API_PORT", "8000"))
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_TOKEN = os.getenv("API_TOKEN", "CPG7e5e97dDkHTyMJg8AwIPIcnqeV0gIrPn")  # Token d'authentification (optionnel)
@@ -92,6 +93,55 @@ class BotProcess:
         self.last_error: str = ""
         self._lock = threading.Lock()
 
+    def _find_running_bot(self) -> Optional[int]:
+        """Cherche un processus bot deja lancé (PID file puis tasklist)."""
+        # 1. Vérifier le fichier PID (rapide)
+        try:
+            if os.path.exists(PID_FILE):
+                with open(PID_FILE, "r") as f:
+                    pid = int(f.read().strip())
+                # Vérifier si le processus existe toujours
+                result = subprocess.run(
+                    ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+                    capture_output=True, text=True, timeout=5
+                )
+                if result.returncode == 0 and "python" in result.stdout.lower():
+                    return pid
+                # PID file obsolète, le supprimer
+                os.remove(PID_FILE)
+        except Exception:
+            pass
+
+        # 2. Fallback: chercher par nom de script (plus lent)
+        try:
+            result = subprocess.run(
+                ["tasklist", "/FI", "IMAGENAME eq python.exe", "/FO", "CSV", "/NH"],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode != 0:
+                return None
+            for line in result.stdout.strip().split("\n"):
+                if not line.strip():
+                    continue
+                parts = line.replace('"', '').split(",")
+                if len(parts) >= 2:
+                    try:
+                        pid = int(parts[1].strip())
+                        wmic = subprocess.run(
+                            ["wmic", "process", "where", f"ProcessId={pid}", "get", "CommandLine", "/FORMAT:LIST"],
+                            capture_output=True, text=True, timeout=5
+                        )
+                        if BOT_SCRIPT in wmic.stdout:
+                            # Sauvegarder le PID pour les prochaines vérifications
+                            with open(PID_FILE, "w") as f:
+                                f.write(str(pid))
+                            return pid
+                    except (ValueError, subprocess.TimeoutExpired):
+                        continue
+        except Exception:
+            pass
+        return None
+
     def start(self) -> dict:
         with self._lock:
             if self.process and self.process.poll() is None:
@@ -115,6 +165,12 @@ class BotProcess:
                 self.start_time = datetime.now(timezone.utc)
                 self.status = "running"
                 self.last_error = ""
+                # Écrire le fichier PID
+                try:
+                    with open(PID_FILE, "w") as f:
+                        f.write(str(self.pid))
+                except Exception:
+                    pass
                 return {"status": "started", "pid": self.pid}
             except Exception as e:
                 self.status = "error"
@@ -136,6 +192,12 @@ class BotProcess:
                     self.process.wait(timeout=5)
                 self.status = "stopped"
                 self.pid = None
+                # Supprimer le fichier PID
+                try:
+                    if os.path.exists(PID_FILE):
+                        os.remove(PID_FILE)
+                except Exception:
+                    pass
                 return {"status": "stopped"}
             except Exception as e:
                 self.status = "error"
@@ -143,7 +205,17 @@ class BotProcess:
                 return {"status": "error", "message": str(e)}
 
     def get_status(self) -> dict:
+        # 1. Vérifier si on a lancé le bot via l'API
         is_running = self.process is not None and self.process.poll() is None
+        
+        # 2. Si pas lancé via l'API, chercher un processus existant
+        if not is_running:
+            found_pid = self._find_running_bot()
+            if found_pid:
+                is_running = True
+                self.pid = found_pid
+                self.status = "running"
+
         if is_running:
             self.status = "running"
         elif self.status == "running":
@@ -171,9 +243,20 @@ _mt5_connected = False
 def _ensure_mt5():
     global _mt5_connected
     if _mt5_connected:
-        return True
+        # Vérifier que la connexion est toujours active
+        try:
+            info = mt5.account_info()
+            if info and info.login > 0:
+                return True
+            # Connexion perdue, reconnecter
+            _mt5_connected = False
+        except Exception:
+            _mt5_connected = False
+
     try:
+        # Essayer d'initialiser sans login (terminal deja ouvert)
         if not mt5.initialize():
+            # Si ça échoue, essayer avec les credentials
             if MT5_LOGIN and MT5_PASSWORD and MT5_SERVER:
                 mt5.initialize(login=MT5_LOGIN, password=MT5_PASSWORD,
                               server=MT5_SERVER,
