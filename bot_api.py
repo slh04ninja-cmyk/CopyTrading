@@ -373,22 +373,23 @@ def get_dashboard():
     floating_pnl = 0.0
     if positions:
         for pos in positions:
-            if pos.magic == MAGIC_NUMBER:
-                open_positions.append({
-                    "ticket": pos.ticket,
-                    "symbol": pos.symbol,
-                    "type": "BUY" if pos.type == mt5.ORDER_TYPE_BUY else "SELL",
-                    "volume": pos.volume,
-                    "open_price": round(pos.price_open, 2),
-                    "current_price": round(pos.price_current, 2),
-                    "sl": round(pos.sl, 2),
-                    "tp": round(pos.tp, 2),
-                    "profit": round(pos.profit, 2),
-                    "swap": round(pos.swap, 2),
-                    "comment": pos.comment,
-                    "time": datetime.fromtimestamp(pos.time, tz=timezone.utc).isoformat(),
-                })
-                floating_pnl += pos.profit
+            open_positions.append({
+                "ticket": pos.ticket,
+                "symbol": pos.symbol,
+                "type": "BUY" if pos.type == mt5.ORDER_TYPE_BUY else "SELL",
+                "volume": pos.volume,
+                "open_price": round(pos.price_open, 2),
+                "current_price": round(pos.price_current, 2),
+                "sl": round(pos.sl, 2),
+                "tp": round(pos.tp, 2),
+                "profit": round(pos.profit, 2),
+                "swap": round(pos.swap, 2),
+                "comment": pos.comment,
+                "magic": pos.magic,
+                "bot_opened": pos.magic == MAGIC_NUMBER,
+                "time": datetime.fromtimestamp(pos.time, tz=timezone.utc).isoformat(),
+            })
+            floating_pnl += pos.profit
 
     # Winrate
     winrate = (wins / trades_count * 100) if trades_count > 0 else 0.0
@@ -425,21 +426,22 @@ def get_positions():
     result = []
     if positions:
         for pos in positions:
-            if pos.magic == MAGIC_NUMBER:
-                result.append({
-                    "ticket": pos.ticket,
-                    "symbol": pos.symbol,
-                    "type": "BUY" if pos.type == mt5.ORDER_TYPE_BUY else "SELL",
-                    "volume": pos.volume,
-                    "open_price": round(pos.price_open, 2),
-                    "current_price": round(pos.price_current, 2),
-                    "sl": round(pos.sl, 2),
-                    "tp": round(pos.tp, 2),
-                    "profit": round(pos.profit, 2),
-                    "swap": round(pos.swap, 2),
-                    "comment": pos.comment,
-                    "time": datetime.fromtimestamp(pos.time, tz=timezone.utc).isoformat(),
-                })
+            result.append({
+                "ticket": pos.ticket,
+                "symbol": pos.symbol,
+                "type": "BUY" if pos.type == mt5.ORDER_TYPE_BUY else "SELL",
+                "volume": pos.volume,
+                "open_price": round(pos.price_open, 2),
+                "current_price": round(pos.price_current, 2),
+                "sl": round(pos.sl, 2),
+                "tp": round(pos.tp, 2),
+                "profit": round(pos.profit, 2),
+                "swap": round(pos.swap, 2),
+                "comment": pos.comment,
+                "magic": pos.magic,
+                "bot_opened": pos.magic == MAGIC_NUMBER,
+                "time": datetime.fromtimestamp(pos.time, tz=timezone.utc).isoformat(),
+            })
     return {"positions": result, "count": len(result)}
 
 # --- TRADES HISTORY ---

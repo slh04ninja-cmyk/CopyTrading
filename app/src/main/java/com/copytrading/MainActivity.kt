@@ -142,18 +142,25 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupTabs() {
         val tabs = listOf(tabDashboard, tabPositions, tabConfig, tabLogs)
-        val panels = listOf(panelDashboard, panelConfig, panelLogs)
 
         fun selectTab(selected: LinearLayout) {
             tabs.forEach { it.alpha = 0.5f }
             selected.alpha = 1.0f
-            panels.forEach { it.visibility = View.GONE }
+
+            // Hide all panels
+            swipeRefresh.visibility = View.GONE
+            panelConfig.visibility = View.GONE
+            panelLogs.visibility = View.GONE
 
             when (selected) {
-                tabDashboard -> panelDashboard.visibility = View.VISIBLE
+                tabDashboard -> {
+                    swipeRefresh.visibility = View.VISIBLE
+                }
                 tabPositions -> {
-                    panelDashboard.visibility = View.VISIBLE
+                    swipeRefresh.visibility = View.VISIBLE
                     refreshPositions()
+                    // Scroll to positions section
+                    rvPositions.post { rvPositions.smoothScrollToPosition(0) }
                 }
                 tabConfig -> {
                     panelConfig.visibility = View.VISIBLE
@@ -329,13 +336,19 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadConfig() {
         lifecycleScope.launch {
-            val config = client.getConfig()
-            if (config != null) {
-                val sb = StringBuilder()
-                config.config.toSortedMap().forEach { (key, value) ->
-                    sb.appendLine("$key=$value")
+            try {
+                val config = client.getConfig()
+                if (config != null) {
+                    val sb = StringBuilder()
+                    config.config.toSortedMap().forEach { (key, value) ->
+                        sb.appendLine("$key=$value")
+                    }
+                    etConfigContent.setText(sb.toString())
+                } else {
+                    etConfigContent.setText("Erreur: impossible de charger la config")
                 }
-                etConfigContent.setText(sb.toString())
+            } catch (e: Exception) {
+                etConfigContent.setText("Erreur: ${e.message}")
             }
         }
     }
@@ -363,14 +376,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadLogs() {
         lifecycleScope.launch {
-            val logs = client.getLogs(200)
-            if (logs != null) {
-                tvLogs.text = logs.logs.joinToString("\n")
-                // Auto-scroll vers le bas
-                val scrollview = tvLogs.parent as? View
-                if (scrollview is ScrollView) {
-                    scrollview.post { scrollview.fullScroll(View.FOCUS_DOWN) }
+            try {
+                val logs = client.getLogs(200)
+                if (logs != null) {
+                    tvLogs.text = logs.logs.joinToString("\n")
+                    // Auto-scroll vers le bas
+                    val scrollview = tvLogs.parent as? View
+                    if (scrollview is ScrollView) {
+                        scrollview.post { scrollview.fullScroll(View.FOCUS_DOWN) }
+                    }
+                } else {
+                    tvLogs.text = "Erreur: impossible de charger les logs"
                 }
+            } catch (e: Exception) {
+                tvLogs.text = "Erreur: ${e.message}"
             }
         }
     }

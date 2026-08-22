@@ -60,6 +60,8 @@ data class Position(
     val profit: Double = 0.0,
     val swap: Double = 0.0,
     val comment: String = "",
+    val magic: Long = 0,
+    val bot_opened: Boolean = false,
     val time: String = ""
 )
 
