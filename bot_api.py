@@ -700,8 +700,6 @@ def close_all_positions():
 
     if positions:
         for pos in positions:
-            if pos.magic != MAGIC_NUMBER:
-                continue
             tick = mt5.symbol_info_tick(pos.symbol)
             if not tick:
                 failed.append(pos.ticket)
