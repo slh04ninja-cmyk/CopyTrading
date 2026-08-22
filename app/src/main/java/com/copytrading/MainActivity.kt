@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -61,7 +62,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tabLogs: LinearLayout
 
     // Panels
-    private lateinit var panelDashboard: ScrollView
+    private lateinit var panelDashboard: NestedScrollView
     private lateinit var panelConfig: ScrollView
     private lateinit var panelLogs: ScrollView
 
