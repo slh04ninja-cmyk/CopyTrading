@@ -63,6 +63,7 @@ class MainActivity : AppCompatActivity() {
 
     // Panels
     private lateinit var panelDashboard: NestedScrollView
+    private lateinit var panelPositions: ScrollView
     private lateinit var panelConfig: ScrollView
     private lateinit var panelLogs: ScrollView
 
@@ -124,6 +125,7 @@ class MainActivity : AppCompatActivity() {
         tabLogs = findViewById(R.id.tabLogs)
 
         panelDashboard = findViewById(R.id.panelDashboard)
+        panelPositions = findViewById(R.id.panelPositions)
         panelConfig = findViewById(R.id.panelConfig)
         panelLogs = findViewById(R.id.panelLogs)
 
@@ -149,6 +151,7 @@ class MainActivity : AppCompatActivity() {
 
             // Hide all panels
             swipeRefresh.visibility = View.GONE
+            panelPositions.visibility = View.GONE
             panelConfig.visibility = View.GONE
             panelLogs.visibility = View.GONE
 
@@ -157,10 +160,8 @@ class MainActivity : AppCompatActivity() {
                     swipeRefresh.visibility = View.VISIBLE
                 }
                 tabPositions -> {
-                    swipeRefresh.visibility = View.VISIBLE
+                    panelPositions.visibility = View.VISIBLE
                     refreshPositions()
-                    // Scroll to positions section
-                    rvPositions.post { rvPositions.smoothScrollToPosition(0) }
                 }
                 tabConfig -> {
                     panelConfig.visibility = View.VISIBLE
