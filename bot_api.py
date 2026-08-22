@@ -1,0 +1,620 @@
+"""
+=============================================================
+ CopyTrading Bot — API REST (FastAPI)
+ Version 1.0.0
+=============================================================
+Expose une API pour l'application Android :
+  - Status du bot (running/stopped/error)
+  - Dashboard (P&L, positions, winrate, trades)
+  - Start/Stop du bot
+  - Lecture/écriture de la config (.env)
+  - Logs en temps réel (WebSocket)
+  - Historique des trades
+
+Lancez avec : python bot_api.py
+=============================================================
+"""
+
+import subprocess, sys
+import importlib
+
+# Auto-install des dépendances
+_deps = {"fastapi": "fastapi", "uvicorn": "uvicorn[standard]", "MetaTrader5": "MetaTrader5"}
+for _mod, _pkg in _deps.items():
+    try:
+        __import__(_mod)
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", _pkg, "-q"])
+
+import os
+import re
+import json
+import time
+import signal
+import asyncio
+import threading
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+from typing import Optional
+
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+import MetaTrader5 as mt5
+
+# =============================================================
+# CONFIG
+# =============================================================
+BOT_SCRIPT = os.getenv("BOT_SCRIPT", "telegram_listener_v17_1.py")
+BOT_WORKDIR = os.getenv("BOT_WORKDIR", os.path.dirname(os.path.abspath(__file__)))
+ENV_FILE = os.path.join(BOT_WORKDIR, ".env")
+LOG_FILE = os.path.join(BOT_WORKDIR, "bot_trading.log")
+API_PORT = int(os.getenv("API_PORT", "8000"))
+API_HOST = os.getenv("API_HOST", "0.0.0.0")
+API_TOKEN = os.getenv("API_TOKEN", "")  # Token d'authentification (optionnel)
+
+# MT5 connection (reprend les mêmes vars que le bot)
+from dotenv import load_dotenv
+load_dotenv(ENV_FILE)
+
+MT5_LOGIN = int(os.getenv("MT5_LOGIN", "0"))
+MT5_PASSWORD = os.getenv("MT5_PASSWORD", "")
+MT5_SERVER = os.getenv("MT5_SERVER", "")
+MT5_PATH = os.getenv("MT5_PATH", r"C:\Program Files\MetaTrader 5 EXNESS\terminal64.exe")
+MAGIC_NUMBER = int(os.getenv("MAGIC_NUMBER", "20250226"))
+DAILY_PROFIT_LIMIT = float(os.getenv("DAILY_PROFIT_LIMIT", "200.0"))
+TRADING_START_HOUR = int(os.getenv("TRADING_START_HOUR", "3"))
+TRADING_END_HOUR = int(os.getenv("TRADING_END_HOUR", "20"))
+
+# =============================================================
+# APP
+# =============================================================
+app = FastAPI(title="CopyTrading Bot API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# =============================================================
+# BOT PROCESS MANAGER
+# =============================================================
+class BotProcess:
+    def __init__(self):
+        self.process: Optional[subprocess.Popen] = None
+        self.pid: Optional[int] = None
+        self.start_time: Optional[datetime] = None
+        self.status: str = "stopped"  # stopped, running, error
+        self.last_error: str = ""
+        self._lock = threading.Lock()
+
+    def start(self) -> dict:
+        with self._lock:
+            if self.process and self.process.poll() is None:
+                return {"status": "already_running", "pid": self.pid}
+
+            try:
+                python_exe = sys.executable
+                bot_path = os.path.join(BOT_WORKDIR, BOT_SCRIPT)
+
+                if not os.path.exists(bot_path):
+                    return {"status": "error", "message": f"Script introuvable: {bot_path}"}
+
+                self.process = subprocess.Popen(
+                    [python_exe, bot_path],
+                    cwd=BOT_WORKDIR,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+                )
+                self.pid = self.process.pid
+                self.start_time = datetime.now(timezone.utc)
+                self.status = "running"
+                self.last_error = ""
+                return {"status": "started", "pid": self.pid}
+            except Exception as e:
+                self.status = "error"
+                self.last_error = str(e)
+                return {"status": "error", "message": str(e)}
+
+    def stop(self) -> dict:
+        with self._lock:
+            if not self.process or self.process.poll() is not None:
+                self.status = "stopped"
+                return {"status": "already_stopped"}
+
+            try:
+                self.process.terminate()
+                try:
+                    self.process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    self.process.kill()
+                    self.process.wait(timeout=5)
+                self.status = "stopped"
+                self.pid = None
+                return {"status": "stopped"}
+            except Exception as e:
+                self.status = "error"
+                self.last_error = str(e)
+                return {"status": "error", "message": str(e)}
+
+    def get_status(self) -> dict:
+        is_running = self.process is not None and self.process.poll() is None
+        if is_running:
+            self.status = "running"
+        elif self.status == "running":
+            self.status = "stopped"
+
+        uptime = None
+        if self.start_time and is_running:
+            delta = datetime.now(timezone.utc) - self.start_time
+            uptime = int(delta.total_seconds())
+
+        return {
+            "status": self.status,
+            "pid": self.pid if is_running else None,
+            "uptime_seconds": uptime,
+            "last_error": self.last_error,
+        }
+
+bot = BotProcess()
+
+# =============================================================
+# MT5 HELPER
+# =============================================================
+_mt5_connected = False
+
+def _ensure_mt5():
+    global _mt5_connected
+    if _mt5_connected:
+        return True
+    try:
+        if not mt5.initialize():
+            if MT5_LOGIN and MT5_PASSWORD and MT5_SERVER:
+                mt5.initialize(login=MT5_LOGIN, password=MT5_PASSWORD,
+                              server=MT5_SERVER,
+                              path=MT5_PATH if os.path.exists(MT5_PATH) else None)
+            else:
+                return False
+        info = mt5.account_info()
+        if info and info.login > 0:
+            _mt5_connected = True
+            return True
+        return False
+    except Exception:
+        return False
+
+def _get_trading_day_start() -> datetime:
+    now = datetime.now(timezone.utc)
+    start = now.replace(hour=TRADING_START_HOUR, minute=0, second=0, microsecond=0)
+    if now.hour < TRADING_START_HOUR:
+        start = start - timedelta(days=1)
+    return start
+
+# =============================================================
+# MODELS
+# =============================================================
+class EnvUpdate(BaseModel):
+    key: str
+    value: str
+
+class EnvBulkUpdate(BaseModel):
+    values: dict[str, str]
+
+# =============================================================
+# ENDPOINTS
+# =============================================================
+
+@app.get("/")
+def root():
+    return {"name": "CopyTrading Bot API", "version": "1.0.0", "status": "online"}
+
+# --- STATUS ---
+@app.get("/api/status")
+def get_status():
+    bot_status = bot.get_status()
+    mt5_ok = _ensure_mt5()
+
+    account = None
+    if mt5_ok:
+        info = mt5.account_info()
+        if info:
+            account = {
+                "login": info.login,
+                "server": info.server,
+                "balance": round(info.balance, 2),
+                "equity": round(info.equity, 2),
+                "margin": round(info.margin, 2),
+                "free_margin": round(info.margin_free, 2),
+                "profit": round(info.profit, 2),
+                "currency": info.currency,
+                "leverage": info.leverage,
+            }
+
+    return {
+        "bot": bot_status,
+        "mt5": {"connected": mt5_ok, "account": account},
+        "server_time": datetime.now(timezone.utc).isoformat(),
+    }
+
+# --- START / STOP ---
+@app.post("/api/bot/start")
+def start_bot():
+    return bot.start()
+
+@app.post("/api/bot/stop")
+def stop_bot():
+    return bot.stop()
+
+# --- DASHBOARD ---
+@app.get("/api/dashboard")
+def get_dashboard():
+    if not _ensure_mt5():
+        raise HTTPException(status_code=503, detail="MT5 non connecté")
+
+    start = _get_trading_day_start()
+    now = datetime.now(timezone.utc)
+
+    # P&L quotidien (deals)
+    deals = mt5.history_deals_get(start, now)
+    daily_pnl = 0.0
+    trades_count = 0
+    wins = 0
+    losses = 0
+
+    if deals:
+        open_magic = {}
+        for d in deals:
+            if d.entry == mt5.DEAL_ENTRY_IN:
+                open_magic[d.position_id] = d.magic
+
+        for d in deals:
+            if d.entry != mt5.DEAL_ENTRY_OUT:
+                continue
+            origin_magic = open_magic.get(d.position_id, d.magic)
+            if origin_magic == MAGIC_NUMBER:
+                daily_pnl += d.profit
+                trades_count += 1
+                if d.profit > 0:
+                    wins += 1
+                elif d.profit < 0:
+                    losses += 1
+
+    # Positions ouvertes
+    positions = mt5.positions_get()
+    open_positions = []
+    floating_pnl = 0.0
+    if positions:
+        for pos in positions:
+            if pos.magic == MAGIC_NUMBER:
+                open_positions.append({
+                    "ticket": pos.ticket,
+                    "symbol": pos.symbol,
+                    "type": "BUY" if pos.type == mt5.ORDER_TYPE_BUY else "SELL",
+                    "volume": pos.volume,
+                    "open_price": round(pos.price_open, 2),
+                    "current_price": round(pos.price_current, 2),
+                    "sl": round(pos.sl, 2),
+                    "tp": round(pos.tp, 2),
+                    "profit": round(pos.profit, 2),
+                    "swap": round(pos.swap, 2),
+                    "comment": pos.comment,
+                    "time": datetime.fromtimestamp(pos.time, tz=timezone.utc).isoformat(),
+                })
+                floating_pnl += pos.profit
+
+    # Winrate
+    winrate = (wins / trades_count * 100) if trades_count > 0 else 0.0
+
+    # Account info
+    info = mt5.account_info()
+    balance = round(info.balance, 2) if info else 0.0
+
+    return {
+        "daily_pnl": round(daily_pnl, 2),
+        "floating_pnl": round(floating_pnl, 2),
+        "total_pnl": round(daily_pnl + floating_pnl, 2),
+        "balance": balance,
+        "equity": round(info.equity, 2) if info else 0.0,
+        "trades": trades_count,
+        "wins": wins,
+        "losses": losses,
+        "winrate": round(winrate, 1),
+        "open_positions": open_positions,
+        "open_count": len(open_positions),
+        "daily_limit": DAILY_PROFIT_LIMIT,
+        "limit_pct": round((daily_pnl + floating_pnl) / DAILY_PROFIT_LIMIT * 100, 1) if DAILY_PROFIT_LIMIT > 0 else 0,
+        "trading_hours": f"{TRADING_START_HOUR}h-{TRADING_END_HOUR}h UTC",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+# --- POSITIONS ---
+@app.get("/api/positions")
+def get_positions():
+    if not _ensure_mt5():
+        raise HTTPException(status_code=503, detail="MT5 non connecté")
+
+    positions = mt5.positions_get()
+    result = []
+    if positions:
+        for pos in positions:
+            if pos.magic == MAGIC_NUMBER:
+                result.append({
+                    "ticket": pos.ticket,
+                    "symbol": pos.symbol,
+                    "type": "BUY" if pos.type == mt5.ORDER_TYPE_BUY else "SELL",
+                    "volume": pos.volume,
+                    "open_price": round(pos.price_open, 2),
+                    "current_price": round(pos.price_current, 2),
+                    "sl": round(pos.sl, 2),
+                    "tp": round(pos.tp, 2),
+                    "profit": round(pos.profit, 2),
+                    "swap": round(pos.swap, 2),
+                    "comment": pos.comment,
+                    "time": datetime.fromtimestamp(pos.time, tz=timezone.utc).isoformat(),
+                })
+    return {"positions": result, "count": len(result)}
+
+# --- TRADES HISTORY ---
+@app.get("/api/trades")
+def get_trades(days: int = 7):
+    if not _ensure_mt5():
+        raise HTTPException(status_code=503, detail="MT5 non connecté")
+
+    start = datetime.now(timezone.utc) - timedelta(days=days)
+    now = datetime.now(timezone.utc)
+    deals = mt5.history_deals_get(start, now)
+
+    trades = []
+    if deals:
+        open_deals = {}
+        for d in deals:
+            if d.entry == mt5.DEAL_ENTRY_IN:
+                open_deals[d.position_id] = d
+
+        for d in deals:
+            if d.entry != mt5.DEAL_ENTRY_OUT:
+                continue
+            open_d = open_deals.get(d.position_id)
+            origin_magic = open_d.magic if open_d else d.magic
+            if origin_magic != MAGIC_NUMBER:
+                continue
+            trades.append({
+                "ticket": d.position_id,
+                "symbol": d.symbol,
+                "type": "BUY" if d.type == mt5.DEAL_TYPE_BUY else "SELL",
+                "volume": d.volume,
+                "open_price": round(open_d.price, 2) if open_d else 0,
+                "close_price": round(d.price, 2),
+                "profit": round(d.profit, 2),
+                "commission": round(d.commission, 2),
+                "swap": round(d.swap, 2),
+                "comment": d.comment,
+                "open_time": datetime.fromtimestamp(open_d.time, tz=timezone.utc).isoformat() if open_d else "",
+                "close_time": datetime.fromtimestamp(d.time, tz=timezone.utc).isoformat(),
+            })
+
+    trades.sort(key=lambda x: x["close_time"], reverse=True)
+    return {"trades": trades, "count": len(trades), "days": days}
+
+# --- CONFIG (.env) ---
+@app.get("/api/config")
+def get_config():
+    if not os.path.exists(ENV_FILE):
+        return {"config": {}, "file": ENV_FILE}
+
+    config = {}
+    with open(ENV_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip()
+                # Masquer les mots de passe
+                if any(s in key.upper() for s in ["PASSWORD", "SECRET", "TOKEN", "API_HASH"]):
+                    config[key] = "***"
+                else:
+                    config[key] = value
+
+    return {"config": config, "file": ENV_FILE}
+
+@app.put("/api/config")
+def update_config(updates: EnvBulkUpdate):
+    if not os.path.exists(ENV_FILE):
+        raise HTTPException(status_code=404, detail="Fichier .env introuvable")
+
+    # Lire le fichier actuel
+    with open(ENV_FILE, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    # Construire un dict des valeurs existantes
+    existing = {}
+    for line in lines:
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and "=" in stripped:
+            key, _, value = stripped.partition("=")
+            existing[key.strip()] = value.strip()
+
+    # Appliquer les mises à jour
+    for key, value in updates.values.items():
+        # Ne pas écraser les passwords avec ***
+        if value == "***":
+            continue
+        existing[key] = value
+
+    # Réécrire le fichier
+    new_lines = []
+    written_keys = set()
+    for line in lines:
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and "=" in stripped:
+            key = stripped.split("=", 1)[0].strip()
+            if key in existing:
+                new_lines.append(f"{key}={existing[key]}\n")
+                written_keys.add(key)
+            else:
+                new_lines.append(line)
+        else:
+            new_lines.append(line)
+
+    # Ajouter les nouvelles clés
+    for key, value in existing.items():
+        if key not in written_keys:
+            new_lines.append(f"{key}={value}\n")
+
+    with open(ENV_FILE, "w", encoding="utf-8") as f:
+        f.writelines(new_lines)
+
+    return {"status": "ok", "updated": list(updates.values.keys())}
+
+@app.get("/api/config/raw")
+def get_config_raw():
+    """Retourne le contenu brut du .env (pour l'éditeur)"""
+    if not os.path.exists(ENV_FILE):
+        return {"content": ""}
+    with open(ENV_FILE, "r", encoding="utf-8") as f:
+        return {"content": f.read()}
+
+@app.put("/api/config/raw")
+def update_config_raw(content: str):
+    """Écrase le contenu du .env (éditeur avancé)"""
+    with open(ENV_FILE, "w", encoding="utf-8") as f:
+        f.write(content)
+    return {"status": "ok"}
+
+# --- LOGS ---
+@app.get("/api/logs")
+def get_logs(lines: int = 100):
+    if not os.path.exists(LOG_FILE):
+        return {"logs": [], "total_lines": 0}
+
+    with open(LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
+        all_lines = f.readlines()
+
+    total = len(all_lines)
+    tail = all_lines[-lines:] if len(all_lines) > lines else all_lines
+
+    return {
+        "logs": [l.rstrip() for l in tail],
+        "total_lines": total,
+        "returned": len(tail),
+    }
+
+# --- WEBSOCKET (logs live) ---
+@app.websocket("/ws/logs")
+async def websocket_logs(websocket: WebSocket):
+    await websocket.accept()
+    if not os.path.exists(LOG_FILE):
+        await websocket.send_text("Log file not found")
+        await websocket.close()
+        return
+
+    try:
+        with open(LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
+            # Aller à la fin du fichier
+            f.seek(0, 2)
+            while True:
+                line = f.readline()
+                if line:
+                    await websocket.send_text(line.rstrip())
+                else:
+                    await asyncio.sleep(0.5)
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+
+# --- CLOSE POSITION ---
+@app.post("/api/positions/{ticket}/close")
+def close_position(ticket: int):
+    if not _ensure_mt5():
+        raise HTTPException(status_code=503, detail="MT5 non connecté")
+
+    positions = mt5.positions_get(ticket=ticket)
+    if not positions:
+        raise HTTPException(status_code=404, detail="Position introuvable")
+
+    pos = positions[0]
+    tick = mt5.symbol_info_tick(pos.symbol)
+    if not tick:
+        raise HTTPException(status_code=503, detail="Prix indisponible")
+
+    price = tick.bid if pos.type == mt5.ORDER_TYPE_BUY else tick.ask
+    close_type = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+
+    result = mt5.order_send({
+        "action": mt5.TRADE_ACTION_DEAL,
+        "symbol": pos.symbol,
+        "volume": pos.volume,
+        "type": close_type,
+        "position": ticket,
+        "price": price,
+        "deviation": 20,
+        "magic": MAGIC_NUMBER,
+        "comment": "API-close",
+        "type_time": mt5.ORDER_TIME_GTC,
+        "type_filling": mt5.ORDER_FILLING_FOK,
+    })
+
+    if result and result.retcode == mt5.TRADE_RETCODE_DONE:
+        return {"status": "closed", "ticket": ticket, "profit": round(pos.profit, 2)}
+    else:
+        retcode = result.retcode if result else "unknown"
+        raise HTTPException(status_code=500, detail=f"Échec fermeture: retcode={retcode}")
+
+# --- CLOSE ALL ---
+@app.post("/api/positions/close-all")
+def close_all_positions():
+    if not _ensure_mt5():
+        raise HTTPException(status_code=503, detail="MT5 non connecté")
+
+    positions = mt5.positions_get()
+    closed = []
+    failed = []
+
+    if positions:
+        for pos in positions:
+            if pos.magic != MAGIC_NUMBER:
+                continue
+            tick = mt5.symbol_info_tick(pos.symbol)
+            if not tick:
+                failed.append(pos.ticket)
+                continue
+            price = tick.bid if pos.type == mt5.ORDER_TYPE_BUY else tick.ask
+            close_type = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+            result = mt5.order_send({
+                "action": mt5.TRADE_ACTION_DEAL,
+                "symbol": pos.symbol,
+                "volume": pos.volume,
+                "type": close_type,
+                "position": pos.ticket,
+                "price": price,
+                "deviation": 20,
+                "magic": MAGIC_NUMBER,
+                "comment": "API-close-all",
+                "type_time": mt5.ORDER_TIME_GTC,
+                "type_filling": mt5.ORDER_FILLING_FOK,
+            })
+            if result and result.retcode == mt5.TRADE_RETCODE_DONE:
+                closed.append(pos.ticket)
+            else:
+                failed.append(pos.ticket)
+
+    return {"closed": closed, "failed": failed, "total": len(closed) + len(failed)}
+
+# =============================================================
+# MAIN
+# =============================================================
+if __name__ == "__main__":
+    import uvicorn
+    print(f"🚀 CopyTrading API démarrée sur {API_HOST}:{API_PORT}")
+    print(f"📁 Bot script: {BOT_SCRIPT}")
+    print(f"📁 Workdir: {BOT_WORKDIR}")
+    uvicorn.run(app, host=API_HOST, port=API_PORT, log_level="info")
