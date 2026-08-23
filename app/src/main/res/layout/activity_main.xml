@@ -50,6 +50,16 @@
             android:alpha="0.6"/>
     </LinearLayout>
 
+    <!-- NOTIFICATION BANNER -->
+    <com.copytrading.ui.NotificationBanner
+        android:id="@+id/notificationBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        android:elevation="10dp"/>
+
     <!-- CONTENT AREA -->
     <FrameLayout
         android:layout_width="match_parent"
@@ -490,6 +500,7 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCloseAll"
+                        class="com.copytrading.ui.MorphButton"
                         android:layout_width="wrap_content"
                         android:layout_height="36dp"
                         android:text="TOUT FERMER"
@@ -570,6 +581,7 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSaveConfig"
+                        class="com.copytrading.ui.ConfettiButton"
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
                     android:text="SAUVEGARDER"

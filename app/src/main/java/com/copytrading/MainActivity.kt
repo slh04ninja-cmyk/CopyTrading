@@ -15,6 +15,9 @@ import com.copytrading.api.ApiClient
 import com.copytrading.model.*
 import com.copytrading.ui.PositionAdapter
 import com.google.android.material.button.MaterialButton
+import com.copytrading.ui.MorphButton
+import com.copytrading.ui.NotificationBanner
+import com.copytrading.ui.ConfettiButton
 import com.google.android.material.card.MaterialCardView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -23,6 +26,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var client: ApiClient
     private lateinit var swipeRefresh: SwipeRefreshLayout
+    private lateinit var notificationBanner: NotificationBanner
 
     // Header
     private lateinit var tvBotStatus: TextView
@@ -48,7 +52,7 @@ class MainActivity : AppCompatActivity() {
 
     // Controls
     private lateinit var btnStartStop: MaterialButton
-    private lateinit var btnCloseAll: MaterialButton
+    private lateinit var btnCloseAll: MorphButton
 
     // Positions
     private lateinit var rvPositions: RecyclerView
@@ -70,7 +74,7 @@ class MainActivity : AppCompatActivity() {
 
     // Config
     private lateinit var etConfigContent: EditText
-    private lateinit var btnSaveConfig: MaterialButton
+    private lateinit var btnSaveConfig: ConfettiButton
 
     // Logs
     private lateinit var tvLogs: TextView
@@ -95,6 +99,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun initViews() {
         swipeRefresh = findViewById(R.id.swipeRefresh)
+        notificationBanner = findViewById(R.id.notificationBanner)
 
         tvBotStatus = findViewById(R.id.tvBotStatus)
         btnSettings = findViewById(R.id.btnSettings)
@@ -224,8 +229,10 @@ class MainActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 if (isRunning) {
                     client.stopBot()
+                    notificationBanner.show("Bot arrete")
                 } else {
                     client.startBot()
+                    notificationBanner.show("Bot demarre")
                 }
                 delay(1000)
                 refreshDashboard()
@@ -233,18 +240,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnCloseAll.setOnClickListener {
-            androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Fermer toutes les positions ?")
-                .setMessage("Cette action est irréversible.")
-                .setPositiveButton("Confirmer") { _, _ ->
+            if (btnCloseAll.currentState == MorphButton.State.IDLE) {
+                btnCloseAll.startMorph {
                     lifecycleScope.launch {
                         client.closeAll()
                         delay(1000)
                         refreshDashboard()
+                        refreshPositions()
                     }
                 }
-                .setNegativeButton("Annuler", null)
-                .show()
+            }
         }
 
         btnSaveConfig.setOnClickListener {
@@ -382,9 +387,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun saveConfig() {
-        val content = etConfigContent.text.toString()
+        val configText = etConfigContent.text.toString()
         val values = mutableMapOf<String, String>()
-        content.lines().forEach { line ->
+        configText.lines().forEach { line ->
             val trimmed = line.trim()
             if (trimmed.isNotEmpty() && !trimmed.startsWith("#") && trimmed.contains("=")) {
                 val (key, value) = trimmed.split("=", limit = 2)
@@ -392,12 +397,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        lifecycleScope.launch {
-            val ok = client.updateConfig(values)
-            if (ok) {
-                Toast.makeText(this@MainActivity, "✅ Config sauvegardée", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this@MainActivity, "❌ Erreur sauvegarde", Toast.LENGTH_SHORT).show()
+        btnSaveConfig.burstConfetti {
+            lifecycleScope.launch {
+                val ok = client.updateConfig(values)
+                if (ok) {
+                    notificationBanner.show("Configuration sauvegardee")
+                } else {
+                    notificationBanner.show("Erreur de sauvegarde")
+                }
             }
         }
     }
