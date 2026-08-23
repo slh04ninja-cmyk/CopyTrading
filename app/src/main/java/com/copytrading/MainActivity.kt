@@ -57,7 +57,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvWins: TextView
     private lateinit var tvLosses: TextView
     private lateinit var tvWinrate: TextView
-60|
+
     // Daily Limit
     private lateinit var tvDailyLimit: TextView
     private lateinit var progressDailyLimit: ProgressBar
@@ -76,6 +76,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tabPositions: TextView
     private lateinit var tabConfig: TextView
     private lateinit var tabLogs: TextView
+    private lateinit var tabDashboardIcon: ImageView
+    private lateinit var tabPositionsIcon: ImageView
+    private lateinit var tabConfigIcon: ImageView
+    private lateinit var tabLogsIcon: ImageView
+
+    // Dash sub-tabs
+    private lateinit var dashTabOverview: TextView
+    private lateinit var dashTabPerformance: TextView
+    private var currentDashTab = 0
+
+    // Performance
+    private lateinit var panelPerformance: LinearLayout
+    private lateinit var perfChannelTable: LinearLayout
+    private lateinit var perfSignalTable: LinearLayout
 
     // Panels
     private lateinit var panelDashboard: NestedScrollView
@@ -131,7 +145,7 @@ class MainActivity : AppCompatActivity() {
         tvWins = findViewById(R.id.tvWins)
         tvLosses = findViewById(R.id.tvLosses)
         tvWinrate = findViewById(R.id.tvWinrate)
-135|
+
         tvDailyLimit = findViewById(R.id.tvDailyLimit)
         progressDailyLimit = findViewById(R.id.progressDailyLimit)
 
@@ -145,6 +159,17 @@ class MainActivity : AppCompatActivity() {
         tabPositions = findViewById(R.id.tabPositions)
         tabConfig = findViewById(R.id.tabConfig)
         tabLogs = findViewById(R.id.tabLogs)
+        tabDashboardIcon = findViewById(R.id.tabDashboardIcon)
+        tabPositionsIcon = findViewById(R.id.tabPositionsIcon)
+        tabConfigIcon = findViewById(R.id.tabConfigIcon)
+        tabLogsIcon = findViewById(R.id.tabLogsIcon)
+
+        dashTabOverview = findViewById(R.id.dashTabOverview)
+        dashTabPerformance = findViewById(R.id.dashTabPerformance)
+
+        panelPerformance = findViewById(R.id.panelPerformance)
+        perfChannelTable = findViewById(R.id.perfChannelTable)
+        perfSignalTable = findViewById(R.id.perfSignalTable)
 
         panelDashboard = findViewById(R.id.panelDashboard)
         panelPositions = findViewById(R.id.panelPositions)
@@ -502,7 +527,7 @@ class MainActivity : AppCompatActivity() {
         tvWins.text = dash.wins.toString()
         tvLosses.text = dash.losses.toString()
         tvWinrate.text = "${dash.winrate}%"
-488|
+
         tvDailyLimit.text = "${formatPnl(dash.total_pnl)} / ${formatMoney(dash.daily_limit)}"
         progressDailyLimit.progress = dash.limit_pct.toInt().coerceIn(0, 100)
 
