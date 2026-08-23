@@ -498,9 +498,8 @@
                         android:textStyle="bold"
                         android:letterSpacing="0.02"/>
 
-                    <com.google.android.material.button.MaterialButton
+                    <com.copytrading.ui.MorphButton
                         android:id="@+id/btnCloseAll"
-                        class="com.copytrading.ui.MorphButton"
                         android:layout_width="wrap_content"
                         android:layout_height="36dp"
                         android:text="TOUT FERMER"
@@ -579,9 +578,8 @@
                         android:textSize="12sp"/>
                 </com.google.android.material.card.MaterialCardView>
 
-                <com.google.android.material.button.MaterialButton
+                <com.copytrading.ui.ConfettiButton
                     android:id="@+id/btnSaveConfig"
-                        class="com.copytrading.ui.ConfettiButton"
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
                     android:text="SAUVEGARDER"
