@@ -104,7 +104,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="P&L Quotidien"
+                                    android:text="P&amp;L Quotidien"
                                     android:textColor="@color/text_secondary"
                                     android:textSize="11sp"
                                     android:letterSpacing="0.03"/>
@@ -141,7 +141,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="P&L Flottant"
+                                    android:text="P&amp;L Flottant"
                                     android:textColor="@color/text_secondary"
                                     android:textSize="11sp"
                                     android:letterSpacing="0.03"/>
@@ -180,7 +180,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="TOTAL P&L"
+                                android:text="TOTAL P&amp;L"
                                 android:textColor="@color/text_secondary"
                                 android:textSize="11sp"
                                 android:letterSpacing="0.1"/>
