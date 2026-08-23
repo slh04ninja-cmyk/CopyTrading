@@ -601,9 +601,43 @@ class MainActivity : AppCompatActivity() {
             try {
                 val config = client.getConfig()
                 if (config != null) {
+                    val cfg = config.config
                     val sb = StringBuilder()
-                    config.config.toSortedMap().forEach { (key, value) ->
-                        sb.appendLine("$key=$value")
+                    val sections = listOf(
+                        "CONNEXION TELEGRAM" to listOf("TG_API_ID", "TG_API_HASH"),
+                        "CONNEXION METATRADER 5" to listOf("MT5_LOGIN", "MT5_PASSWORD", "MT5_SERVER", "MT5_PATH"),
+                        "CANAUX TELEGRAM" to listOf("TG_FOLDER", "TG_ALERT_CHANNEL") +
+                                cfg.keys.filter { it.startsWith("TG_CHANNEL") }.sorted(),
+                        "SYSTEME MARKET + LIMIT" to listOf("LIMIT_ENABLED", "LIMIT_COUNT", "LIMIT_OFFSET_1", "LIMIT_OFFSET_2", "LIMIT_EXPIRY_MIN"),
+                        "LOTS" to listOf("LOT_TOTAL", "LOT_MARKET", "LOT_LIMIT1", "LOT_LIMIT2"),
+                        "TAKE PROFIT" to listOf("TP_FIXED_GAIN_USD", "TP_PAR_DEFAUT", "TP_MULTIPE1", "TP_MULTIPE2"),
+                        "STOP LOSS" to listOf("MAX_SL_USD"),
+                        "TOLERANCES" to listOf("TOLERANCE_ZN", "TOLERANCE_PU", "TOLERANCE_MP", "FUSION_TOLERANCE", "TP_DISTANCE_MIN_RATIO"),
+                        "FILTRES HORAIRE" to listOf("TIME_FILTER_ENABLED", "TRADING_START_HOUR", "TRADING_END_HOUR"),
+                        "FILTRES NEWS" to listOf("NEWS_FILTER_ENABLED", "NEWS_MIN_IMPACT", "NEWS_WINDOW_BEFORE_BLOCK", "NEWS_WINDOW_BEFORE_CLOSE", "NEWS_WINDOW_AFTER"),
+                        "FILTRES TRADINGVIEW" to listOf("TV_FILTER_ENABLED", "TV_FILTER_SYMBOL", "TV_FILTER_SCREENER", "TV_FILTER_EXCHANGE", "TV_FILTER_TIMEFRAME", "TV_FILTER_CACHE_TTL", "TV_STRONG_BUY", "TV_BUY", "TV_STRONG_SELL", "TV_SELL", "TV_NEUTRAL_ALLOW"),
+                        "FILTRE CONFLIT" to listOf("CONFLIT_FILTER_ENABLED"),
+                        "GESTION DU RISQUE" to listOf("MAX_POSITIONS", "MAX_SPREAD_POINTS", "DAILY_PROFIT_LIMIT"),
+                        "QUICK ALERT" to listOf("QUICK_ALERT_SL_OFFSET", "RR_RATIO_DEFAULT"),
+                        "PARAMETRES MT5" to listOf("MAGIC_NUMBER", "SLIPPAGE", "ORDER_EXPIRY_MINUTES", "POLL_INTERVAL_SEC"),
+                        "ALERTES & LOGS" to listOf("LOG_TRADE_MANAGEMENT", "ALERT_TRADE_MANAGEMENT", "ALERT_DAILY_PERFORMANCE"),
+                        "MODE DE FONCTIONNEMENT" to listOf("DEMO_MODE", "RUNTIME_MINUTES")
+                    )
+                    val usedKeys = mutableSetOf<String>()
+                    for ((title, keys) in sections) {
+                        val lines = keys.mapNotNull { k ->
+                            cfg[k]?.let { v -> usedKeys.add(k); "$k=$v" }
+                        }
+                        if (lines.isNotEmpty()) {
+                            if (sb.isNotEmpty()) sb.appendLine()
+                            lines.forEach { sb.appendLine(it) }
+                        }
+                    }
+                    // Remaining keys not in any section
+                    val remaining = cfg.keys.filter { it !in usedKeys }.sorted()
+                    if (remaining.isNotEmpty()) {
+                        if (sb.isNotEmpty()) sb.appendLine()
+                        remaining.forEach { k -> sb.appendLine("$k=${cfg[k]}") }
                     }
                     etConfigContent.setText(sb.toString())
                 } else {

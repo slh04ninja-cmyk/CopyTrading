@@ -848,4 +848,4 @@ if __name__ == "__main__":
     print(f"🚀 CopyTrading API démarrée sur {API_HOST}:{API_PORT}")
     print(f"📁 Bot script: {BOT_SCRIPT}")
     print(f"📁 Workdir: {BOT_WORKDIR}")
-    uvicorn.run(app, host=API_HOST, port=API_PORT, log_level="info")
+    uvicorn.run(app, host=API_HOST, port=API_PORT, log_level="warning")
