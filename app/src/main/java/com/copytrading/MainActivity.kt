@@ -630,6 +630,7 @@ class MainActivity : AppCompatActivity() {
                         }
                         if (lines.isNotEmpty()) {
                             if (sb.isNotEmpty()) sb.appendLine()
+                            sb.appendLine("# $title")
                             lines.forEach { sb.appendLine(it) }
                         }
                     }
