@@ -22,11 +22,13 @@ class DateRangePickerDialog(
     private var endDate: Calendar? = null
     private val dayButtons = mutableListOf<TextView>()
     private val monthLabel: TextView
+    private val rootLayout: LinearLayout
 
     init {
         val dp = context.resources.displayMetrics.density
 
         val root = LinearLayout(context).apply {
+            
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.parseColor("#1A1A2E"))
             setPadding((24 * dp).toInt(), (16 * dp).toInt(), (24 * dp).toInt(), (16 * dp).toInt())
@@ -96,7 +98,7 @@ class DateRangePickerDialog(
         root.addView(dowRow)
 
         // Days grid
-        val daysGrid = GridLayout(context).apply {
+        daysGrid = GridLayout(context).apply {
             columnCount = 7
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             setPadding(0, (4 * dp).toInt(), 0, (4 * dp).toInt())
@@ -150,8 +152,7 @@ class DateRangePickerDialog(
         monthLabel.text = monthFmt.format(cal.time).replaceFirstChar { it.uppercase() }
 
         // Find the grid
-        val grid = (contentView as LinearLayout).getChildAt(3) as GridLayout
-        grid.removeAllViews()
+        daysGrid.removeAllViews()
         dayButtons.clear()
 
         val tempCal = Calendar.getInstance()
@@ -163,7 +164,7 @@ class DateRangePickerDialog(
         val today = Calendar.getInstance()
 
         for (i in 0 until offset) {
-            grid.addView(TextView(context).apply {
+            daysGrid.addView(TextView(context).apply {
                 layoutParams = GridLayout.LayoutParams().apply {
                     width = 0; columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
                     height = (40 * dp).toInt()
@@ -237,7 +238,7 @@ class DateRangePickerDialog(
             tv.tag = dayCal
             updateStyle()
             dayButtons.add(tv)
-            grid.addView(tv)
+            daysGrid.addView(tv)
         }
     }
 
@@ -245,3 +246,4 @@ class DateRangePickerDialog(
         a.get(Calendar.YEAR) == b.get(Calendar.YEAR) &&
         a.get(Calendar.MONTH) == b.get(Calendar.MONTH) &&
         a.get(Calendar.DAY_OF_MONTH) == b.get(Calendar.DAY_OF_MONTH)
+}
