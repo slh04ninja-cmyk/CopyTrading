@@ -3,22 +3,31 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    app:cardBackgroundColor="@color/card_background_alt"
-    app:cardCornerRadius="10dp"
-    app:cardElevation="1dp">
+    android:layout_marginBottom="10dp"
+    app:cardBackgroundColor="@color/card_background"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="@color/border">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="10dp">
+        android:padding="14dp">
 
+        <!-- Row 1: Symbol + Profit -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
+
+            <View
+                android:id="@+id/posDot"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@color/success"/>
 
             <TextView
                 android:id="@+id/tvSymbol"
@@ -27,68 +36,9 @@
                 android:layout_weight="1"
                 android:text="XAUUSD"
                 android:textColor="@color/text_primary"
-                android:textSize="15sp"
-                android:textStyle="bold"/>
-
-            <TextView
-                android:id="@+id/tvType"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="BUY"
-                android:textColor="@color/profit"
-                android:textSize="13sp"
+                android:textSize="17sp"
                 android:textStyle="bold"
-                android:layout_marginEnd="8dp"/>
-
-            <TextView
-                android:id="@+id/tvVolume"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0.01"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"/>
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Entry: "
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp"/>
-
-            <TextView
-                android:id="@+id/tvOpenPrice"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0.00"
-                android:textColor="@color/text_primary"
-                android:textSize="11sp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="  →  "
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp"/>
-
-            <TextView
-                android:id="@+id/tvCurrentPrice"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0.00"
-                android:textColor="@color/text_primary"
-                android:textSize="11sp"/>
-
-            <View
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_weight="1"/>
+                android:layout_marginStart="8dp"/>
 
             <TextView
                 android:id="@+id/tvProfit"
@@ -96,42 +46,166 @@
                 android:layout_height="wrap_content"
                 android:text="+0.00$"
                 android:textColor="@color/profit"
-                android:textSize="14sp"
+                android:textSize="20sp"
                 android:textStyle="bold"/>
         </LinearLayout>
 
+        <!-- Row 2: Volume | PE | TP | SL -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="10dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
             android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:background="@android:color/transparent">
 
             <TextView
-                android:id="@+id/tvSlTp"
-                android:layout_width="0dp"
+                android:id="@+id/tvVolume"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="SL: 0.00 | TP: 0.00"
-                android:textColor="@color/text_secondary"
+                android:text="0.01"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" | "
+                android:textColor="@color/text_muted"
                 android:textSize="10sp"/>
 
             <TextView
-                android:id="@+id/tvComment"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=""
-                android:textColor="@color/text_secondary"
-                android:textSize="10sp"
-                android:layout_marginEnd="8dp"/>
+                android:text="PE : "
+                android:textColor="@color/text_muted"
+                android:textSize="12sp"/>
 
-            <ImageView
+            <TextView
+                android:id="@+id/tvOpenPrice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0.00"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" | "
+                android:textColor="@color/text_muted"
+                android:textSize="10sp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TP : "
+                android:textColor="@color/text_muted"
+                android:textSize="12sp"/>
+
+            <TextView
+                android:id="@+id/tvTp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0.00"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" | "
+                android:textColor="@color/text_muted"
+                android:textSize="10sp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SL : "
+                android:textColor="@color/text_muted"
+                android:textSize="12sp"/>
+
+            <TextView
+                android:id="@+id/tvSl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0.00"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <!-- Row 3: Badges + Close button -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:paddingTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- Channel badge -->
+            <TextView
+                android:id="@+id/badgeChannel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CH5"
+                android:textColor="@color/accent_light"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2dp"
+                android:background="#266C63FF"/>
+
+            <!-- Signal badge -->
+            <TextView
+                android:id="@+id/badgeSignal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ZN"
+                android:textColor="#39D2C0"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2dp"
+                android:background="#1E39D2C0"
+                android:layout_marginStart="4dp"/>
+
+            <!-- Order badge -->
+            <TextView
+                android:id="@+id/badgeOrder"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MK"
+                android:textColor="@color/warning"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2dp"
+                android:background="#26FFB74D"
+                android:layout_marginStart="4dp"/>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"/>
+
+            <TextView
                 android:id="@+id/btnClose"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@android:drawable/ic_menu_close_clear_cancel"
-                android:contentDescription="Close"
-                android:padding="2dp"/>
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Fermer"
+                android:textColor="@color/danger"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:background="#1AFF5252"/>
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

@@ -1,5 +1,6 @@
 package com.copytrading.ui
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -33,34 +34,53 @@ class PositionAdapter(
     override fun getItemCount() = positions.size
 
     inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val posDot: View = itemView.findViewById(R.id.posDot)
         private val tvSymbol: TextView = itemView.findViewById(R.id.tvSymbol)
-        private val tvType: TextView = itemView.findViewById(R.id.tvType)
+        private val tvProfit: TextView = itemView.findViewById(R.id.tvProfit)
         private val tvVolume: TextView = itemView.findViewById(R.id.tvVolume)
         private val tvOpenPrice: TextView = itemView.findViewById(R.id.tvOpenPrice)
-        private val tvCurrentPrice: TextView = itemView.findViewById(R.id.tvCurrentPrice)
-        private val tvProfit: TextView = itemView.findViewById(R.id.tvProfit)
-        private val tvSlTp: TextView = itemView.findViewById(R.id.tvSlTp)
-        private val tvComment: TextView = itemView.findViewById(R.id.tvComment)
+        private val tvTp: TextView = itemView.findViewById(R.id.tvTp)
+        private val tvSl: TextView = itemView.findViewById(R.id.tvSl)
+        private val badgeChannel: TextView = itemView.findViewById(R.id.badgeChannel)
+        private val badgeSignal: TextView = itemView.findViewById(R.id.badgeSignal)
+        private val badgeOrder: TextView = itemView.findViewById(R.id.badgeOrder)
         private val btnClose: View = itemView.findViewById(R.id.btnClose)
 
         fun bind(pos: Position) {
             tvSymbol.text = pos.symbol
-            tvType.text = pos.type
-            tvType.setTextColor(itemView.context.getColor(
+
+            // Dot color
+            posDot.background.setTint(itemView.context.getColor(
                 if (pos.type == "BUY") R.color.profit else R.color.loss
             ))
-            tvVolume.text = String.format("%.2f", pos.volume)
-            tvOpenPrice.text = String.format("%.2f", pos.open_price)
-            tvCurrentPrice.text = String.format("%.2f", pos.current_price)
 
+            // Profit
             val profitStr = String.format("%+.2f$", pos.profit)
             tvProfit.text = profitStr
             tvProfit.setTextColor(itemView.context.getColor(
                 if (pos.profit >= 0) R.color.profit else R.color.loss
             ))
 
-            tvSlTp.text = "SL: ${String.format("%.2f", pos.sl)} | TP: ${String.format("%.2f", pos.tp)}"
-            tvComment.text = pos.comment
+            // Row 2: Volume | PE | TP | SL
+            tvVolume.text = String.format("%.2f", pos.volume)
+            tvOpenPrice.text = String.format("%.2f", pos.open_price)
+            tvTp.text = String.format("%.2f", pos.tp)
+            tvSl.text = String.format("%.2f", pos.sl)
+
+            // Row 3: Parse comment CH{canal}-{signal}-{order}
+            val parts = pos.comment.split("-")
+            if (parts.size >= 3) {
+                badgeChannel.text = parts[0]
+                badgeSignal.text = parts[1]
+                badgeOrder.text = parts[2]
+                badgeChannel.visibility = View.VISIBLE
+                badgeSignal.visibility = View.VISIBLE
+                badgeOrder.visibility = View.VISIBLE
+            } else {
+                badgeChannel.visibility = View.GONE
+                badgeSignal.visibility = View.GONE
+                badgeOrder.visibility = View.GONE
+            }
 
             btnClose.setOnClickListener {
                 onCloseClick(pos.ticket)
