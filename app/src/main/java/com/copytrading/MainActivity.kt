@@ -28,6 +28,7 @@ import com.copytrading.api.ApiClient
 import com.copytrading.model.*
 import com.copytrading.ui.PositionAdapter
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -82,9 +83,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tabLogsIcon: ImageView
 
     // Dash sub-tabs
-    private lateinit var dashTabOverview: TextView
-    private lateinit var dashTabPerformance: TextView
-    private var currentDashTab = 0
+    private lateinit var toggleDashTabs: MaterialButtonToggleGroup
+    private lateinit var btnOverview: MaterialButton
+    private lateinit var btnPerformance: MaterialButton
 
     // Performance
     private lateinit var panelPerformance: ScrollView
@@ -164,8 +165,9 @@ class MainActivity : AppCompatActivity() {
         tabConfigIcon = findViewById(R.id.tabConfigIcon)
         tabLogsIcon = findViewById(R.id.tabLogsIcon)
 
-        dashTabOverview = findViewById(R.id.dashTabOverview)
-        dashTabPerformance = findViewById(R.id.dashTabPerformance)
+        toggleDashTabs = findViewById(R.id.toggleDashTabs)
+        btnOverview = findViewById(R.id.btnOverview)
+        btnPerformance = findViewById(R.id.btnPerformance)
 
         panelPerformance = findViewById(R.id.panelPerformance)
         perfChannelTable = findViewById(R.id.perfChannelTable)
@@ -247,22 +249,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupDashTabs() {
-        fun selectDashTab(index: Int) {
-            currentDashTab = index
-            dashTabOverview.setTextColor(getColor(if (index == 0) R.color.text_primary else R.color.text_muted))
-            dashTabOverview.setBackgroundColor(getColor(if (index == 0) R.color.primary else R.color.card_background))
-            dashTabPerformance.setTextColor(getColor(if (index == 1) R.color.text_primary else R.color.text_muted))
-            dashTabPerformance.setBackgroundColor(getColor(if (index == 1) R.color.primary else R.color.card_background))
-            if (index == 0) {
-                panelPerformance.visibility = View.GONE
-                swipeRefresh.visibility = View.VISIBLE
-            } else {
-                panelPerformance.visibility = View.VISIBLE
-                swipeRefresh.visibility = View.GONE
+        toggleDashTabs.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) {
+                when (checkedId) {
+                    R.id.btnOverview -> {
+                        panelPerformance.visibility = View.GONE
+                        swipeRefresh.visibility = View.VISIBLE
+                    }
+                    R.id.btnPerformance -> {
+                        panelPerformance.visibility = View.VISIBLE
+                        swipeRefresh.visibility = View.GONE
+                    }
+                }
             }
         }
-        dashTabOverview.setOnClickListener { selectDashTab(0) }
-        dashTabPerformance.setOnClickListener { selectDashTab(1) }
     }
 
     private fun setupListeners() {
