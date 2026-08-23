@@ -3,7 +3,6 @@ package com.copytrading.ui
 import android.app.Dialog
 import android.content.Context
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.*
@@ -16,32 +15,29 @@ class DateRangePickerDialog(
 ) : Dialog(context) {
 
     private val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-    private val displayFmt = SimpleDateFormat("dd MMM yyyy", Locale.FRANCE)
     private val cal = Calendar.getInstance()
     private var startDate: Calendar? = null
     private var endDate: Calendar? = null
     private val dayButtons = mutableListOf<TextView>()
     private val monthLabel: TextView
-    private val rootLayout: LinearLayout
+    private val daysGrid: GridLayout
 
     init {
         val dp = context.resources.displayMetrics.density
 
         val root = LinearLayout(context).apply {
-            
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.parseColor("#1A1A2E"))
             setPadding((24 * dp).toInt(), (16 * dp).toInt(), (24 * dp).toInt(), (16 * dp).toInt())
         }
 
         // Title
-        val title = TextView(context).apply {
+        root.addView(TextView(context).apply {
             text = "Selectionner un jour ou une periode"
             setTextColor(Color.parseColor("#B8B6D4"))
             textSize = 12f
             setPadding(0, 0, 0, (12 * dp).toInt())
-        }
-        root.addView(title)
+        })
 
         // Month navigation
         val navRow = LinearLayout(context).apply {
@@ -50,13 +46,13 @@ class DateRangePickerDialog(
             setPadding(0, 0, 0, (12 * dp).toInt())
         }
 
-        val btnPrev = TextView(context).apply {
-            text = "<"
+        navRow.addView(TextView(context).apply {
+            text = "\u25C0"
             setTextColor(Color.parseColor("#8B83FF"))
-            textSize = 20f
+            textSize = 18f
             setPadding((16 * dp).toInt(), (8 * dp).toInt(), (16 * dp).toInt(), (8 * dp).toInt())
             setOnClickListener { cal.add(Calendar.MONTH, -1); rebuildDays() }
-        }
+        })
 
         monthLabel = TextView(context).apply {
             setTextColor(Color.WHITE)
@@ -64,18 +60,15 @@ class DateRangePickerDialog(
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
+        navRow.addView(monthLabel)
 
-        val btnNext = TextView(context).apply {
-            text = ">"
+        navRow.addView(TextView(context).apply {
+            text = "\u25B6"
             setTextColor(Color.parseColor("#8B83FF"))
-            textSize = 20f
+            textSize = 18f
             setPadding((16 * dp).toInt(), (8 * dp).toInt(), (16 * dp).toInt(), (8 * dp).toInt())
             setOnClickListener { cal.add(Calendar.MONTH, 1); rebuildDays() }
-        }
-
-        navRow.addView(btnPrev)
-        navRow.addView(monthLabel)
-        navRow.addView(btnNext)
+        })
         root.addView(navRow)
 
         // Day of week headers
@@ -90,7 +83,8 @@ class DateRangePickerDialog(
                 textSize = 11f
                 gravity = Gravity.CENTER
                 layoutParams = GridLayout.LayoutParams().apply {
-                    width = 0; columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                    width = 0
+                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
                     height = (32 * dp).toInt()
                 }
             })
@@ -116,7 +110,7 @@ class DateRangePickerDialog(
             text = "ANNULER"
             setTextColor(Color.parseColor("#8B83FF"))
             textSize = 14f
-            setPadding((16 * dp).toInt(), (8 * dp).toInt(), (16 * dp).toInt(), (8 *dp).toInt())
+            setPadding((16 * dp).toInt(), (8 * dp).toInt(), (16 * dp).toInt(), (8 * dp).toInt())
             setOnClickListener { dismiss() }
         })
 
@@ -139,10 +133,9 @@ class DateRangePickerDialog(
         root.addView(btnRow)
 
         setContentView(root)
-        window?.setLayout((320 * dp).toInt(), ViewGroup.LayoutParams.WRAP_CONTENT)
+        window?.setLayout((300 * dp).toInt(), ViewGroup.LayoutParams.WRAP_CONTENT)
         window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-        // Build days
         rebuildDays()
     }
 
@@ -151,7 +144,6 @@ class DateRangePickerDialog(
         val monthFmt = SimpleDateFormat("MMMM yyyy", Locale.FRANCE)
         monthLabel.text = monthFmt.format(cal.time).replaceFirstChar { it.uppercase() }
 
-        // Find the grid
         daysGrid.removeAllViews()
         dayButtons.clear()
 
@@ -163,10 +155,12 @@ class DateRangePickerDialog(
 
         val today = Calendar.getInstance()
 
+        // Empty cells for offset
         for (i in 0 until offset) {
             daysGrid.addView(TextView(context).apply {
                 layoutParams = GridLayout.LayoutParams().apply {
-                    width = 0; columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                    width = 0
+                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
                     height = (40 * dp).toInt()
                 }
             })
@@ -179,35 +173,9 @@ class DateRangePickerDialog(
                 textSize = 14f
                 gravity = Gravity.CENTER
                 layoutParams = GridLayout.LayoutParams().apply {
-                    width = 0; columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                    width = 0
+                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
                     height = (40 * dp).toInt()
-                }
-            }
-
-            fun updateStyle() {
-                val isStart = startDate != null && isSameDay(dayCal, startDate!!)
-                val isEnd = endDate != null && isSameDay(dayCal, endDate!!)
-                val isInRange = startDate != null && endDate != null &&
-                    dayCal.after(minOf(startDate!!, endDate!!)) && dayCal.before(maxOf(startDate!!, endDate!!))
-                val isToday = isSameDay(dayCal, today)
-
-                when {
-                    isStart || isEnd -> {
-                        tv.setTextColor(Color.WHITE)
-                        tv.setBackgroundColor(Color.parseColor("#6C63FF"))
-                    }
-                    isInRange -> {
-                        tv.setTextColor(Color.WHITE)
-                        tv.setBackgroundColor(Color.parseColor("#2A2A5A"))
-                    }
-                    isToday -> {
-                        tv.setTextColor(Color.parseColor("#8B83FF"))
-                        tv.background = null
-                    }
-                    else -> {
-                        tv.setTextColor(Color.parseColor("#E0DEF0"))
-                        tv.background = null
-                    }
                 }
             }
 
@@ -218,27 +186,44 @@ class DateRangePickerDialog(
                 } else {
                     endDate = dayCal
                 }
-                // Update all day styles
-                for (btn in dayButtons) {
-                    val tag = btn.tag as? Calendar ?: continue
-                    val isStart = startDate != null && isSameDay(tag, startDate!!)
-                    val isEnd = endDate != null && isSameDay(tag, endDate!!)
-                    val isInRange = startDate != null && endDate != null &&
-                        tag.after(minOf(startDate!!, endDate!!)) && tag.before(maxOf(startDate!!, endDate!!))
-                    val isToday2 = isSameDay(tag, today)
-                    when {
-                        isStart || isEnd -> { btn.setTextColor(Color.WHITE); btn.setBackgroundColor(Color.parseColor("#6C63FF")) }
-                        isInRange -> { btn.setTextColor(Color.WHITE); btn.setBackgroundColor(Color.parseColor("#2A2A5A")) }
-                        isToday2 -> { btn.setTextColor(Color.parseColor("#8B83FF")); btn.background = null }
-                        else -> { btn.setTextColor(Color.parseColor("#E0DEF0")); btn.background = null }
-                    }
-                }
+                updateAllDayStyles(today)
             }
 
             tv.tag = dayCal
-            updateStyle()
             dayButtons.add(tv)
             daysGrid.addView(tv)
+        }
+
+        updateAllDayStyles(today)
+    }
+
+    private fun updateAllDayStyles(today: Calendar) {
+        for (btn in dayButtons) {
+            val tag = btn.tag as? Calendar ?: continue
+            val isStart = startDate != null && isSameDay(tag, startDate!!)
+            val isEnd = endDate != null && isSameDay(tag, endDate!!)
+            val isInRange = startDate != null && endDate != null &&
+                tag.after(minOf(startDate!!, endDate!!)) && tag.before(maxOf(startDate!!, endDate!!))
+            val isToday = isSameDay(tag, today)
+
+            when {
+                isStart || isEnd -> {
+                    btn.setTextColor(Color.WHITE)
+                    btn.setBackgroundColor(Color.parseColor("#6C63FF"))
+                }
+                isInRange -> {
+                    btn.setTextColor(Color.WHITE)
+                    btn.setBackgroundColor(Color.parseColor("#2A2A5A"))
+                }
+                isToday -> {
+                    btn.setTextColor(Color.parseColor("#8B83FF"))
+                    btn.background = null
+                }
+                else -> {
+                    btn.setTextColor(Color.parseColor("#E0DEF0"))
+                    btn.background = null
+                }
+            }
         }
     }
 
