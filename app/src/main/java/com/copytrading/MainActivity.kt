@@ -478,7 +478,7 @@ class MainActivity : AppCompatActivity() {
 
             // Fetch trades for performance tables
             try {
-                val trades = client.getTrades(1)
+                val trades = client.getTrades(3)
                 if (trades != null) updatePerformance(trades.trades)
             } catch (_: Exception) {}
 
@@ -735,8 +735,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun addPerfSignalHeader(container: LinearLayout) {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, dp(8)); setBackgroundColor(Color.parseColor("#1A1A2E")) }
-        val headers = arrayOf("SN", "CN", "P&L", "TR", "WN", "LS", "WR", "Gain", "Perte")
-        val weights = floatArrayOf(0.8f, 0.6f, 1f, 0.6f, 0.6f, 0.6f, 0.6f, 0.8f, 0.8f)
+        val headers = arrayOf("SN", "CN", "P&L", "TR", "WN", "LS", "WR")
+        val weights = floatArrayOf(0.8f, 0.6f, 1f, 0.6f, 0.6f, 0.6f, 0.6f)
         headers.forEachIndexed { i, c ->
             val tv = TextView(this).apply { text = c; setTextColor(getColor(R.color.text_muted)); textSize = 10f; setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER }
             row.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weights[i]))
@@ -774,8 +774,6 @@ class MainActivity : AppCompatActivity() {
         cell(d.wins.toString(), 0.6f, getColor(R.color.success))
         cell(d.losses.toString(), 0.6f, getColor(R.color.danger))
         cell("${d.winrate()}%", 0.6f, getColor(R.color.primary_light))
-        cell(String.format("+%.2f", d.gain), 0.8f, getColor(R.color.success))
-        cell(String.format("%.2f", d.loss), 0.8f, getColor(R.color.danger))
         container.addView(row)
         if (!isTotal) { container.addView(View(this).apply { setBackgroundColor(Color.parseColor("#2A2A4A")) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)) }
     }
