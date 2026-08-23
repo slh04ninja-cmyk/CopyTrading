@@ -124,6 +124,7 @@ class MainActivity : AppCompatActivity() {
         client = ApiClient(this)
         initViews()
         setupTabs()
+        setupDashTabs()
         setupListeners()
 
         startAutoRefresh()
