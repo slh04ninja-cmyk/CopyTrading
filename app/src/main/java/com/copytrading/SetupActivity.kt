@@ -9,14 +9,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.copytrading.api.ApiClient
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
 
 class SetupActivity : AppCompatActivity() {
 
-    private lateinit var etHost: TextInputEditText
-    private lateinit var etPort: TextInputEditText
-    private lateinit var etToken: TextInputEditText
+    private lateinit var etHost: EditText
+    private lateinit var etPort: EditText
+    private lateinit var etToken: EditText
     private lateinit var btnConnect: MaterialButton
     private lateinit var progressBar: ProgressBar
     private lateinit var tvStatus: TextView
@@ -32,13 +31,11 @@ class SetupActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         tvStatus = findViewById(R.id.tvStatus)
 
-        // Charger les valeurs sauvegardées
         val prefs = getSharedPreferences("copytrading", Context.MODE_PRIVATE)
         etHost.setText(prefs.getString("server_host", ""))
         etPort.setText(prefs.getString("server_port", "8000"))
         etToken.setText(prefs.getString("api_token", ""))
 
-        // Si déjà configuré, tester directement
         if (prefs.getString("server_host", "")?.isNotEmpty() == true) {
             testAndNavigate()
         }
@@ -53,7 +50,6 @@ class SetupActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Sauvegarder
             prefs.edit()
                 .putString("server_host", host)
                 .putString("server_port", port.ifEmpty { "8000" })
@@ -68,19 +64,21 @@ class SetupActivity : AppCompatActivity() {
         progressBar.visibility = View.VISIBLE
         tvStatus.visibility = View.VISIBLE
         tvStatus.text = "Connexion au serveur..."
+        tvStatus.setTextColor(getColor(R.color.text_secondary))
         btnConnect.isEnabled = false
 
         val client = ApiClient(this)
         lifecycleScope.launch {
             val ok = client.testConnection()
             if (ok) {
-                tvStatus.text = "✅ Connecté !"
+                tvStatus.text = "Connecte !"
+                tvStatus.setTextColor(getColor(R.color.success))
                 progressBar.visibility = View.GONE
                 startActivity(Intent(this@SetupActivity, MainActivity::class.java))
                 finish()
             } else {
                 progressBar.visibility = View.GONE
-                tvStatus.text = "❌ Impossible de se connecter au serveur"
+                tvStatus.text = "Impossible de se connecter"
                 tvStatus.setTextColor(getColor(R.color.danger))
                 btnConnect.isEnabled = true
             }
