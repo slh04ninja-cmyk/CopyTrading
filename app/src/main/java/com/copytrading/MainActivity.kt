@@ -1,9 +1,21 @@
 package com.copytrading
 
+import android.animation.AnimatorSet
+import android.animation.ArgbEvaluator
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.content.Context
 import android.content.Intent
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.os.Bundle
+import android.view.Gravity
 import android.view.View
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.LinearInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.NestedScrollView
@@ -15,18 +27,18 @@ import com.copytrading.api.ApiClient
 import com.copytrading.model.*
 import com.copytrading.ui.PositionAdapter
 import com.google.android.material.button.MaterialButton
-import com.copytrading.ui.MorphButton
-import com.copytrading.ui.NotificationBanner
-import com.copytrading.ui.ConfettiButton
-import com.google.android.material.card.MaterialCardView
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var client: ApiClient
     private lateinit var swipeRefresh: SwipeRefreshLayout
-    private lateinit var notificationBanner: NotificationBanner
+    private lateinit var rootLayout: View
 
     // Header
     private lateinit var tvBotStatus: TextView
@@ -52,7 +64,7 @@ class MainActivity : AppCompatActivity() {
 
     // Controls
     private lateinit var btnStartStop: MaterialButton
-    private lateinit var btnCloseAll: MorphButton
+    private lateinit var btnCloseAll: MaterialButton
 
     // Positions
     private lateinit var rvPositions: RecyclerView
@@ -74,7 +86,7 @@ class MainActivity : AppCompatActivity() {
 
     // Config
     private lateinit var etConfigContent: EditText
-    private lateinit var btnSaveConfig: ConfettiButton
+    private lateinit var btnSaveConfig: MaterialButton
 
     // Logs
     private lateinit var tvLogs: TextView
@@ -82,6 +94,12 @@ class MainActivity : AppCompatActivity() {
 
     private var isRunning = false
     private var autoRefresh = true
+    private var closeAllBusy = false
+
+    // Colors for morph button
+    private val idleColor = Color.parseColor("#E53935")
+    private val loadingColor = Color.parseColor("#FF9800")
+    private val successColor = Color.parseColor("#4CAF50")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,14 +110,13 @@ class MainActivity : AppCompatActivity() {
         setupTabs()
         setupListeners()
 
-        // Auto-refresh toutes les 5 secondes
         startAutoRefresh()
         refreshDashboard()
     }
 
     private fun initViews() {
         swipeRefresh = findViewById(R.id.swipeRefresh)
-        notificationBanner = findViewById(R.id.notificationBanner)
+        rootLayout = findViewById(R.id.rootLayout)
 
         tvBotStatus = findViewById(R.id.tvBotStatus)
         btnSettings = findViewById(R.id.btnSettings)
@@ -155,13 +172,11 @@ class MainActivity : AppCompatActivity() {
 
         fun selectTab(index: Int) {
             currentTab = index
-            // Update text colors
             tabs.forEachIndexed { i, tab ->
                 tab.setTextColor(getColor(if (i == index) R.color.text_primary else R.color.text_secondary))
                 tab.setTypeface(null, if (i == index) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
             }
 
-            // Animate pill sliding
             pillIndicator.post {
                 val tabWidth = tabs[0].width.toFloat()
                 pillIndicator.layoutParams = pillIndicator.layoutParams.apply {
@@ -170,11 +185,10 @@ class MainActivity : AppCompatActivity() {
                 pillIndicator.animate()
                     .translationX(tabWidth * index)
                     .setDuration(250)
-                    .setInterpolator(android.view.animation.DecelerateInterpolator(2f))
+                    .setInterpolator(DecelerateInterpolator(2f))
                     .start()
             }
 
-            // Hide all panels
             swipeRefresh.visibility = View.GONE
             panelPositions.visibility = View.GONE
             panelConfig.visibility = View.GONE
@@ -201,7 +215,6 @@ class MainActivity : AppCompatActivity() {
             tab.setOnClickListener { selectTab(index) }
         }
 
-        // Init pill width after layout
         pillIndicator.post {
             val tabWidth = tabs[0].width.toFloat()
             pillIndicator.layoutParams = pillIndicator.layoutParams.apply {
@@ -229,10 +242,10 @@ class MainActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 if (isRunning) {
                     client.stopBot()
-                    notificationBanner.show("Bot arrete")
+                    showNotification("Bot arrete")
                 } else {
                     client.startBot()
-                    notificationBanner.show("Bot demarre")
+                    showNotification("Bot demarre")
                 }
                 delay(1000)
                 refreshDashboard()
@@ -240,15 +253,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnCloseAll.setOnClickListener {
-            if (btnCloseAll.currentState == MorphButton.State.IDLE) {
-                btnCloseAll.startMorph {
-                    lifecycleScope.launch {
-                        client.closeAll()
-                        delay(1000)
-                        refreshDashboard()
-                        refreshPositions()
-                    }
-                }
+            if (!closeAllBusy) {
+                morphCloseAll()
             }
         }
 
@@ -259,6 +265,143 @@ class MainActivity : AppCompatActivity() {
         btnRefreshLogs.setOnClickListener {
             loadLogs()
         }
+    }
+
+    // --- MORPH BUTTON ANIMATION ---
+    private fun morphCloseAll() {
+        closeAllBusy = true
+        btnCloseAll.isEnabled = false
+
+        // Phase 1: idle -> loading
+        animateColor(btnCloseAll, idleColor, loadingColor, 350)
+        btnCloseAll.text = "Fermeture..."
+
+        // Start spinning ring overlay
+        val ringView = SpinningRingView(this)
+        val parent = btnCloseAll.parent as? android.view.ViewGroup
+        val lp = android.widget.FrameLayout.LayoutParams(
+            (24 * resources.displayMetrics.density).toInt(),
+            (24 * resources.displayMetrics.density).toInt()
+        )
+        // Add ring as overlay on the button
+        parent?.addView(ringView, lp)
+        ringView.x = btnCloseAll.x + btnCloseAll.width / 2f - 12 * resources.displayMetrics.density
+        ringView.y = btnCloseAll.y + btnCloseAll.height / 2f - 12 * resources.displayMetrics.density
+        ringView.startSpin()
+
+        // Execute the close-all
+        lifecycleScope.launch {
+            client.closeAll()
+            delay(1000)
+            refreshDashboard()
+            refreshPositions()
+
+            // Phase 2: loading -> success
+            ringView.stopSpin()
+            parent?.removeView(ringView)
+            animateColor(btnCloseAll, loadingColor, successColor, 350)
+            btnCloseAll.text = ""
+
+            // Draw checkmark overlay
+            val checkView = CheckmarkView(this@MainActivity)
+            parent?.addView(checkView, lp)
+            checkView.x = btnCloseAll.x + btnCloseAll.width / 2f - 12 * resources.displayMetrics.density
+            checkView.y = btnCloseAll.y + btnCloseAll.height / 2f - 12 * resources.displayMetrics.density
+            checkView.animateCheck()
+
+            // Phase 3: reset after 2s
+            delay(2000)
+            parent?.removeView(checkView)
+            animateColor(btnCloseAll, successColor, idleColor, 350)
+            btnCloseAll.text = "TOUT FERMER"
+            btnCloseAll.isEnabled = true
+            closeAllBusy = false
+        }
+    }
+
+    private fun animateColor(view: View, from: Int, to: Int, duration: Long) {
+        val animator = ValueAnimator.ofObject(ArgbEvaluator(), from, to)
+        animator.duration = duration
+        animator.interpolator = DecelerateInterpolator(2f)
+        animator.addUpdateListener {
+            view.setBackgroundColor(it.animatedValue as Int)
+        }
+        animator.start()
+    }
+
+    // --- CONFETTI BURST ---
+    private fun burstConfetti(anchor: View, onEnd: () -> Unit = {}) {
+        val parent = rootLayout as? android.view.ViewGroup ?: return onEnd()
+        val loc = IntArray(2)
+        anchor.getLocationOnScreen(loc)
+        val rootLoc = IntArray(2)
+        parent.getLocationOnScreen(rootLoc)
+        val cx = loc[0] - rootLoc[0] + anchor.width / 2f
+        val cy = loc[1] - rootLoc[1] + anchor.height / 2f
+
+        val colors = intArrayOf(
+            Color.parseColor("#FF6B6B"), Color.parseColor("#4ECDC4"),
+            Color.parseColor("#45B7D1"), Color.parseColor("#96CEB4"),
+            Color.parseColor("#FFEAA7"), Color.parseColor("#DDA0DD"),
+            Color.parseColor("#98D8C8"), Color.parseColor("#F7DC6F")
+        )
+        val density = resources.displayMetrics.density
+        val particles = mutableListOf<Pair<View, Triple<Float, Float, Float>>>() // dx, dy, rotation
+
+        for (i in 0 until 16) {
+            val angle = Math.toRadians((i * 360.0 / 16) + Random.nextDouble(-15.0, 15.0))
+            val distance = (60 + Random.nextFloat() * 80) * density
+            val size = (4 + Random.nextFloat() * 4) * density
+            val rotation = Random.nextFloat() * 720f - 360f
+            val color = colors[Random.nextInt(colors.size)]
+
+            val particle = View(this).apply {
+                setBackgroundColor(color)
+            }
+            val lp = FrameLayout.LayoutParams(size.toInt(), size.toInt())
+            lp.leftMargin = (cx - size / 2).toInt()
+            lp.topMargin = (cy - size / 2).toInt()
+            parent.addView(particle, lp)
+
+            val dx = (cos(angle) * distance).toFloat()
+            val dy = (sin(angle) * distance).toFloat()
+            particles.add(particle to Triple(dx, dy, rotation))
+        }
+
+        val animators = particles.map { (view, triple) ->
+            val (dx, dy, rot) = triple
+            AnimatorSet().apply {
+                playTogether(
+                    ObjectAnimator.ofFloat(view, "translationX", 0f, dx),
+                    ObjectAnimator.ofFloat(view, "translationY", 0f, dy),
+                    ObjectAnimator.ofFloat(view, "rotation", 0f, rot),
+                    ObjectAnimator.ofFloat(view, "alpha", 1f, 0f),
+                    ObjectAnimator.ofFloat(view, "scaleX", 1f, 0.2f),
+                    ObjectAnimator.ofFloat(view, "scaleY", 1f, 0.2f)
+                )
+                duration = 900
+                interpolator = DecelerateInterpolator(1.5f)
+            }
+        }
+
+        val set = AnimatorSet()
+        set.playTogether(animators)
+        set.addListener(object : android.animation.AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: android.animation.Animator) {
+                particles.forEach { parent.removeView(it.first) }
+                onEnd()
+            }
+        })
+        set.start()
+    }
+
+    // --- NOTIFICATION ---
+    private fun showNotification(message: String) {
+        Snackbar.make(rootLayout, message, Snackbar.LENGTH_SHORT)
+            .setBackgroundTint(Color.parseColor("#1E1E2E"))
+            .setTextColor(Color.WHITE)
+            .setAnchorView(pillIndicator)
+            .show()
     }
 
     private fun startAutoRefresh() {
@@ -285,7 +428,6 @@ class MainActivity : AppCompatActivity() {
                 if (dashboard != null) {
                     updateDashboard(dashboard)
                 } else {
-                    // Afficher l'erreur dans l'UI
                     tvDailyPnl.text = "ERR: null"
                     tvDailyPnl.setTextColor(getColor(R.color.danger))
                 }
@@ -304,21 +446,21 @@ class MainActivity : AppCompatActivity() {
 
         when (bot.status) {
             "running" -> {
-                tvBotStatus.text = "🟢 EN LIGNE"
+                tvBotStatus.text = "EN LIGNE"
                 tvBotStatus.setTextColor(getColor(R.color.success))
-                btnStartStop.text = "⏹ ARRÊTER"
+                btnStartStop.text = "ARRETER"
                 btnStartStop.setBackgroundColor(getColor(R.color.danger))
             }
             "stopped" -> {
-                tvBotStatus.text = "🔴 ARRÊTÉ"
+                tvBotStatus.text = "ARRETE"
                 tvBotStatus.setTextColor(getColor(R.color.danger))
-                btnStartStop.text = "▶ DÉMARRER"
+                btnStartStop.text = "DEMARRER"
                 btnStartStop.setBackgroundColor(getColor(R.color.success))
             }
             "error" -> {
-                tvBotStatus.text = "⚠ ERREUR"
+                tvBotStatus.text = "ERREUR"
                 tvBotStatus.setTextColor(getColor(R.color.warning))
-                btnStartStop.text = "▶ DÉMARRER"
+                btnStartStop.text = "DEMARRER"
                 btnStartStop.setBackgroundColor(getColor(R.color.success))
             }
         }
@@ -331,7 +473,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateDashboard(dash: DashboardResponse) {
-        // P&L
         tvDailyPnl.text = formatPnl(dash.daily_pnl)
         tvDailyPnl.setTextColor(getPnlColor(dash.daily_pnl))
         tvFloatingPnl.text = formatPnl(dash.floating_pnl)
@@ -339,18 +480,15 @@ class MainActivity : AppCompatActivity() {
         tvTotalPnl.text = formatPnl(dash.total_pnl)
         tvTotalPnl.setTextColor(getPnlColor(dash.total_pnl))
 
-        // Stats
         tvTrades.text = dash.trades.toString()
         tvWins.text = dash.wins.toString()
         tvLosses.text = dash.losses.toString()
         tvWinrate.text = "${dash.winrate}%"
         progressWinrate.progress = dash.winrate.toInt()
 
-        // Daily limit
         tvDailyLimit.text = "${formatPnl(dash.total_pnl)} / ${formatMoney(dash.daily_limit)}"
         progressDailyLimit.progress = dash.limit_pct.toInt().coerceIn(0, 100)
 
-        // Positions
         positionAdapter.setPositions(dash.open_positions)
         tvNoPositions.visibility = if (dash.open_positions.isEmpty()) View.VISIBLE else View.GONE
         rvPositions.visibility = if (dash.open_positions.isEmpty()) View.GONE else View.VISIBLE
@@ -397,13 +535,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        btnSaveConfig.burstConfetti {
+        // Confetti burst then save
+        burstConfetti(btnSaveConfig) {
             lifecycleScope.launch {
                 val ok = client.updateConfig(values)
                 if (ok) {
-                    notificationBanner.show("Configuration sauvegardee")
+                    showNotification("Configuration sauvegardee")
                 } else {
-                    notificationBanner.show("Erreur de sauvegarde")
+                    showNotification("Erreur de sauvegarde")
                 }
             }
         }
@@ -415,7 +554,6 @@ class MainActivity : AppCompatActivity() {
                 val logs = client.getLogs(200)
                 if (logs != null) {
                     tvLogs.text = logs.logs.joinToString("\n")
-                    // Auto-scroll vers le bas
                     val scrollview = tvLogs.parent as? View
                     if (scrollview is ScrollView) {
                         scrollview.post { scrollview.fullScroll(View.FOCUS_DOWN) }
@@ -436,9 +574,7 @@ class MainActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     val result = client.closePosition(ticket)
                     if (result != null) {
-                        Toast.makeText(this@MainActivity,
-                            "✅ Position fermée: ${formatPnl(result.profit)}",
-                            Toast.LENGTH_SHORT).show()
+                        showNotification("Position fermee: ${formatPnl(result.profit)}")
                     }
                     delay(1000)
                     refreshDashboard()
@@ -469,5 +605,88 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         autoRefresh = false
+    }
+}
+
+// --- Spinning Ring overlay view ---
+class SpinningRingView(context: Context) : View(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 3f * resources.displayMetrics.density
+        strokeCap = Paint.Cap.ROUND
+        color = Color.WHITE
+    }
+    private var angle = 0f
+    private var animator: ValueAnimator? = null
+
+    fun startSpin() {
+        animator = ValueAnimator.ofFloat(0f, 360f).apply {
+            duration = 800
+            repeatCount = ValueAnimator.INFINITE
+            interpolator = LinearInterpolator()
+            addUpdateListener {
+                angle = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    fun stopSpin() {
+        animator?.cancel()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val r = width / 2f - paint.strokeWidth
+        val rect = RectF(width / 2f - r, height / 2f - r, width / 2f + r, height / 2f + r)
+        canvas.drawArc(rect, angle, 90f, false, paint)
+    }
+}
+
+// --- Checkmark overlay view ---
+class CheckmarkView(context: Context) : View(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 3f * resources.displayMetrics.density
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+        color = Color.WHITE
+    }
+    private var progress = 0f
+
+    fun animateCheck() {
+        ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 400
+            interpolator = DecelerateInterpolator(2f)
+            addUpdateListener {
+                progress = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val cx = width / 2f
+        val cy = height / 2f
+        val s = width / 3f
+
+        val startX = cx - s * 0.6f
+        val startY = cy
+        val midX = cx - s * 0.1f
+        val midY = cy + s * 0.5f
+        val endX = cx + s * 0.7f
+        val endY = cy - s * 0.4f
+
+        if (progress <= 0.5f) {
+            val p = progress * 2f
+            canvas.drawLine(startX, startY, startX + (midX - startX) * p, startY + (midY - startY) * p, paint)
+        } else {
+            canvas.drawLine(startX, startY, midX, midY, paint)
+            val p = (progress - 0.5f) * 2f
+            canvas.drawLine(midX, midY, midX + (endX - midX) * p, midY + (endY - midY) * p, paint)
+        }
     }
 }

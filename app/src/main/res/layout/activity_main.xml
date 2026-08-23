@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:id="@+id/rootLayout"
     android:background="@color/background"
     android:orientation="vertical">
 
@@ -50,15 +51,6 @@
             android:alpha="0.6"/>
     </LinearLayout>
 
-    <!-- NOTIFICATION BANNER -->
-    <com.copytrading.ui.NotificationBanner
-        android:id="@+id/notificationBanner"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="8dp"
-        android:elevation="10dp"/>
 
     <!-- CONTENT AREA -->
     <FrameLayout
@@ -498,7 +490,7 @@
                         android:textStyle="bold"
                         android:letterSpacing="0.02"/>
 
-                    <com.copytrading.ui.MorphButton
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCloseAll"
                         android:layout_width="wrap_content"
                         android:layout_height="36dp"
@@ -578,7 +570,7 @@
                         android:textSize="12sp"/>
                 </com.google.android.material.card.MaterialCardView>
 
-                <com.copytrading.ui.ConfettiButton
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSaveConfig"
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
