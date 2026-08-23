@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity() {
     private var currentDashTab = 0
 
     // Performance
-    private lateinit var panelPerformance: LinearLayout
+    private lateinit var panelPerformance: ScrollView
     private lateinit var perfChannelTable: LinearLayout
     private lateinit var perfSignalTable: LinearLayout
 
