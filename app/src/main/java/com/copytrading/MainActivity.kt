@@ -645,15 +645,19 @@ class MainActivity : AppCompatActivity() {
         val channelData = mutableMapOf<String, PerfData>()
         val signalData = mutableMapOf<String, PerfData>()
         for (t in trades) {
+            // Parser le commentaire CH{num}-{signal}-{method} (ex: CH5-ZN-MK)
             val parts = t.comment.split("-")
-            val channel = parts.getOrElse(0) { "?" }
-            val signal = parts.getOrElse(1) { "?" }
-            channelData.getOrPut(channel) { PerfData() }.add(t)
-            signalData.getOrPut(signal) { PerfData() }.add(t)
+            if (parts.size >= 2) {
+                val channel = parts[0]  // CH5, CH3, etc.
+                val signal = parts[1]   // ZN, PU, MP, QA, AL
+                channelData.getOrPut(channel) { PerfData() }.add(t)
+                signalData.getOrPut(signal) { PerfData() }.add(t)
+            }
         }
         perfChannelTable.removeAllViews()
         addPerfHeader(perfChannelTable, "Canal", "P&L", "Tr", "Wn", "Ls", "WR")
-        for ((ch, d) in channelData.toSortedMap()) addPerfRow(perfChannelTable, ch, d)
+        for ((ch, d) in channelData.toSortedMap(compareBy { it.removePrefix("CH").toIntOrNull() ?: 0 }))
+            addPerfRow(perfChannelTable, ch, d)
         val totalCh = channelData.values.fold(PerfData()) { acc, d -> acc.merge(d) }
         addPerfRow(perfChannelTable, "TOTAL", totalCh, isTotal = true)
 

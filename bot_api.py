@@ -495,6 +495,26 @@ def get_trades(days: int = 7):
             if d.entry == mt5.DEAL_ENTRY_IN:
                 open_deals[d.position_id] = d
 
+        # Indexer le commentaire du deal IN (ouverture) — c'est la source fiable
+        # pour le format CH{num}-{signal}-{method} (ex: CH5-ZN-MK)
+        open_comments = {}
+        for d in deals:
+            if d.entry == mt5.DEAL_ENTRY_IN:
+                open_deals[d.position_id] = d
+                if getattr(d, 'comment', ''):
+                    open_comments[d.position_id] = d.comment
+
+        # Fallback: lire le commentaire depuis les ordres d'ouverture
+        missing_ids = [pid for pid in open_deals if pid not in open_comments]
+        if missing_ids:
+            orders = mt5.history_orders_get(start, now)
+            if orders:
+                order_comment = {o.ticket: o.comment for o in orders if getattr(o, 'comment', '')}
+                for pid in missing_ids:
+                    c = order_comment.get(pid)
+                    if c:
+                        open_comments[pid] = c
+
         for d in deals:
             if d.entry != mt5.DEAL_ENTRY_OUT:
                 continue
@@ -502,6 +522,8 @@ def get_trades(days: int = 7):
             origin_magic = open_d.magic if open_d else d.magic
             if origin_magic != MAGIC_NUMBER:
                 continue
+            # Utiliser le commentaire du deal IN (CH5-ZN-MK) au lieu du deal OUT ([tp], [sl], etc.)
+            comment = open_comments.get(d.position_id, d.comment)
             trades.append({
                 "ticket": d.position_id,
                 "symbol": d.symbol,
@@ -512,7 +534,7 @@ def get_trades(days: int = 7):
                 "profit": round(d.profit, 2),
                 "commission": round(d.commission, 2),
                 "swap": round(d.swap, 2),
-                "comment": d.comment,
+                "comment": comment,
                 "open_time": datetime.fromtimestamp(open_d.time, tz=timezone.utc).isoformat() if open_d else "",
                 "close_time": datetime.fromtimestamp(d.time, tz=timezone.utc).isoformat(),
             })
