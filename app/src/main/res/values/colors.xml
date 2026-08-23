@@ -8,6 +8,7 @@
     <color name="background">#0F0F1A</color>
     <color name="bg_secondary">#1A1A2E</color>
     <color name="card_background">#16213E</color>
+    <color name="card_background_alt">#1A2744</color>
     <color name="card_background_hover">#1A2744</color>
     <color name="bg_input">#0F0F1A</color>
 
