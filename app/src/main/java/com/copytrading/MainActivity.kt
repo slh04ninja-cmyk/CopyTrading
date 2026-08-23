@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity() {
 
     // Header
     private lateinit var tvBotStatus: TextView
+    private lateinit var statusDot: View
     private lateinit var btnSettings: ImageView
 
     // P&L Cards
@@ -144,6 +145,7 @@ class MainActivity : AppCompatActivity() {
         rootLayout = findViewById(R.id.rootLayout)
 
         tvBotStatus = findViewById(R.id.tvBotStatus)
+        statusDot = findViewById(R.id.statusDot)
         btnSettings = findViewById(R.id.btnSettings)
 
         tvDailyPnl = findViewById(R.id.tvDailyPnl)

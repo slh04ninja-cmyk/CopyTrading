@@ -11,45 +11,64 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/card_background"
+        android:background="@color/bg_secondary"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="20dp"
-        android:paddingVertical="14dp">
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp">
 
+        <!-- Left: Status badge -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="CopyTrading"
-                android:textColor="@color/text_primary"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.02"/>
+            <View
+                android:id="@+id/statusDot"
+                android:layout_width="7dp"
+                android:layout_height="7dp"
+                android:background="@color/success"/>
 
             <TextView
                 android:id="@+id/tvBotStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="ARRETE"
-                android:textColor="@color/danger"
-                android:textSize="13sp"
+                android:text="  EN LIGNE"
+                android:textColor="@color/success"
+                android:textSize="11sp"
+                android:textStyle="bold"
                 android:letterSpacing="0.05"/>
         </LinearLayout>
 
+        <!-- Center: Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CopyTrading"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:letterSpacing="-0.02"/>
+
+        <!-- Right: Settings -->
         <ImageView
             android:id="@+id/btnSettings"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
             android:src="@android:drawable/ic_menu_manage"
             android:contentDescription="Settings"
-            android:alpha="0.6"/>
+            app:tint="@color/text_secondary"
+            android:layout_gravity="end"/>
     </LinearLayout>
+
+    <!-- Border bottom -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/border"/>
 
 
     <!-- CONTENT AREA -->
