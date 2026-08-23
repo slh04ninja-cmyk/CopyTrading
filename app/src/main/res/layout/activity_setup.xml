@@ -6,15 +6,28 @@
     android:background="@color/background"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="32dp">
+    android:padding="24dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="📈"
-        android:textSize="64sp"
-        android:layout_marginBottom="16dp"/>
+    <!-- Logo -->
+    <FrameLayout
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginBottom="20dp">
 
+        <View
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:background="@drawable/bg_logo" />
+
+        <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_logo"
+            app:tint="@android:color/white" />
+    </FrameLayout>
+
+    <!-- Title -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -22,92 +35,129 @@
         android:textColor="@color/text_primary"
         android:textSize="28sp"
         android:textStyle="bold"
-        android:layout_marginBottom="8dp"/>
+        android:letterSpacing="-0.02"
+        android:layout_marginBottom="4dp" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Connectez-vous à votre serveur"
+        android:text="Bot Manager"
         android:textColor="@color/text_secondary"
-        android:textSize="14sp"
-        android:layout_marginBottom="32dp"/>
+        android:textSize="16sp"
+        android:layout_marginBottom="32dp" />
 
-    <com.google.android.material.textfield.TextInputLayout
+    <!-- Form -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        android:hint="Adresse IP du serveur"
-        app:boxBackgroundColor="@color/card_background"
-        app:boxStrokeColor="@color/primary"
-        app:hintTextColor="@color/text_secondary">
+        android:orientation="vertical">
 
-        <com.google.android.material.textfield.TextInputEditText
+        <!-- Host -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ADRESSE DU SERVEUR"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="6dp" />
+
+        <EditText
             android:id="@+id/etHost"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_input"
+            android:paddingHorizontal="16dp"
             android:inputType="text"
             android:textColor="@color/text_primary"
-            android:hint="ex: 123.45.67.89"/>
-    </com.google.android.material.textfield.TextInputLayout>
+            android:textColorHint="@color/text_muted"
+            android:textSize="15sp"
+            android:hint="ex: 192.168.1.100"
+            android:layout_marginBottom="16dp" />
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        android:hint="Port"
-        app:boxBackgroundColor="@color/card_background"
-        app:boxStrokeColor="@color/primary"
-        app:hintTextColor="@color/text_secondary">
+        <!-- Port -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PORT"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="6dp" />
 
-        <com.google.android.material.textfield.TextInputEditText
+        <EditText
             android:id="@+id/etPort"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_input"
+            android:paddingHorizontal="16dp"
             android:inputType="number"
             android:textColor="@color/text_primary"
-            android:text="8000"/>
-    </com.google.android.material.textfield.TextInputLayout>
+            android:textColorHint="@color/text_muted"
+            android:textSize="15sp"
+            android:text="8000"
+            android:layout_marginBottom="16dp" />
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
-        android:hint="Token API (optionnel)"
-        app:boxBackgroundColor="@color/card_background"
-        app:boxStrokeColor="@color/primary"
-        app:hintTextColor="@color/text_secondary">
+        <!-- Token -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TOKEN API"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="6dp" />
 
-        <com.google.android.material.textfield.TextInputEditText
+        <EditText
             android:id="@+id/etToken"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_input"
+            android:paddingHorizontal="16dp"
             android:inputType="textPassword"
-            android:textColor="@color/text_primary"/>
-    </com.google.android.material.textfield.TextInputLayout>
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted"
+            android:textSize="15sp"
+            android:hint="Votre token API"
+            android:layout_marginBottom="24dp" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnConnect"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:text="🔌 CONNECTER"
-        android:textSize="16sp"
-        android:backgroundTint="@color/primary"
-        app:cornerRadius="12dp"/>
+        <!-- Connect Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnConnect"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="CONNEXION"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:backgroundTint="@color/primary"
+            app:cornerRadius="10dp"
+            app:icon="@drawable/ic_link"
+            app:iconGravity="textStart"
+            app:iconPadding="8dp" />
 
-    <ProgressBar
-        android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:visibility="gone"/>
+        <!-- Status -->
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="16dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            android:visibility="gone" />
 
-    <TextView
-        android:id="@+id/tvStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:textColor="@color/text_secondary"
-        android:textSize="14sp"
-        android:visibility="gone"/>
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="12dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
 
 </LinearLayout>
