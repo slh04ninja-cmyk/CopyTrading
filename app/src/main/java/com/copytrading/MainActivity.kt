@@ -251,19 +251,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupDashTabs() {
-        toggleDashTabs.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (isChecked) {
-                when (checkedId) {
-                    R.id.btnOverview -> {
-                        overviewContent.visibility = View.VISIBLE
-                        performanceContent.visibility = View.GONE
-                    }
-                    R.id.btnPerformance -> {
-                        overviewContent.visibility = View.GONE
-                        performanceContent.visibility = View.VISIBLE
-                    }
-                }
-            }
+        btnOverview.setOnClickListener {
+            overviewContent.visibility = View.VISIBLE
+            performanceContent.visibility = View.GONE
+            btnOverview.setBackgroundColor(getColor(R.color.primary))
+            btnPerformance.setBackgroundColor(Color.TRANSPARENT)
+        }
+        btnPerformance.setOnClickListener {
+            overviewContent.visibility = View.GONE
+            performanceContent.visibility = View.VISIBLE
+            btnPerformance.setBackgroundColor(getColor(R.color.primary))
+            btnOverview.setBackgroundColor(Color.TRANSPARENT)
         }
     }
 
