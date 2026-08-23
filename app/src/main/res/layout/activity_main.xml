@@ -688,7 +688,7 @@
                     <EditText
                         android:id="@+id/etConfigContent"
                         android:layout_width="match_parent"
-                        android:layout_height="400dp"
+                        android:layout_height="600dp"
                         android:background="@android:color/transparent"
                         android:fontFamily="monospace"
                         android:gravity="top"
