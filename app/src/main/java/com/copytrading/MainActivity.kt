@@ -196,10 +196,6 @@ class MainActivity : AppCompatActivity() {
 
         fun selectTab(index: Int) {
             currentTab = index
-            tabs.forEachIndexed { i, tab ->
-                tab.setTextColor(getColor(if (i == index) R.color.text_primary else R.color.text_secondary))
-                tab.setTypeface(null, if (i == index) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
-            }
 
             pillIndicator.post {
                 val tabWidth = tabs[0].width.toFloat()
