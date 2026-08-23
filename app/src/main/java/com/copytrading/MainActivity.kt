@@ -686,7 +686,7 @@ class MainActivity : AppCompatActivity() {
         // Tableau Performance par Canal
         perfChannelTable.removeAllViews()
         addPerfHeader(perfChannelTable, "Canal", "P&L", "SN", "TR", "WN", "LS", "WR")
-        for ((ch, d) in channelData.toSortedMap(compareBy { it.removePrefix("CH").toIntOrNull() ?: 0 })) {
+        for ((ch, d) in channelData.entries.sortedByDescending { it.value.pnl }.map { it.key to it.value }) {
             val sn = channelSignalCount[ch]?.size ?: 0
             addPerfRow(perfChannelTable, ch, d, sn = sn)
         }
@@ -697,7 +697,7 @@ class MainActivity : AppCompatActivity() {
         // Tableau Performance par Signal
         perfSignalTable.removeAllViews()
         addPerfSignalHeader(perfSignalTable)
-        for ((sig, d) in signalData.toSortedMap()) {
+        for ((sig, d) in signalData.entries.sortedByDescending { it.value.pnl }.map { it.key to it.value }) {
             addPerfSignalRow(perfSignalTable, sig, d)
         }
         val totalSig = signalData.values.fold(PerfData()) { acc, d -> acc.merge(d) }
@@ -756,7 +756,7 @@ class MainActivity : AppCompatActivity() {
         cell(d.trades.toString(), 0.6f, getColor(R.color.text_primary))
         cell(d.wins.toString(), 0.6f, getColor(R.color.success))
         cell(d.losses.toString(), 0.6f, getColor(R.color.danger))
-        cell("${d.winrate()}%", 0.6f, getColor(R.color.primary_light))
+        cell("${d.winrate()}", 0.6f, getColor(R.color.primary_light))
         container.addView(row)
         if (!isTotal) { container.addView(View(this).apply { setBackgroundColor(Color.parseColor("#2A2A4A")) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)) }
     }
@@ -773,7 +773,7 @@ class MainActivity : AppCompatActivity() {
         cell(d.trades.toString(), 0.6f, getColor(R.color.text_primary))
         cell(d.wins.toString(), 0.6f, getColor(R.color.success))
         cell(d.losses.toString(), 0.6f, getColor(R.color.danger))
-        cell("${d.winrate()}%", 0.6f, getColor(R.color.primary_light))
+        cell("${d.winrate()}", 0.6f, getColor(R.color.primary_light))
         container.addView(row)
         if (!isTotal) { container.addView(View(this).apply { setBackgroundColor(Color.parseColor("#2A2A4A")) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)) }
     }
