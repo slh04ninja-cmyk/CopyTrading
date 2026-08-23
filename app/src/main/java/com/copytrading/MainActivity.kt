@@ -325,10 +325,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnSettings.setOnClickListener {
-            val prefs = getSharedPreferences("copytrading", Context.MODE_PRIVATE)
-            prefs.edit().remove("server_host").apply()
-            startActivity(Intent(this, SetupActivity::class.java))
-            finish()
+            if (drawerLayout.isDrawerOpen(android.view.Gravity.END)) {
+                drawerLayout.closeDrawer(android.view.Gravity.END)
+            } else {
+                drawerLayout.openDrawer(android.view.Gravity.END)
+            }
         }
 
         btnStartStop.setOnClickListener {

@@ -23,12 +23,32 @@
         android:paddingHorizontal="16dp"
         android:paddingVertical="12dp">
 
-        <!-- Left: Status badge -->
-        <LinearLayout
+        <!-- Left: Menu icon -->
+        <ImageView
+            android:id="@+id/btnSettings"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
+            android:src="@android:drawable/ic_menu_sort_by_size"
+            android:contentDescription="Menu"
+            app:tint="@color/text_secondary"/>
+
+        <!-- Center: Title -->
+        <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:gravity="start"
+            android:gravity="center"
+            android:text="CopyTrading"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold"/>
+
+        <!-- Right: Status badge -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="end"
             android:orientation="horizontal">
 
             <View
@@ -47,27 +67,6 @@
                 android:textSize="11sp"
                 android:textStyle="bold"/>
         </LinearLayout>
-
-        <!-- Center: Title -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="CopyTrading"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold"/>
-
-        <!-- Right: Menu icon -->
-        <ImageView
-            android:id="@+id/btnSettings"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_weight="1"
-            android:padding="8dp"
-            android:src="@android:drawable/ic_menu_sort_by_size"
-            android:contentDescription="Menu"
-            app:tint="@color/text_secondary"
-            android:layout_gravity="end"/>
     </LinearLayout>
 
     <!-- Border bottom -->
