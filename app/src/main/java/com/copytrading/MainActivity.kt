@@ -325,10 +325,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnSettings.setOnClickListener {
-            if (drawerLayout.isDrawerOpen(android.view.Gravity.END)) {
-                drawerLayout.closeDrawer(android.view.Gravity.END)
+            if (drawerLayout.isDrawerOpen(android.view.Gravity.START)) {
+                drawerLayout.closeDrawer(android.view.Gravity.START)
             } else {
-                drawerLayout.openDrawer(android.view.Gravity.END)
+                drawerLayout.openDrawer(android.view.Gravity.START)
             }
         }
 
