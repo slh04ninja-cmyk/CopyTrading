@@ -72,10 +72,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var positionAdapter: PositionAdapter
 
     // Tabs
-    private lateinit var tabDashboard: TextView
-    private lateinit var tabPositions: TextView
-    private lateinit var tabConfig: TextView
-    private lateinit var tabLogs: TextView
+    private lateinit var tabDashboard: LinearLayout
+    private lateinit var tabPositions: LinearLayout
+    private lateinit var tabConfig: LinearLayout
+    private lateinit var tabLogs: LinearLayout
     private lateinit var tabDashboardIcon: ImageView
     private lateinit var tabPositionsIcon: ImageView
     private lateinit var tabConfigIcon: ImageView
