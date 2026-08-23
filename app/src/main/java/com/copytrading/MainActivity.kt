@@ -95,7 +95,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var performanceContent: LinearLayout
     private lateinit var perfChannelTable: LinearLayout
     private lateinit var perfSignalTable: LinearLayout
-    private lateinit var etDatePicker: EditText
+    private lateinit var etDateFrom: EditText
+    private lateinit var etDateTo: EditText
 
     // Panels
     private lateinit var panelDashboard: NestedScrollView
@@ -180,7 +181,8 @@ class MainActivity : AppCompatActivity() {
         performanceContent = findViewById(R.id.performanceContent)
         perfChannelTable = findViewById(R.id.perfChannelTable)
         perfSignalTable = findViewById(R.id.perfSignalTable)
-        etDatePicker = findViewById(R.id.etDatePicker)
+        etDateFrom = findViewById(R.id.etDateFrom)
+        etDateTo = findViewById(R.id.etDateTo)
 
         panelDashboard = findViewById(R.id.panelDashboard)
         panelPositions = findViewById(R.id.panelPositions)
@@ -260,24 +262,37 @@ class MainActivity : AppCompatActivity() {
     private fun setupDatePicker() {
         val cal = java.util.Calendar.getInstance()
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        etDatePicker.setText(sdf.format(cal.time))
-        refreshPerformanceForDate(sdf.format(cal.time))
+        val today = sdf.format(cal.time)
+        etDateFrom.setText(today)
+        etDateTo.setText(today)
+        refreshPerformanceForRange(today, today)
 
-        etDatePicker.setOnClickListener {
+        etDateFrom.setOnClickListener {
             DatePickerDialog(this, { _, year, month, day ->
                 cal.set(year, month, day)
-                etDatePicker.setText(sdf.format(cal.time))
-                refreshPerformanceForDate(sdf.format(cal.time))
+                etDateFrom.setText(sdf.format(cal.time))
+                refreshPerformanceForRange(etDateFrom.text.toString(), etDateTo.text.toString())
+            }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
+        }
+
+        etDateTo.setOnClickListener {
+            DatePickerDialog(this, { _, year, month, day ->
+                cal.set(year, month, day)
+                etDateTo.setText(sdf.format(cal.time))
+                refreshPerformanceForRange(etDateFrom.text.toString(), etDateTo.text.toString())
             }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
         }
     }
 
-    private fun refreshPerformanceForDate(dateStr: String) {
+    private fun refreshPerformanceForRange(fromDate: String, toDate: String) {
         lifecycleScope.launch {
             try {
-                val trades = client.getTrades(7)
+                val trades = client.getTrades(30)
                 if (trades != null) {
-                    val filtered = trades.trades.filter { it.close_time.startsWith(dateStr) }
+                    val filtered = trades.trades.filter {
+                        val d = it.close_time.substring(0, 10)
+                        d in fromDate..toDate
+                    }
                     updatePerformance(filtered)
                 }
             } catch (_: Exception) {}
