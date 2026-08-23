@@ -32,6 +32,7 @@ import com.copytrading.model.*
 import com.copytrading.ui.PositionAdapter
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -95,8 +96,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var performanceContent: LinearLayout
     private lateinit var perfChannelTable: LinearLayout
     private lateinit var perfSignalTable: LinearLayout
-    private lateinit var etDateFrom: EditText
-    private lateinit var etDateTo: EditText
+    private lateinit var tvDateRange: TextView
+    private var dateFrom: String = ""
+    private var dateTo: String = ""
 
     // Panels
     private lateinit var panelDashboard: NestedScrollView
@@ -181,8 +183,7 @@ class MainActivity : AppCompatActivity() {
         performanceContent = findViewById(R.id.performanceContent)
         perfChannelTable = findViewById(R.id.perfChannelTable)
         perfSignalTable = findViewById(R.id.perfSignalTable)
-        etDateFrom = findViewById(R.id.etDateFrom)
-        etDateTo = findViewById(R.id.etDateTo)
+        tvDateRange = findViewById(R.id.tvDateRange)
 
         panelDashboard = findViewById(R.id.panelDashboard)
         panelPositions = findViewById(R.id.panelPositions)
@@ -260,27 +261,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupDatePicker() {
-        val cal = java.util.Calendar.getInstance()
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        val today = sdf.format(cal.time)
-        etDateFrom.setText(today)
-        etDateTo.setText(today)
+        val today = sdf.format(java.util.Date())
+        dateFrom = today
+        dateTo = today
+        tvDateRange.text = "Aujourd'hui"
         refreshPerformanceForRange(today, today)
 
-        etDateFrom.setOnClickListener {
-            DatePickerDialog(this, { _, year, month, day ->
-                cal.set(year, month, day)
-                etDateFrom.setText(sdf.format(cal.time))
-                refreshPerformanceForRange(etDateFrom.text.toString(), etDateTo.text.toString())
-            }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
-        }
+        tvDateRange.setOnClickListener {
+            val picker = MaterialDatePicker.Builder.dateRangePicker()
+                .setTitleText("Selectionner une periode")
+                .build()
 
-        etDateTo.setOnClickListener {
-            DatePickerDialog(this, { _, year, month, day ->
-                cal.set(year, month, day)
-                etDateTo.setText(sdf.format(cal.time))
-                refreshPerformanceForRange(etDateFrom.text.toString(), etDateTo.text.toString())
-            }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
+            picker.addOnPositiveButtonClickListener { selection ->
+                val startCal = java.util.Calendar.getInstance().apply { timeInMillis = selection.first }
+                val endCal = java.util.Calendar.getInstance().apply { timeInMillis = selection.second }
+                dateFrom = sdf.format(startCal.time)
+                dateTo = sdf.format(endCal.time)
+
+                val displayFmt = SimpleDateFormat("dd/MM", Locale.US)
+                tvDateRange.text = "${displayFmt.format(startCal.time)} - ${displayFmt.format(endCal.time)}"
+                refreshPerformanceForRange(dateFrom, dateTo)
+            }
+
+            picker.show(supportFragmentManager, "date_range")
         }
     }
 
