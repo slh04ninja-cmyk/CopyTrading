@@ -665,13 +665,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Compter les signaux uniques par canal (nombre de positions distinctes)
-        val channelSignalCount = mutableMapOf<String, MutableSet<Long>>()
-        for ((ticket, pair) in positionSignals) {
-            channelSignalCount.getOrPut(pair.first) { mutableSetOf() }.add(ticket)
-        }
-        for ((ch, tickets) in channelSignalCount) {
-            channelData[ch]?.let { it.signals.clear(); it.signals.addAll(tickets.map { t -> t.toString() }) }
+        // SN = nombre d'ordres MK (Market) par canal
+        val channelMkCount = mutableMapOf<String, Int>()
+        for (t in trades) {
+            val parts = t.comment.split("-")
+            if (parts.size >= 3 && parts[2] == "MK") {
+                val channel = parts[0]
+                channelMkCount[channel] = (channelMkCount[channel] ?: 0) + 1
+            }
         }
 
         // Compter les canaux par type de signal
@@ -687,11 +688,11 @@ class MainActivity : AppCompatActivity() {
         perfChannelTable.removeAllViews()
         addPerfHeader(perfChannelTable, "Canal", "P&L", "SN", "TR", "WN", "LS", "WR")
         for ((ch, d) in channelData.entries.sortedByDescending { it.value.pnl }.map { it.key to it.value }) {
-            val sn = channelSignalCount[ch]?.size ?: 0
+            val sn = channelMkCount[ch] ?: 0
             addPerfRow(perfChannelTable, ch, d, sn = sn)
         }
         val totalCh = channelData.values.fold(PerfData()) { acc, d -> acc.merge(d) }
-        val totalSn = channelSignalCount.values.sumOf { it.size }
+        val totalSn = channelMkCount.values.sum()
         addPerfRow(perfChannelTable, "TOTAL", totalCh, sn = totalSn, isTotal = true)
 
         // Tableau Performance par Signal
