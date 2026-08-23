@@ -476,6 +476,12 @@ class MainActivity : AppCompatActivity() {
                 tvDailyPnl.setTextColor(getColor(R.color.danger))
             }
 
+            // Fetch trades for performance tables
+            try {
+                val trades = client.getTrades(1)
+                if (trades != null) updatePerformance(trades.trades)
+            } catch (_: Exception) {}
+
             swipeRefresh.isRefreshing = false
         }
     }
