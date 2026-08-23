@@ -32,7 +32,7 @@ import com.copytrading.model.*
 import com.copytrading.ui.PositionAdapter
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
-import com.google.android.material.datepicker.MaterialDatePicker
+import com.copytrading.ui.DateRangePickerDialog
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -262,7 +262,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupDatePicker() {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        val displayFmt = SimpleDateFormat("dd/MM", Locale.US)
+        val displayFmt = SimpleDateFormat("dd/MM", Locale.FRANCE)
         val today = sdf.format(java.util.Date())
         dateFrom = today
         dateTo = today
@@ -270,19 +270,14 @@ class MainActivity : AppCompatActivity() {
         refreshPerformanceForRange(today, today)
 
         tvDateRange.setOnClickListener {
-            val cal = java.util.Calendar.getInstance()
-            // First pick: start date
-            DatePickerDialog(this, { _, y1, m1, d1 ->
-                cal.set(y1, m1, d1)
-                dateFrom = sdf.format(cal.time)
-                // Second pick: end date
-                DatePickerDialog(this, { _, y2, m2, d2 ->
-                    cal.set(y2, m2, d2)
-                    dateTo = sdf.format(cal.time)
-                    tvDateRange.text = "${displayFmt.format(java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dateFrom)!!)} - ${displayFmt.format(cal.time)}"
-                    refreshPerformanceForRange(dateFrom, dateTo)
-                }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
-            }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
+            DateRangePickerDialog(this) { start, end ->
+                dateFrom = start
+                dateTo = end
+                val s = displayFmt.format(sdf.parse(start)!!)
+                val e = displayFmt.format(sdf.parse(end)!!)
+                tvDateRange.text = if (start == end) s else "$s - $e"
+                refreshPerformanceForRange(start, end)
+            }.show()
         }
     }
 
