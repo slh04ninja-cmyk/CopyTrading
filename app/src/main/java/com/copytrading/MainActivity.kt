@@ -88,7 +88,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnPerformance: MaterialButton
 
     // Performance
-    private lateinit var panelPerformance: ScrollView
+    private lateinit var overviewContent: LinearLayout
+    private lateinit var performanceContent: LinearLayout
     private lateinit var perfChannelTable: LinearLayout
     private lateinit var perfSignalTable: LinearLayout
 
@@ -169,7 +170,8 @@ class MainActivity : AppCompatActivity() {
         btnOverview = findViewById(R.id.btnOverview)
         btnPerformance = findViewById(R.id.btnPerformance)
 
-        panelPerformance = findViewById(R.id.panelPerformance)
+        overviewContent = findViewById(R.id.overviewContent)
+        performanceContent = findViewById(R.id.performanceContent)
         perfChannelTable = findViewById(R.id.perfChannelTable)
         perfSignalTable = findViewById(R.id.perfSignalTable)
 
@@ -253,12 +255,12 @@ class MainActivity : AppCompatActivity() {
             if (isChecked) {
                 when (checkedId) {
                     R.id.btnOverview -> {
-                        panelPerformance.visibility = View.GONE
-                        swipeRefresh.visibility = View.VISIBLE
+                        overviewContent.visibility = View.VISIBLE
+                        performanceContent.visibility = View.GONE
                     }
                     R.id.btnPerformance -> {
-                        panelPerformance.visibility = View.VISIBLE
-                        swipeRefresh.visibility = View.GONE
+                        overviewContent.visibility = View.GONE
+                        performanceContent.visibility = View.VISIBLE
                     }
                 }
             }

@@ -59,43 +59,6 @@
         android:layout_weight="1">
 
         <!-- DASHBOARD PANEL -->
-        <!-- DASHBOARD SUB-TABS -->
-        <com.google.android.material.button.MaterialButtonToggleGroup
-            android:id="@+id/toggleDashTabs"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:background="@color/card_background"
-            android:padding="4dp"
-            app:singleSelection="true"
-            app:selectionRequired="true"
-            app:checkedButton="@id/btnOverview"
-            app:cornerRadius="8dp">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnOverview"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="Overview"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                app:cornerRadius="6dp"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPerformance"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:text="Performance"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_muted"
-                app:cornerRadius="6dp"/>
-        </com.google.android.material.button.MaterialButtonToggleGroup>
-
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
             android:id="@+id/swipeRefresh"
             android:layout_width="match_parent"
@@ -115,6 +78,47 @@
                     android:orientation="vertical"
                     android:paddingHorizontal="16dp"
                     android:paddingTop="12dp">
+
+                    <!-- DASHBOARD SUB-TABS -->
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/toggleDashTabs"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:layout_marginBottom="12dp"
+                        app:singleSelection="true"
+                        app:selectionRequired="true"
+                        app:checkedButton="@id/btnOverview"
+                        app:cornerRadius="8dp">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnOverview"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:text="Overview"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            app:cornerRadius="6dp"/>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnPerformance"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:text="Performance"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            app:cornerRadius="6dp"/>
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                    <!-- OVERVIEW CONTENT -->
+                    <LinearLayout
+                        android:id="@+id/overviewContent"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
 
                     <!-- P&L CARDS ROW -->
                     <LinearLayout
@@ -471,35 +475,16 @@
                         android:backgroundTint="@color/success"
                         app:cornerRadius="14dp"/>
 
-                </LinearLayout>
-            </androidx.core.widget.NestedScrollView>
-        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+                    </LinearLayout>
 
-        <!-- PERFORMANCE PANEL -->
-        <ScrollView
-            android:id="@+id/panelPerformance"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone"
-            android:clipToPadding="false"
-            android:paddingBottom="16dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingHorizontal="16dp"
-                android:paddingTop="12dp">
-
-<!-- PERFORMANCE PANEL (hidden by default) -->
+                    <!-- PERFORMANCE CONTENT -->
                     <LinearLayout
-                        
+                        android:id="@+id/performanceContent"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        >
+                        android:visibility="gone">
 
-                        <!-- Performance by Channel -->
                         <com.google.android.material.card.MaterialCardView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -531,7 +516,6 @@
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
 
-                        <!-- Performance by Signal -->
                         <com.google.android.material.card.MaterialCardView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -562,11 +546,12 @@
                                     android:padding="12dp"/>
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
+
                     </LinearLayout>
-            </LinearLayout>
-        </ScrollView>
 
-
+                </LinearLayout>
+            </androidx.core.widget.NestedScrollView>
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
         <!-- POSITIONS PANEL -->
         <ScrollView
