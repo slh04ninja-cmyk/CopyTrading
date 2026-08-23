@@ -777,16 +777,22 @@
     <FrameLayout
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="60dp"
         android:background="@color/bg_secondary">
 
-        <!-- Sliding pill indicator -->
+        <!-- Top border line -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/border"/>
+
+        <!-- Sliding pill indicator (top bar) -->
         <View
             android:id="@+id/pillIndicator"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:background="@drawable/bg_pill"
-            android:layout_gravity="center_vertical"/>
+            android:layout_height="3dp"
+            android:background="@color/accent"
+            android:layout_gravity="top"/>
 
         <!-- Tab buttons -->
         <LinearLayout
@@ -803,8 +809,8 @@
                 android:orientation="vertical">
                 <ImageView
                     android:id="@+id/tabDashboardIcon"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
                     android:src="@android:drawable/ic_menu_recent_history"
                     app:tint="@color/primary_light"/>
                 <TextView
@@ -812,8 +818,8 @@
                     android:layout_height="wrap_content"
                     android:text="Dashboard"
                     android:textColor="@color/text_muted"
-                    android:textSize="10sp"
-                    android:layout_marginTop="2dp"/>
+                    android:textSize="11sp"
+                    android:layout_marginTop="3dp"/>
             </LinearLayout>
 
             <LinearLayout
@@ -825,8 +831,8 @@
                 android:orientation="vertical">
                 <ImageView
                     android:id="@+id/tabPositionsIcon"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
                     android:src="@android:drawable/ic_menu_sort_by_size"
                     app:tint="@color/text_muted"/>
                 <TextView
@@ -834,8 +840,8 @@
                     android:layout_height="wrap_content"
                     android:text="Positions"
                     android:textColor="@color/text_muted"
-                    android:textSize="10sp"
-                    android:layout_marginTop="2dp"/>
+                    android:textSize="11sp"
+                    android:layout_marginTop="3dp"/>
             </LinearLayout>
 
             <LinearLayout
@@ -847,8 +853,8 @@
                 android:orientation="vertical">
                 <ImageView
                     android:id="@+id/tabConfigIcon"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
                     android:src="@android:drawable/ic_menu_manage"
                     app:tint="@color/text_muted"/>
                 <TextView
@@ -856,8 +862,8 @@
                     android:layout_height="wrap_content"
                     android:text="Config"
                     android:textColor="@color/text_muted"
-                    android:textSize="10sp"
-                    android:layout_marginTop="2dp"/>
+                    android:textSize="11sp"
+                    android:layout_marginTop="3dp"/>
             </LinearLayout>
 
             <LinearLayout
@@ -869,8 +875,8 @@
                 android:orientation="vertical">
                 <ImageView
                     android:id="@+id/tabLogsIcon"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
                     android:src="@android:drawable/ic_menu_view"
                     app:tint="@color/text_muted"/>
                 <TextView
@@ -878,8 +884,8 @@
                     android:layout_height="wrap_content"
                     android:text="Logs"
                     android:textColor="@color/text_muted"
-                    android:textSize="10sp"
-                    android:layout_marginTop="2dp"/>
+                    android:textSize="11sp"
+                    android:layout_marginTop="3dp"/>
             </LinearLayout>
         </LinearLayout>
     </FrameLayout>

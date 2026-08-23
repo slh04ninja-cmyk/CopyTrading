@@ -30,8 +30,8 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.copytrading.api.ApiClient
 import com.copytrading.model.*
 import com.copytrading.ui.PositionAdapter
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.button.MaterialButtonToggleGroup
+
+
 import com.copytrading.ui.DateRangePickerDialog
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.delay
@@ -87,9 +87,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tabLogsIcon: ImageView
 
     // Dash sub-tabs
-    private lateinit var toggleDashTabs: MaterialButtonToggleGroup
-    private lateinit var btnOverview: MaterialButton
-    private lateinit var btnPerformance: MaterialButton
+    private lateinit var btnOverview: TextView
+    private lateinit var btnPerformance: TextView
 
     // Performance
     private lateinit var overviewContent: LinearLayout
@@ -175,7 +174,6 @@ class MainActivity : AppCompatActivity() {
         tabConfigIcon = findViewById(R.id.tabConfigIcon)
         tabLogsIcon = findViewById(R.id.tabLogsIcon)
 
-        toggleDashTabs = findViewById(R.id.toggleDashTabs)
         btnOverview = findViewById(R.id.btnOverview)
         btnPerformance = findViewById(R.id.btnPerformance)
 
@@ -300,14 +298,18 @@ class MainActivity : AppCompatActivity() {
         btnOverview.setOnClickListener {
             overviewContent.visibility = View.VISIBLE
             performanceContent.visibility = View.GONE
-            btnOverview.setBackgroundColor(getColor(R.color.primary))
+            btnOverview.setBackgroundColor(getColor(R.color.accent))
+            btnOverview.setTextColor(Color.WHITE)
             btnPerformance.setBackgroundColor(Color.TRANSPARENT)
+            btnPerformance.setTextColor(getColor(R.color.text_muted))
         }
         btnPerformance.setOnClickListener {
             overviewContent.visibility = View.GONE
             performanceContent.visibility = View.VISIBLE
-            btnPerformance.setBackgroundColor(getColor(R.color.primary))
+            btnPerformance.setBackgroundColor(getColor(R.color.accent))
+            btnPerformance.setTextColor(Color.WHITE)
             btnOverview.setBackgroundColor(Color.TRANSPARENT)
+            btnOverview.setTextColor(getColor(R.color.text_muted))
         }
     }
 
