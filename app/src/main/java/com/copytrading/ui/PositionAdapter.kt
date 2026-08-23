@@ -69,15 +69,18 @@ class PositionAdapter(
 
             // Row 3: Parse comment CH{canal}-{signal}-{order}
             val parts = pos.comment.split("-")
-            if (parts.size >= 3) {
+            if (parts.size >= 3 && parts[0].startsWith("CH")) {
                 badgeChannel.text = parts[0]
                 badgeSignal.text = parts[1]
                 badgeOrder.text = parts[2]
                 badgeChannel.visibility = View.VISIBLE
-                badgeSignal.visibility = View.VISIBLE
-                badgeOrder.visibility = View.VISIBLE
+                badgeSignal.visibility = View.GONE
+                badgeOrder.visibility = View.GONE
             } else {
-                badgeChannel.visibility = View.GONE
+                badgeChannel.text = "MANUEL"
+                badgeChannel.setTextColor(itemView.context.getColor(R.color.text_muted))
+                badgeChannel.setBackgroundColor(Color.parseColor("#1A555577"))
+                badgeChannel.visibility = View.VISIBLE
                 badgeSignal.visibility = View.GONE
                 badgeOrder.visibility = View.GONE
             }
