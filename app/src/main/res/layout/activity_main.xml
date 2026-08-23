@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawerLayout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:id="@+id/rootLayout"
-    android:background="@color/background"
-    android:orientation="vertical">
+    android:layout_height="match_parent">
+
+    <!-- Main content -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/rootLayout"
+        android:background="@color/background"
+        android:orientation="vertical">
 
     <!-- HEADER -->
     <LinearLayout
@@ -17,34 +23,12 @@
         android:paddingHorizontal="16dp"
         android:paddingVertical="12dp">
 
-        <!-- Left: Menu icon (60% width) -->
-        <ImageView
-            android:id="@+id/btnSettings"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_weight="3"
-            android:padding="8dp"
-            android:src="@android:drawable/ic_menu_sort_by_size"
-            android:contentDescription="Menu"
-            app:tint="@color/text_secondary"/>
-
-        <!-- Center: Title -->
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="2"
-            android:gravity="center"
-            android:text="CopyTrading"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold"/>
-
-        <!-- Right: Status badge -->
+        <!-- Left: Status badge -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:gravity="end"
+            android:gravity="start"
             android:orientation="horizontal">
 
             <View
@@ -63,6 +47,27 @@
                 android:textSize="11sp"
                 android:textStyle="bold"/>
         </LinearLayout>
+
+        <!-- Center: Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CopyTrading"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold"/>
+
+        <!-- Right: Menu icon -->
+        <ImageView
+            android:id="@+id/btnSettings"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:padding="8dp"
+            android:src="@android:drawable/ic_menu_sort_by_size"
+            android:contentDescription="Menu"
+            app:tint="@color/text_secondary"
+            android:layout_gravity="end"/>
     </LinearLayout>
 
     <!-- Border bottom -->
@@ -910,4 +915,65 @@
         </LinearLayout>
     </FrameLayout>
 
-</LinearLayout>
+    </LinearLayout>
+
+    <!-- Right Drawer -->
+    <LinearLayout
+        android:id="@+id/drawerRight"
+        android:layout_width="280dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="@color/bg_secondary"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Parametres"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="24dp"/>
+
+        <TextView
+            android:id="@+id/drawerConfig"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:text="Configuration"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:paddingHorizontal="12dp"
+            android:background="?attr/selectableItemBackground"/>
+
+        <TextView
+            android:id="@+id/drawerLogs"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:text="Logs"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:paddingHorizontal="12dp"
+            android:background="?attr/selectableItemBackground"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/border"
+            android:layout_marginVertical="12dp"/>
+
+        <TextView
+            android:id="@+id/drawerAbout"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:text="A propos"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:paddingHorizontal="12dp"
+            android:background="?attr/selectableItemBackground"/>
+    </LinearLayout>
+
+</androidx.drawerlayout.widget.DrawerLayout>

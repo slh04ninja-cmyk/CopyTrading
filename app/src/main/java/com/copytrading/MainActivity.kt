@@ -17,6 +17,7 @@ import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.*
+import androidx.drawerlayout.widget.DrawerLayout
 import android.app.DatePickerDialog
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -46,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var client: ApiClient
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private lateinit var rootLayout: View
+    private lateinit var drawerLayout: DrawerLayout
 
     // Header
     private lateinit var tvBotStatus: TextView
@@ -143,6 +145,7 @@ class MainActivity : AppCompatActivity() {
     private fun initViews() {
         swipeRefresh = findViewById(R.id.swipeRefresh)
         rootLayout = findViewById(R.id.rootLayout)
+        drawerLayout = findViewById(R.id.drawerLayout)
 
         tvBotStatus = findViewById(R.id.tvBotStatus)
         statusDot = findViewById(R.id.statusDot)
