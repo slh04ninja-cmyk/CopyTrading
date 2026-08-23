@@ -262,6 +262,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupDatePicker() {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val displayFmt = SimpleDateFormat("dd/MM", Locale.US)
         val today = sdf.format(java.util.Date())
         dateFrom = today
         dateTo = today
@@ -269,22 +270,19 @@ class MainActivity : AppCompatActivity() {
         refreshPerformanceForRange(today, today)
 
         tvDateRange.setOnClickListener {
-            val picker = MaterialDatePicker.Builder.dateRangePicker()
-                .setTitleText("Selectionner une periode")
-                .build()
-
-            picker.addOnPositiveButtonClickListener { selection ->
-                val startCal = java.util.Calendar.getInstance().apply { timeInMillis = selection.first }
-                val endCal = java.util.Calendar.getInstance().apply { timeInMillis = selection.second }
-                dateFrom = sdf.format(startCal.time)
-                dateTo = sdf.format(endCal.time)
-
-                val displayFmt = SimpleDateFormat("dd/MM", Locale.US)
-                tvDateRange.text = "${displayFmt.format(startCal.time)} - ${displayFmt.format(endCal.time)}"
-                refreshPerformanceForRange(dateFrom, dateTo)
-            }
-
-            picker.show(supportFragmentManager, "date_range")
+            val cal = java.util.Calendar.getInstance()
+            // First pick: start date
+            DatePickerDialog(this, { _, y1, m1, d1 ->
+                cal.set(y1, m1, d1)
+                dateFrom = sdf.format(cal.time)
+                // Second pick: end date
+                DatePickerDialog(this, { _, y2, m2, d2 ->
+                    cal.set(y2, m2, d2)
+                    dateTo = sdf.format(cal.time)
+                    tvDateRange.text = "${displayFmt.format(java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dateFrom)!!)} - ${displayFmt.format(cal.time)}"
+                    refreshPerformanceForRange(dateFrom, dateTo)
+                }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
+            }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
         }
     }
 
