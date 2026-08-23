@@ -626,7 +626,12 @@ class MainActivity : AppCompatActivity() {
                     val usedKeys = mutableSetOf<String>()
                     for ((title, keys) in sections) {
                         val lines = keys.mapNotNull { k ->
-                            cfg[k]?.let { v -> usedKeys.add(k); "$k=$v" }
+                            cfg[k]?.let { v ->
+                                usedKeys.add(k)
+                                // Supprimer commentaire apres la valeur (tout apres "  # ")
+                                val clean = v.replace(Regex("\\s{2,}#.*$"), "").trim()
+                                "$k=$clean"
+                            }
                         }
                         if (lines.isNotEmpty()) {
                             if (sb.isNotEmpty()) sb.appendLine()
