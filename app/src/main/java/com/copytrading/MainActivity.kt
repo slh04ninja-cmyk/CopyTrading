@@ -56,16 +56,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var positionAdapter: PositionAdapter
 
     // Tabs
-    private lateinit var tabDashboard: LinearLayout
-    private lateinit var tabPositions: LinearLayout
-    private lateinit var tabConfig: LinearLayout
-    private lateinit var tabLogs: LinearLayout
+    private lateinit var tabDashboard: TextView
+    private lateinit var tabPositions: TextView
+    private lateinit var tabConfig: TextView
+    private lateinit var tabLogs: TextView
 
     // Panels
     private lateinit var panelDashboard: NestedScrollView
     private lateinit var panelPositions: ScrollView
     private lateinit var panelConfig: ScrollView
     private lateinit var panelLogs: ScrollView
+    private lateinit var pillIndicator: View
 
     // Config
     private lateinit var etConfigContent: EditText
@@ -128,6 +129,7 @@ class MainActivity : AppCompatActivity() {
         panelPositions = findViewById(R.id.panelPositions)
         panelConfig = findViewById(R.id.panelConfig)
         panelLogs = findViewById(R.id.panelLogs)
+        pillIndicator = findViewById(R.id.pillIndicator)
 
         etConfigContent = findViewById(R.id.etConfigContent)
         btnSaveConfig = findViewById(R.id.btnSaveConfig)
@@ -144,10 +146,28 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupTabs() {
         val tabs = listOf(tabDashboard, tabPositions, tabConfig, tabLogs)
+        var currentTab = 0
 
-        fun selectTab(selected: LinearLayout) {
-            tabs.forEach { it.alpha = 0.5f }
-            selected.alpha = 1.0f
+        fun selectTab(index: Int) {
+            currentTab = index
+            // Update text colors
+            tabs.forEachIndexed { i, tab ->
+                tab.setTextColor(getColor(if (i == index) R.color.text_primary else R.color.text_secondary))
+                tab.setTypeface(null, if (i == index) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+            }
+
+            // Animate pill sliding
+            pillIndicator.post {
+                val tabWidth = tabs[0].width.toFloat()
+                pillIndicator.layoutParams = pillIndicator.layoutParams.apply {
+                    width = tabWidth.toInt()
+                }
+                pillIndicator.animate()
+                    .translationX(tabWidth * index)
+                    .setDuration(250)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator(2f))
+                    .start()
+            }
 
             // Hide all panels
             swipeRefresh.visibility = View.GONE
@@ -155,30 +175,37 @@ class MainActivity : AppCompatActivity() {
             panelConfig.visibility = View.GONE
             panelLogs.visibility = View.GONE
 
-            when (selected) {
-                tabDashboard -> {
-                    swipeRefresh.visibility = View.VISIBLE
-                }
-                tabPositions -> {
+            when (index) {
+                0 -> swipeRefresh.visibility = View.VISIBLE
+                1 -> {
                     panelPositions.visibility = View.VISIBLE
                     refreshPositions()
                 }
-                tabConfig -> {
+                2 -> {
                     panelConfig.visibility = View.VISIBLE
                     loadConfig()
                 }
-                tabLogs -> {
+                3 -> {
                     panelLogs.visibility = View.VISIBLE
                     loadLogs()
                 }
             }
         }
 
-        tabs.forEach { tab ->
-            tab.setOnClickListener { selectTab(tab) }
+        tabs.forEachIndexed { index, tab ->
+            tab.setOnClickListener { selectTab(index) }
         }
 
-        selectTab(tabDashboard)
+        // Init pill width after layout
+        pillIndicator.post {
+            val tabWidth = tabs[0].width.toFloat()
+            pillIndicator.layoutParams = pillIndicator.layoutParams.apply {
+                width = tabWidth.toInt()
+            }
+            pillIndicator.translationX = 0f
+        }
+
+        selectTab(0)
     }
 
     private fun setupListeners() {
