@@ -261,6 +261,7 @@ class MainActivity : AppCompatActivity() {
         val cal = java.util.Calendar.getInstance()
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         etDatePicker.setText(sdf.format(cal.time))
+        refreshPerformanceForDate(sdf.format(cal.time))
 
         etDatePicker.setOnClickListener {
             DatePickerDialog(this, { _, year, month, day ->
@@ -507,16 +508,6 @@ class MainActivity : AppCompatActivity() {
                 tvDailyPnl.text = "ERR: ${e.message}"
                 tvDailyPnl.setTextColor(getColor(R.color.danger))
             }
-
-            // Fetch trades for performance tables
-            try {
-                val trades = client.getTrades(7)
-                if (trades != null) {
-                    val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(java.util.Date())
-                    val filtered = trades.trades.filter { it.close_time.startsWith(today) }
-                    updatePerformance(filtered)
-                }
-            } catch (_: Exception) {}
 
             swipeRefresh.isRefreshing = false
         }
