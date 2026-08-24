@@ -25,6 +25,8 @@ import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -119,7 +121,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnRefreshLogs: MaterialButton
 
     private var isRunning = false
-    private var autoRefresh = true
     private var closeAllBusy = false
 
     // Colors for morph button
@@ -496,14 +497,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun startAutoRefresh() {
         lifecycleScope.launch {
-            while (autoRefresh) {
-                delay(5000)
-                try {
-                    refreshDashboard()
-                    if (performanceContent.visibility == View.VISIBLE) {
-                        refreshPerformanceForRange(dateFrom, dateTo)
-                    }
-                } catch (_: Exception) {}
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    delay(5000)
+                    try {
+                        refreshDashboard()
+                        if (performanceContent.visibility == View.VISIBLE) {
+                            refreshPerformanceForRange(dateFrom, dateTo)
+                        }
+                    } catch (_: Exception) {}
+                }
             }
         }
     }
@@ -869,11 +872,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
-
-    override fun onDestroy() {
-        super.onDestroy()
-        autoRefresh = false
-    }
 }
 
 // --- Spinning Ring overlay view ---

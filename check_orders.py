@@ -1,13 +1,13 @@
 import MetaTrader5 as mt5
 mt5.initialize()
-orders = mt5.orders_get()
 positions = mt5.positions_get()
-print(f"ORDERS: {len(orders) if orders else 0}")
+orders = mt5.orders_get()
 print(f"POSITIONS: {len(positions) if positions else 0}")
-if orders:
-    for o in orders:
-        print(f"  ORDER: {o.comment} | {o.symbol} | type={o.type} | ticket={o.ticket}")
 if positions:
     for p in positions:
-        print(f"  POS: {p.comment} | {p.symbol} | type={p.type} | ticket={p.ticket}")
+        print(f"  {p.comment} | {p.symbol} | {'BUY' if p.type==0 else 'SELL'} | lot={p.volume} | entry={p.price_open} | TP={p.tp} | SL={p.sl} | pnl={p.profit}")
+print(f"PENDING ORDERS: {len(orders) if orders else 0}")
+if orders:
+    for o in orders:
+        print(f"  {o.comment} | {o.symbol} | type={o.type} | lot={o.volume_current} | price={o.price_open}")
 mt5.shutdown()

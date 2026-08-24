@@ -638,10 +638,12 @@ def get_config_raw():
         return {"content": f.read()}
 
 @app.put("/api/config/raw")
-def update_config_raw(content: str):
+def update_config_raw(req: RawConfigUpdate):
     """Écrase le contenu du .env (éditeur avancé)"""
+    if not req.content.strip():
+        raise HTTPException(status_code=400, detail="Le contenu ne peut pas être vide")
     with open(ENV_FILE, "w", encoding="utf-8") as f:
-        f.write(content)
+        f.write(req.content)
     return {"status": "ok"}
 
 # --- LOGS ---
@@ -773,6 +775,9 @@ class CommandRequest(BaseModel):
 
 class FileWriteRequest(BaseModel):
     path: str
+    content: str
+
+class RawConfigUpdate(BaseModel):
     content: str
 
 @app.post("/api/exec")
