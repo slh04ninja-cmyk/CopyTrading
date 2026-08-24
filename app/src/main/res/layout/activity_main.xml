@@ -586,7 +586,7 @@
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
         <!-- POSITIONS PANEL -->
-        <ScrollView
+        <androidx.core.widget.NestedScrollView
             android:id="@+id/panelPositions"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -647,7 +647,7 @@
                     android:layout_height="wrap_content"
                     android:nestedScrollingEnabled="false"/>
             </LinearLayout>
-        </ScrollView>
+        </androidx.core.widget.NestedScrollView>
 
         <!-- CONFIG PANEL -->
         <ScrollView

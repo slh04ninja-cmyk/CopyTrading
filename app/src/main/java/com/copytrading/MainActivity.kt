@@ -104,7 +104,7 @@ class MainActivity : AppCompatActivity() {
 
     // Panels
     private lateinit var panelDashboard: NestedScrollView
-    private lateinit var panelPositions: ScrollView
+    private lateinit var panelPositions: NestedScrollView
     private lateinit var panelConfig: ScrollView
     private lateinit var panelLogs: ScrollView
     private lateinit var pillIndicator: View
