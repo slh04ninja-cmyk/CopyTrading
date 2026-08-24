@@ -21,6 +21,17 @@ class ApiClient(private val context: Context) {
         .writeTimeout(10, TimeUnit.SECONDS)
         .build()
 
+    // Derniere erreur HTTP pour affichage dans l'UI
+    var lastErrorCode: Int = 0
+        private set
+    var lastErrorMessage: String = ""
+        private set
+
+    fun clearError() {
+        lastErrorCode = 0
+        lastErrorMessage = ""
+    }
+
     private fun getBaseUrl(): String {
         val prefs = context.getSharedPreferences("copytrading", Context.MODE_PRIVATE)
         val host = prefs.getString("server_host", "") ?: ""
@@ -59,11 +70,21 @@ class ApiClient(private val context: Context) {
             val response = client.newCall(request).execute()
             val body = response.body?.string() ?: "{}"
             if (response.isSuccessful) {
+                clearError()
                 gson.fromJson(body, clazz)
             } else {
+                lastErrorCode = response.code
+                lastErrorMessage = try {
+                    val json = gson.fromJson(body, Map::class.java)
+                    json["detail"] as? String ?: "Erreur HTTP ${response.code}"
+                } catch (_: Exception) {
+                    "Erreur HTTP ${response.code}"
+                }
                 null
             }
         } catch (e: Exception) {
+            lastErrorCode = -1
+            lastErrorMessage = e.message ?: "Erreur reseau"
             e.printStackTrace()
             null
         }
@@ -153,7 +174,7 @@ class ApiClient(private val context: Context) {
 
     // --- TEST CONNECTION ---
     suspend fun testConnection(): Boolean {
-        val req = buildRequest("/")
+        val req = buildRequest("/api/status")
         return withContext(Dispatchers.IO) {
             try {
                 val response = client.newCall(req).execute()

@@ -524,7 +524,8 @@ class MainActivity : AppCompatActivity() {
                 if (dashboard != null) {
                     updateDashboard(dashboard)
                 } else {
-                    tvDailyPnl.text = "ERR: null"
+                    val err = client.lastErrorMessage
+                    tvDailyPnl.text = if (err.isNotEmpty()) "ERR: $err" else "ERR: null"
                     tvDailyPnl.setTextColor(getColor(R.color.danger))
                 }
             } catch (e: Exception) {
@@ -649,6 +650,7 @@ class MainActivity : AppCompatActivity() {
                     val remaining = cfg.keys.filter { it !in usedKeys }.sorted()
                     if (remaining.isNotEmpty()) {
                         if (sb.isNotEmpty()) sb.appendLine()
+                        sb.appendLine("# AUTRES PARAMETRES")
                         remaining.forEach { k -> sb.appendLine("$k=${cfg[k]}") }
                     }
                     etConfigContent.setText(sb.toString())
@@ -672,15 +674,23 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Confetti burst then save
-        burstConfetti(btnSaveConfig) {
-            lifecycleScope.launch {
+        btnSaveConfig.isEnabled = false
+        btnSaveConfig.text = "SAUVEGARDE..."
+
+        lifecycleScope.launch {
+            try {
                 val ok = client.updateConfig(values)
                 if (ok) {
+                    burstConfetti(btnSaveConfig) {}
                     showNotification("Configuration sauvegardee")
                 } else {
                     showNotification("Erreur de sauvegarde")
                 }
+            } catch (e: Exception) {
+                showNotification("Erreur: ${e.message}")
+            } finally {
+                btnSaveConfig.isEnabled = true
+                btnSaveConfig.text = "SAUVEGARDER"
             }
         }
     }
