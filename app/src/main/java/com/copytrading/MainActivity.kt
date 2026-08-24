@@ -286,13 +286,9 @@ class MainActivity : AppCompatActivity() {
     private fun refreshPerformanceForRange(fromDate: String, toDate: String) {
         lifecycleScope.launch {
             try {
-                val trades = client.getTrades(30)
+                val trades = client.getTrades(fromDate = fromDate, toDate = toDate)
                 if (trades != null) {
-                    val filtered = trades.trades.filter {
-                        val d = it.close_time.substring(0, 10)
-                        d in fromDate..toDate
-                    }
-                    updatePerformance(filtered)
+                    updatePerformance(trades.trades)
                 }
             } catch (_: Exception) {}
         }

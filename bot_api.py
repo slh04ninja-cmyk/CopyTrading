@@ -488,13 +488,19 @@ def get_positions():
 
 # --- TRADES HISTORY ---
 @app.get("/api/trades")
-def get_trades(days: int = 7):
+def get_trades(days: int = 7, from_date: str = None, to_date: str = None):
     if not _ensure_mt5():
         raise HTTPException(status_code=503, detail="MT5 non connecté")
 
-    start = datetime.now(timezone.utc) - timedelta(days=days)
     now = datetime.now(timezone.utc)
-    deals = mt5.history_deals_get(start, now)
+    if from_date and to_date:
+        # Filtrage par plage de dates
+        start = datetime.strptime(from_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        end = datetime.strptime(to_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+    else:
+        start = now - timedelta(days=days)
+        end = now
+    deals = mt5.history_deals_get(start, end)
 
     trades = []
     if deals:

@@ -98,8 +98,13 @@ class ApiClient(private val context: Context) {
     }
 
     // --- TRADES ---
-    suspend fun getTrades(days: Int = 7): TradesResponse? {
-        val req = buildRequest("/api/trades?days=$days")
+    suspend fun getTrades(days: Int = 7, fromDate: String? = null, toDate: String? = null): TradesResponse? {
+        val url = if (fromDate != null && toDate != null) {
+            "/api/trades?from_date=$fromDate&to_date=$toDate"
+        } else {
+            "/api/trades?days=$days"
+        }
+        val req = buildRequest(url)
         return execute(req, TradesResponse::class.java)
     }
 
