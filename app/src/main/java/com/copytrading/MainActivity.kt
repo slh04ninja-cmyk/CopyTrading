@@ -77,6 +77,7 @@ class MainActivity : AppCompatActivity() {
     // Positions
     private lateinit var rvPositions: RecyclerView
     private lateinit var tvNoPositions: TextView
+    private lateinit var tvPositionsTitle: TextView
     private lateinit var positionAdapter: PositionAdapter
 
     // Tabs
@@ -168,6 +169,7 @@ class MainActivity : AppCompatActivity() {
 
         rvPositions = findViewById(R.id.rvPositions)
         tvNoPositions = findViewById(R.id.tvNoPositions)
+        tvPositionsTitle = findViewById(R.id.tvPositionsTitle)
 
         tabDashboard = findViewById(R.id.tabDashboard)
         tabPositions = findViewById(R.id.tabPositions)
@@ -577,6 +579,7 @@ class MainActivity : AppCompatActivity() {
         progressDailyLimit.progress = dash.limit_pct.toInt().coerceIn(0, 100)
 
         positionAdapter.setPositions(dash.open_positions)
+        tvPositionsTitle.text = "Positions Ouvertes (${dash.open_positions.size})"
         tvNoPositions.visibility = if (dash.open_positions.isEmpty()) View.VISIBLE else View.GONE
         rvPositions.visibility = if (dash.open_positions.isEmpty()) View.GONE else View.VISIBLE
     }
@@ -586,6 +589,7 @@ class MainActivity : AppCompatActivity() {
             val positions = client.getPositions()
             if (positions != null) {
                 positionAdapter.setPositions(positions.positions)
+                tvPositionsTitle.text = "Positions Ouvertes (${positions.positions.size})"
                 tvNoPositions.visibility = if (positions.positions.isEmpty()) View.VISIBLE else View.GONE
                 rvPositions.visibility = if (positions.positions.isEmpty()) View.GONE else View.VISIBLE
             }
