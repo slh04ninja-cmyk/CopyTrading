@@ -160,13 +160,15 @@ class BotProcess:
                 if not os.path.exists(bot_path):
                     return {"status": "error", "message": f"Script introuvable: {bot_path}"}
 
+                log_handle = open(os.path.join(BOT_WORKDIR, "bot_trading.log"), "a", encoding="utf-8")
                 self.process = subprocess.Popen(
                     [python_exe, bot_path],
                     cwd=BOT_WORKDIR,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
+                    stdout=log_handle,
+                    stderr=log_handle,
                     creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
                 )
+                self._log_handle = log_handle
                 self.pid = self.process.pid
                 self.start_time = datetime.now(timezone.utc)
                 self.status = "running"
@@ -209,6 +211,9 @@ class BotProcess:
                 except Exception:
                     pass
                 self.process = None
+                if hasattr(self, '_log_handle') and self._log_handle:
+                    self._log_handle.close()
+                    self._log_handle = None
 
             # Cas 2: bot trouve en cours (pas lance via l'API) — tuer par PID
             elif self.pid:
@@ -237,6 +242,9 @@ class BotProcess:
             self.status = "stopped"
             self.pid = None
             self.process = None
+            if hasattr(self, '_log_handle') and self._log_handle:
+                self._log_handle.close()
+                self._log_handle = None
             try:
                 if os.path.exists(PID_FILE):
                     os.remove(PID_FILE)

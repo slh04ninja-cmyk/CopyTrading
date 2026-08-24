@@ -74,8 +74,8 @@ class PositionAdapter(
                 badgeSignal.text = parts[1]
                 badgeOrder.text = parts[2]
                 badgeChannel.visibility = View.VISIBLE
-                badgeSignal.visibility = View.GONE
-                badgeOrder.visibility = View.GONE
+                badgeSignal.visibility = View.VISIBLE
+                badgeOrder.visibility = View.VISIBLE
             } else {
                 badgeChannel.text = "MANUEL"
                 badgeChannel.setTextColor(itemView.context.getColor(R.color.text_muted))
