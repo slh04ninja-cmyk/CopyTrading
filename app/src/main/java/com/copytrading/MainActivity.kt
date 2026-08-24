@@ -500,6 +500,9 @@ class MainActivity : AppCompatActivity() {
                 delay(5000)
                 try {
                     refreshDashboard()
+                    if (performanceContent.visibility == View.VISIBLE) {
+                        refreshPerformanceForRange(dateFrom, dateTo)
+                    }
                 } catch (_: Exception) {}
             }
         }
