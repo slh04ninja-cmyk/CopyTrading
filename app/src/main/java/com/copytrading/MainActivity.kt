@@ -499,13 +499,13 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (true) {
-                    delay(5000)
                     try {
                         refreshDashboard()
                         if (performanceContent.visibility == View.VISIBLE) {
                             refreshPerformanceForRange(dateFrom, dateTo)
                         }
                     } catch (_: Exception) {}
+                    delay(5000)
                 }
             }
         }
