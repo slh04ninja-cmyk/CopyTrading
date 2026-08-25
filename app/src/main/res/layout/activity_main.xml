@@ -517,158 +517,6 @@
                             android:drawableTint="@color/text_muted"
                             android:layout_marginBottom="12dp"/>
 
-                        <!-- KPI CARDS ROW -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginBottom="14dp">
-
-                            <com.google.android.material.card.MaterialCardView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:layout_marginEnd="6dp"
-                                app:cardBackgroundColor="@color/card_background"
-                                app:cardCornerRadius="12dp"
-                                app:cardElevation="0dp"
-                                app:strokeWidth="1dp"
-                                app:strokeColor="@color/divider">
-                                <LinearLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:orientation="vertical"
-                                    android:padding="10dp"
-                                    android:gravity="center">
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="P&amp;L"
-                                        android:textColor="@color/text_muted"
-                                        android:textSize="10sp"/>
-                                    <TextView
-                                        android:id="@+id/kpiPnl"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="$0.00"
-                                        android:textColor="@color/success"
-                                        android:textSize="16sp"
-                                        android:textStyle="bold"/>
-                                </LinearLayout>
-                            </com.google.android.material.card.MaterialCardView>
-
-                            <com.google.android.material.card.MaterialCardView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:layout_marginHorizontal="3dp"
-                                app:cardBackgroundColor="@color/card_background"
-                                app:cardCornerRadius="12dp"
-                                app:cardElevation="0dp"
-                                app:strokeWidth="1dp"
-                                app:strokeColor="@color/divider">
-                                <LinearLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:orientation="vertical"
-                                    android:padding="10dp"
-                                    android:gravity="center">
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="WR"
-                                        android:textColor="@color/text_muted"
-                                        android:textSize="10sp"/>
-                                    <TextView
-                                        android:id="@+id/kpiWr"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="0%"
-                                        android:textColor="@color/success"
-                                        android:textSize="16sp"
-                                        android:textStyle="bold"/>
-                                </LinearLayout>
-                            </com.google.android.material.card.MaterialCardView>
-
-                            <com.google.android.material.card.MaterialCardView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:layout_marginHorizontal="3dp"
-                                app:cardBackgroundColor="@color/card_background"
-                                app:cardCornerRadius="12dp"
-                                app:cardElevation="0dp"
-                                app:strokeWidth="1dp"
-                                app:strokeColor="@color/divider">
-                                <LinearLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:orientation="vertical"
-                                    android:padding="10dp"
-                                    android:gravity="center">
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="Trades"
-                                        android:textColor="@color/text_muted"
-                                        android:textSize="10sp"/>
-                                    <TextView
-                                        android:id="@+id/kpiTrades"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="0"
-                                        android:textColor="@color/text_primary"
-                                        android:textSize="16sp"
-                                        android:textStyle="bold"/>
-                                </LinearLayout>
-                            </com.google.android.material.card.MaterialCardView>
-
-                            <com.google.android.material.card.MaterialCardView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:layout_marginStart="6dp"
-                                app:cardBackgroundColor="@color/card_background"
-                                app:cardCornerRadius="12dp"
-                                app:cardElevation="0dp"
-                                app:strokeWidth="1dp"
-                                app:strokeColor="@color/divider">
-                                <LinearLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:orientation="vertical"
-                                    android:padding="10dp"
-                                    android:gravity="center">
-                                    <TextView
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="Best CH"
-                                        android:textColor="@color/text_muted"
-                                        android:textSize="10sp"/>
-                                    <TextView
-                                        android:id="@+id/kpiBestCh"
-                                        android:layout_width="wrap_content"
-                                        android:layout_height="wrap_content"
-                                        android:text="-"
-                                        android:textColor="@color/accent"
-                                        android:textSize="16sp"
-                                        android:textStyle="bold"/>
-                                </LinearLayout>
-                            </com.google.android.material.card.MaterialCardView>
-                        </LinearLayout>
-
-                        <!-- EMPTY STATE -->
-                        <TextView
-                            android:id="@+id/tvPerfEmpty"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Aucun trade sur cette periode"
-                            android:textColor="@color/text_muted"
-                            android:textSize="14sp"
-                            android:gravity="center"
-                            android:paddingVertical="32dp"
-                            android:visibility="gone"/>
-
                         <com.google.android.material.card.MaterialCardView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -691,17 +539,12 @@
                                     android:textStyle="bold"
                                     android:padding="14dp"
                                     android:background="@color/bg_secondary"/>
-                                <HorizontalScrollView
+                                <LinearLayout
+                                    android:id="@+id/perfChannelTable"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:scrollbars="none">
-                                    <LinearLayout
-                                        android:id="@+id/perfChannelTable"
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:orientation="vertical"
-                                        android:padding="12dp"/>
-                                </HorizontalScrollView>
+                                    android:orientation="vertical"
+                                    android:padding="12dp"/>
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
 
@@ -727,17 +570,12 @@
                                     android:textStyle="bold"
                                     android:padding="14dp"
                                     android:background="@color/bg_secondary"/>
-                                <HorizontalScrollView
+                                <LinearLayout
+                                    android:id="@+id/perfSignalTable"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:scrollbars="none">
-                                    <LinearLayout
-                                        android:id="@+id/perfSignalTable"
-                                        android:layout_width="match_parent"
-                                        android:layout_height="wrap_content"
-                                        android:orientation="vertical"
-                                        android:padding="12dp"/>
-                                </HorizontalScrollView>
+                                    android:orientation="vertical"
+                                    android:padding="12dp"/>
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
 
