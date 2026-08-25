@@ -840,7 +840,7 @@ class MainActivity : AppCompatActivity() {
             if (signalSortCol == col) signalSortAsc = !signalSortAsc else { signalSortCol = col; signalSortAsc = col == 0 }
             renderSignalTable()
         }
-        val sorted = sortPerfData(lastSignalData, signalSortCol, signalSortAsc)
+        val sorted = sortPerfData(lastSignalData, signalSortCol, signalSortAsc, isSignal = true)
         for ((sig, d) in sorted) {
             addPerfSignalRow(perfSignalTable, sig, d)
         }
@@ -848,16 +848,29 @@ class MainActivity : AppCompatActivity() {
         addPerfSignalRow(perfSignalTable, "TOTAL", totalSig, isTotal = true)
     }
 
-    private fun sortPerfData(data: List<Pair<String, PerfData>>, col: Int, asc: Boolean): List<Pair<String, PerfData>> {
-        val sorted = when (col) {
-            0 -> data.sortedBy { it.first }
-            1 -> data.sortedBy { it.second.pnl }
-            2 -> data.sortedBy { if (lastChannelMkCount.isNotEmpty()) (lastChannelMkCount[it.first] ?: 0) else it.second.channelCount }
-            3 -> data.sortedBy { it.second.trades }
-            4 -> data.sortedBy { it.second.wins }
-            5 -> data.sortedBy { it.second.losses }
-            6 -> data.sortedBy { it.second.winrate() }
-            else -> data.sortedBy { it.second.pnl }
+    private fun sortPerfData(data: List<Pair<String, PerfData>>, col: Int, asc: Boolean, isSignal: Boolean = false): List<Pair<String, PerfData>> {
+        val sorted = if (isSignal) {
+            when (col) {
+                0 -> data.sortedBy { it.first }
+                1 -> data.sortedBy { it.second.channelCount }
+                2 -> data.sortedBy { it.second.pnl }
+                3 -> data.sortedBy { it.second.trades }
+                4 -> data.sortedBy { it.second.wins }
+                5 -> data.sortedBy { it.second.losses }
+                6 -> data.sortedBy { it.second.winrate() }
+                else -> data.sortedBy { it.second.pnl }
+            }
+        } else {
+            when (col) {
+                0 -> data.sortedBy { it.first }
+                1 -> data.sortedBy { it.second.pnl }
+                2 -> data.sortedBy { lastChannelMkCount[it.first] ?: 0 }
+                3 -> data.sortedBy { it.second.trades }
+                4 -> data.sortedBy { it.second.wins }
+                5 -> data.sortedBy { it.second.losses }
+                6 -> data.sortedBy { it.second.winrate() }
+                else -> data.sortedBy { it.second.pnl }
+            }
         }
         return if (asc) sorted else sorted.reversed()
     }
