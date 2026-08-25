@@ -815,23 +815,28 @@ class MainActivity : AppCompatActivity() {
         }
         lastChannelTrades = channelTrades
 
-        // Group by hour (UTC 3h-20h)
+        // Group by hour (UTC 01h-24h)
         val sessionData = mutableMapOf<String, PerfData>()
+        val sessionChannels = mutableMapOf<String, MutableSet<String>>()
         val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
         sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
         for (t in trades) {
+            val parts = t.comment.split("-")
+            val ch = if (parts.size >= 2) parts[0] else ""
             try {
                 val date = sdf.parse(t.close_time)
                 if (date != null) {
                     val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
                     cal.time = date
                     val hour = cal.get(java.util.Calendar.HOUR_OF_DAY)
-                    if (hour in 3..20) {
-                        val label = String.format("%02dh", hour)
-                        sessionData.getOrPut(label) { PerfData() }.add(t)
-                    }
+                    val label = String.format("%02dh", hour)
+                    sessionData.getOrPut(label) { PerfData() }.add(t)
+                    if (ch.isNotEmpty()) sessionChannels.getOrPut(label) { mutableSetOf() }.add(ch)
                 }
             } catch (_: Exception) {}
+        }
+        for ((label, d) in sessionData) {
+            d.channelCount = sessionChannels[label]?.size ?: 0
         }
         lastSessionData = sessionData.entries.map { it.key to it.value }.sortedBy { it.first }
 
