@@ -101,6 +101,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var performanceContent: LinearLayout
     private lateinit var perfChannelTable: LinearLayout
     private lateinit var perfSignalTable: LinearLayout
+    private lateinit var perfSessionTable: LinearLayout
     private lateinit var tvDateRange: TextView
     private var dateFrom: String = ""
     private var dateTo: String = ""
@@ -108,9 +109,12 @@ class MainActivity : AppCompatActivity() {
     private var channelSortAsc = false
     private var signalSortCol = 2
     private var signalSortAsc = false
+    private var sessionSortCol = 2
+    private var sessionSortAsc = false
     private var lastChannelData: List<Pair<String, PerfData>> = emptyList()
     private var lastChannelMkCount: Map<String, Int> = emptyMap()
     private var lastSignalData: List<Pair<String, PerfData>> = emptyList()
+    private var lastSessionData: List<Pair<String, PerfData>> = emptyList()
     private val expandedChannels = mutableSetOf<String>()
     private var lastChannelTrades: Map<String, List<Double>> = emptyMap()
 
@@ -197,6 +201,7 @@ class MainActivity : AppCompatActivity() {
         performanceContent = findViewById(R.id.performanceContent)
         perfChannelTable = findViewById(R.id.perfChannelTable)
         perfSignalTable = findViewById(R.id.perfSignalTable)
+        perfSessionTable = findViewById(R.id.perfSessionTable)
         tvDateRange = findViewById(R.id.tvDateRange)
 
         panelDashboard = findViewById(R.id.panelDashboard)
@@ -810,8 +815,29 @@ class MainActivity : AppCompatActivity() {
         }
         lastChannelTrades = channelTrades
 
+        // Group by hour (UTC 3h-20h)
+        val sessionData = mutableMapOf<String, PerfData>()
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+        sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        for (t in trades) {
+            try {
+                val date = sdf.parse(t.close_time)
+                if (date != null) {
+                    val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+                    cal.time = date
+                    val hour = cal.get(java.util.Calendar.HOUR_OF_DAY)
+                    if (hour in 3..20) {
+                        val label = String.format("%02dh", hour)
+                        sessionData.getOrPut(label) { PerfData() }.add(t)
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        lastSessionData = sessionData.entries.map { it.key to it.value }.sortedBy { it.first }
+
         renderChannelTable()
         renderSignalTable()
+        renderSessionTable()
     }
 
     private fun renderChannelTable() {
@@ -846,6 +872,22 @@ class MainActivity : AppCompatActivity() {
         }
         val totalSig = lastSignalData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
         addPerfSignalRow(perfSignalTable, "TOTAL", totalSig, isTotal = true)
+    }
+
+    private fun renderSessionTable() {
+        perfSessionTable.removeAllViews()
+        val headers = arrayOf("Heure", "CN", "P&L", "TR", "WN", "LS", "WR")
+        val weights = floatArrayOf(0.8f, 0.6f, 1f, 0.6f, 0.6f, 0.6f, 0.6f)
+        addPerfHeader(perfSessionTable, headers, weights, sessionSortCol, sessionSortAsc) { col ->
+            if (sessionSortCol == col) sessionSortAsc = !sessionSortAsc else { sessionSortCol = col; sessionSortAsc = col == 0 }
+            renderSessionTable()
+        }
+        val sorted = sortPerfData(lastSessionData, sessionSortCol, sessionSortAsc, isSignal = true)
+        for ((heure, d) in sorted) {
+            addPerfSignalRow(perfSessionTable, heure, d)
+        }
+        val totalSess = lastSessionData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
+        addPerfSignalRow(perfSessionTable, "TOTAL", totalSess, isTotal = true)
     }
 
     private fun sortPerfData(data: List<Pair<String, PerfData>>, col: Int, asc: Boolean, isSignal: Boolean = false): List<Pair<String, PerfData>> {
