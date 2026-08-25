@@ -853,20 +853,39 @@ class MainActivity : AppCompatActivity() {
     private data class PerfData(
         var pnl: Double = 0.0, var trades: Int = 0, var wins: Int = 0, var losses: Int = 0,
         var gain: Double = 0.0, var loss: Double = 0.0,
-        val signals: MutableSet<String> = mutableSetOf(), var channelCount: Int = 0
+        val signals: MutableSet<String> = mutableSetOf(), var channelCount: Int = 0,
+        val tradeProfits: MutableList<Double> = mutableListOf()
     ) {
         fun add(t: Trade, signal: String = "") {
             pnl += t.profit; trades++
             if (t.profit >= 0) { wins++; gain += t.profit } else { losses++; loss += t.profit }
             if (signal.isNotEmpty()) signals.add(signal)
+            tradeProfits.add(t.profit)
         }
         fun merge(o: PerfData): PerfData {
             val merged = PerfData(pnl + o.pnl, trades + o.trades, wins + o.wins, losses + o.losses, gain + o.gain, loss + o.loss)
             merged.signals.addAll(signals); merged.signals.addAll(o.signals)
             merged.channelCount = channelCount + o.channelCount
+            merged.tradeProfits.addAll(tradeProfits); merged.tradeProfits.addAll(o.tradeProfits)
             return merged
         }
         fun winrate() = if (trades > 0) (wins * 100 / trades) else 0
+        fun profitFactor(): Double = if (loss != 0.0) kotlin.math.abs(gain / loss) else if (gain > 0) 999.0 else 0.0
+        fun riskReward(): Double {
+            val avgWin = if (wins > 0) gain / wins else 0.0
+            val avgLoss = if (losses > 0) kotlin.math.abs(loss / losses) else 0.0
+            return if (avgLoss > 0) avgWin / avgLoss else if (avgWin > 0) 999.0 else 0.0
+        }
+        fun maxDrawdown(): Double {
+            var peak = 0.0; var equity = 0.0; var maxDd = 0.0
+            for (p in tradeProfits) {
+                equity += p
+                if (equity > peak) peak = equity
+                val dd = peak - equity
+                if (dd > maxDd) maxDd = dd
+            }
+            return maxDd
+        }
     }
 
     private fun addPerfHeader(container: LinearLayout, headers: Array<String>, weights: FloatArray, sortCol: Int, sortAsc: Boolean, onSort: (Int) -> Unit) {
@@ -901,7 +920,34 @@ class MainActivity : AppCompatActivity() {
         cell(d.losses.toString(), 0.6f, getColor(R.color.danger))
         val wr = d.winrate()
         cell("$wr", 0.6f, getColor(if (wr >= 50) R.color.success else R.color.danger))
+
+        // Expandable detail
+        val detail = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; setPadding(dp(12), dp(10), dp(12), dp(10))
+            setBackgroundColor(Color.parseColor("#12122A")); visibility = View.GONE
+        }
+        fun metric(label: String, value: String, color: Int) {
+            val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(8), 0, dp(8), 0) }
+            col.addView(TextView(this).apply { text = label; setTextColor(getColor(R.color.text_muted)); textSize = 9f; gravity = Gravity.CENTER })
+            col.addView(TextView(this).apply { text = value; setTextColor(color); textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER })
+            detail.addView(col, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        val pf = d.profitFactor()
+        val rr = d.riskReward()
+        val md = d.maxDrawdown()
+        metric("PF", String.format("%.2f", pf), getColor(if (pf >= 1.5) R.color.success else if (pf >= 1.0) R.color.warning else R.color.danger))
+        metric("RR", String.format("%.2f", rr), getColor(if (rr >= 1.5) R.color.success else if (rr >= 1.0) R.color.warning else R.color.danger))
+        metric("MD", String.format("-%.2f", md), getColor(R.color.danger))
+
+        if (!isTotal) {
+            row.setOnClickListener {
+                detail.visibility = if (detail.visibility == View.GONE) View.VISIBLE else View.GONE
+            }
+            row.isClickable = true
+        }
+
         container.addView(row)
+        container.addView(detail)
         if (!isTotal) { container.addView(View(this).apply { setBackgroundColor(Color.parseColor("#2A2A4A")) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)) }
     }
 
