@@ -111,6 +111,7 @@ class MainActivity : AppCompatActivity() {
     private var lastChannelData: List<Pair<String, PerfData>> = emptyList()
     private var lastChannelMkCount: Map<String, Int> = emptyMap()
     private var lastSignalData: List<Pair<String, PerfData>> = emptyList()
+    private val expandedChannels = mutableSetOf<String>()
 
     // Panels
     private lateinit var panelDashboard: NestedScrollView
@@ -870,10 +871,16 @@ class MainActivity : AppCompatActivity() {
             return merged
         }
         fun winrate() = if (trades > 0) (wins * 100 / trades) else 0
-        fun profitFactor(): Double = if (loss != 0.0) kotlin.math.abs(gain / loss) else if (gain > 0) 999.0 else 0.0
+        fun profitFactor(): Double {
+            val totalGain = tradeProfits.filter { it > 0 }.sum()
+            val totalLoss = kotlin.math.abs(tradeProfits.filter { it < 0 }.sum())
+            return if (totalLoss > 0) totalGain / totalLoss else if (totalGain > 0) 999.0 else 0.0
+        }
         fun riskReward(): Double {
-            val avgWin = if (wins > 0) gain / wins else 0.0
-            val avgLoss = if (losses > 0) kotlin.math.abs(loss / losses) else 0.0
+            val winsList = tradeProfits.filter { it > 0 }
+            val lossList = tradeProfits.filter { it < 0 }
+            val avgWin = if (winsList.isNotEmpty()) winsList.average() else 0.0
+            val avgLoss = if (lossList.isNotEmpty()) kotlin.math.abs(lossList.average()) else 0.0
             return if (avgLoss > 0) avgWin / avgLoss else if (avgWin > 0) 999.0 else 0.0
         }
         fun maxDrawdown(): Double {
@@ -922,9 +929,10 @@ class MainActivity : AppCompatActivity() {
         cell("$wr", 0.6f, getColor(if (wr >= 50) R.color.success else R.color.danger))
 
         // Expandable detail
+        val isExpanded = expandedChannels.contains(label)
         val detail = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; setPadding(dp(12), dp(10), dp(12), dp(10))
-            setBackgroundColor(Color.parseColor("#12122A")); visibility = View.GONE
+            setBackgroundColor(Color.parseColor("#12122A")); visibility = if (isExpanded) View.VISIBLE else View.GONE
         }
         fun metric(label: String, value: String, color: Int) {
             val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(8), 0, dp(8), 0) }
@@ -937,10 +945,11 @@ class MainActivity : AppCompatActivity() {
         val md = d.maxDrawdown()
         metric("PF", String.format("%.2f", pf), getColor(if (pf >= 1.5) R.color.success else if (pf >= 1.0) R.color.warning else R.color.danger))
         metric("RR", String.format("%.2f", rr), getColor(if (rr >= 1.5) R.color.success else if (rr >= 1.0) R.color.warning else R.color.danger))
-        metric("MD", String.format("-%.2f", md), getColor(R.color.danger))
+        metric("MD", String.format("%.2f", md), getColor(R.color.danger))
 
         if (!isTotal) {
             row.setOnClickListener {
+                if (expandedChannels.contains(label)) expandedChannels.remove(label) else expandedChannels.add(label)
                 detail.visibility = if (detail.visibility == View.GONE) View.VISIBLE else View.GONE
             }
             row.isClickable = true
