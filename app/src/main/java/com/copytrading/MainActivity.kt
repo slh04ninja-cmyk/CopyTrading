@@ -112,6 +112,7 @@ class MainActivity : AppCompatActivity() {
     private var lastChannelMkCount: Map<String, Int> = emptyMap()
     private var lastSignalData: List<Pair<String, PerfData>> = emptyList()
     private val expandedChannels = mutableSetOf<String>()
+    private var lastChannelTrades: Map<String, List<Double>> = emptyMap()
 
     // Panels
     private lateinit var panelDashboard: NestedScrollView
@@ -799,6 +800,16 @@ class MainActivity : AppCompatActivity() {
         lastChannelMkCount = channelMkCount
         lastSignalData = signalData.entries.map { it.key to it.value }
 
+        // Store raw profits per channel for metrics
+        val channelTrades = mutableMapOf<String, MutableList<Double>>()
+        for (t in trades) {
+            val parts = t.comment.split("-")
+            if (parts.size >= 2) {
+                channelTrades.getOrPut(parts[0]) { mutableListOf() }.add(t.profit)
+            }
+        }
+        lastChannelTrades = channelTrades
+
         renderChannelTable()
         renderSignalTable()
     }
@@ -940,9 +951,16 @@ class MainActivity : AppCompatActivity() {
             col.addView(TextView(this).apply { text = value; setTextColor(color); textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER })
             detail.addView(col, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         }
-        val pf = d.profitFactor()
-        val rr = d.riskReward()
-        val md = d.maxDrawdown()
+        // Compute from raw trades
+        val profits = lastChannelTrades[label] ?: emptyList()
+        val totalGain = profits.filter { it > 0 }.sum()
+        val totalLoss = kotlin.math.abs(profits.filter { it < 0 }.sum())
+        val pf = if (totalLoss > 0) totalGain / totalLoss else if (totalGain > 0) 999.0 else 0.0
+        val avgWin = profits.filter { it > 0 }.let { if (it.isNotEmpty()) it.average() else 0.0 }
+        val avgLoss = profits.filter { it < 0 }.let { if (it.isNotEmpty()) kotlin.math.abs(it.average()) else 0.0 }
+        val rr = if (avgLoss > 0) avgWin / avgLoss else if (avgWin > 0) 999.0 else 0.0
+        var peak = 0.0; var equity = 0.0; var md = 0.0
+        for (p in profits) { equity += p; if (equity > peak) peak = equity; val dd = peak - equity; if (dd > md) md = dd }
         metric("PF", String.format("%.2f", pf), getColor(if (pf >= 1.5) R.color.success else if (pf >= 1.0) R.color.warning else R.color.danger))
         metric("RR", String.format("%.2f", rr), getColor(if (rr >= 1.5) R.color.success else if (rr >= 1.0) R.color.warning else R.color.danger))
         metric("MD", String.format("%.2f", md), getColor(R.color.danger))
