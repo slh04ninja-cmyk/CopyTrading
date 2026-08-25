@@ -942,28 +942,34 @@ class MainActivity : AppCompatActivity() {
         // Expandable detail
         val isExpanded = expandedChannels.contains(label)
         val detail = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL; setPadding(dp(12), dp(10), dp(12), dp(10))
+            orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(6), dp(12), dp(6))
             setBackgroundColor(Color.parseColor("#12122A")); visibility = if (isExpanded) View.VISIBLE else View.GONE
-        }
-        fun metric(label: String, value: String, color: Int) {
-            val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(8), 0, dp(8), 0) }
-            col.addView(TextView(this).apply { text = label; setTextColor(getColor(R.color.text_muted)); textSize = 9f; gravity = Gravity.CENTER })
-            col.addView(TextView(this).apply { text = value; setTextColor(color); textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER })
-            detail.addView(col, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         }
         // Compute from raw trades
         val profits = lastChannelTrades[label] ?: emptyList()
         val totalGain = profits.filter { it > 0 }.sum()
         val totalLoss = kotlin.math.abs(profits.filter { it < 0 }.sum())
-        val pf = if (totalLoss > 0) totalGain / totalLoss else if (totalGain > 0) 999.0 else 0.0
+        val pf = if (totalLoss > 0) totalGain / totalLoss else if (totalGain > 0) 99.0 else 0.0
         val avgWin = profits.filter { it > 0 }.let { if (it.isNotEmpty()) it.average() else 0.0 }
         val avgLoss = profits.filter { it < 0 }.let { if (it.isNotEmpty()) kotlin.math.abs(it.average()) else 0.0 }
-        val rr = if (avgLoss > 0) avgWin / avgLoss else if (avgWin > 0) 999.0 else 0.0
+        val rr = if (avgLoss > 0) avgWin / avgLoss else if (avgWin > 0) 99.0 else 0.0
         var peak = 0.0; var equity = 0.0; var md = 0.0
         for (p in profits) { equity += p; if (equity > peak) peak = equity; val dd = peak - equity; if (dd > md) md = dd }
-        metric("PF", String.format("%.2f", pf), getColor(if (pf >= 1.5) R.color.success else if (pf >= 1.0) R.color.warning else R.color.danger))
-        metric("RR", String.format("%.2f", rr), getColor(if (rr >= 1.5) R.color.success else if (rr >= 1.0) R.color.warning else R.color.danger))
-        metric("MD", String.format("%.2f", md), getColor(R.color.danger))
+        val pfStr = if (pf >= 99) "99" else String.format("%.2f", pf)
+        val rrStr = if (rr >= 99) "99" else String.format("%.2f", rr)
+        val mdStr = if (md <= 0) "00" else String.format("%.2f", md)
+        val pfColor = getColor(if (pf >= 1.5) R.color.success else if (pf >= 1.0) R.color.warning else R.color.danger)
+        val rrColor = getColor(if (rr >= 1.5) R.color.success else if (rr >= 1.0) R.color.warning else R.color.danger)
+        val mdColor = getColor(R.color.danger)
+        val line = TextView(this).apply {
+            textSize = 12f; gravity = Gravity.CENTER; setPadding(0, dp(6), 0, dp(6))
+            text = android.text.SpannableString("PF = $pfStr | RR = $rrStr | MD = $mdStr").apply {
+                val pfStart = indexOf(pfStr); setSpan(android.text.style.ForegroundColorSpan(pfColor), pfStart, pfStart + pfStr.length, 0)
+                val rrStart = indexOf(rrStr, pfStart + pfStr.length); setSpan(android.text.style.ForegroundColorSpan(rrColor), rrStart, rrStart + rrStr.length, 0)
+                val mdStart = indexOf(mdStr, rrStart + rrStr.length); setSpan(android.text.style.ForegroundColorSpan(mdColor), mdStart, mdStart + mdStr.length, 0)
+            }
+        }
+        detail.addView(line)
 
         if (!isTotal) {
             row.setOnClickListener {
