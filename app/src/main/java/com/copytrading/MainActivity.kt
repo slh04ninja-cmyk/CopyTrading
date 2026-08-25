@@ -104,6 +104,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvDateRange: TextView
     private var dateFrom: String = ""
     private var dateTo: String = ""
+    private var channelSortCol = 1 // 0=ch, 1=pnl, 2=sn, 3=tr, 4=wn, 5=ls, 6=wr
+    private var channelSortAsc = false
+    private var signalSortCol = 2
+    private var signalSortAsc = false
+    private var lastChannelData: List<Pair<String, PerfData>> = emptyList()
+    private var lastChannelMkCount: Map<String, Int> = emptyMap()
+    private var lastSignalData: List<Pair<String, PerfData>> = emptyList()
 
     // Panels
     private lateinit var panelDashboard: NestedScrollView
@@ -786,25 +793,61 @@ class MainActivity : AppCompatActivity() {
             signalData[sig]?.channelCount = channels.size
         }
 
-        // Tableau Performance par Canal
+        // Store data for re-sort
+        lastChannelData = channelData.entries.map { it.key to it.value }
+        lastChannelMkCount = channelMkCount
+        lastSignalData = signalData.entries.map { it.key to it.value }
+
+        renderChannelTable()
+        renderSignalTable()
+    }
+
+    private fun renderChannelTable() {
         perfChannelTable.removeAllViews()
-        addPerfHeader(perfChannelTable, "Canal", "P&L", "SN", "TR", "WN", "LS", "WR")
-        for ((ch, d) in channelData.entries.sortedByDescending { it.value.pnl }.map { it.key to it.value }) {
-            val sn = channelMkCount[ch] ?: 0
+        val headers = arrayOf("Canal", "P&L", "SN", "TR", "WN", "LS", "WR")
+        val weights = floatArrayOf(1.2f, 1f, 0.6f, 0.6f, 0.6f, 0.6f, 0.6f)
+        addPerfHeader(perfChannelTable, headers, weights, channelSortCol, channelSortAsc) { col ->
+            if (channelSortCol == col) channelSortAsc = !channelSortAsc else { channelSortCol = col; channelSortAsc = col == 0 }
+            renderChannelTable()
+        }
+        val sorted = sortPerfData(lastChannelData, channelSortCol, channelSortAsc)
+        for ((ch, d) in sorted) {
+            val sn = lastChannelMkCount[ch] ?: 0
             addPerfRow(perfChannelTable, ch, d, sn = sn)
         }
-        val totalCh = channelData.values.fold(PerfData()) { acc, d -> acc.merge(d) }
-        val totalSn = channelMkCount.values.sum()
+        val totalCh = lastChannelData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
+        val totalSn = lastChannelMkCount.values.sum()
         addPerfRow(perfChannelTable, "TOTAL", totalCh, sn = totalSn, isTotal = true)
+    }
 
-        // Tableau Performance par Signal
+    private fun renderSignalTable() {
         perfSignalTable.removeAllViews()
-        addPerfSignalHeader(perfSignalTable)
-        for ((sig, d) in signalData.entries.sortedByDescending { it.value.pnl }.map { it.key to it.value }) {
+        val headers = arrayOf("Signal", "CN", "P&L", "TR", "WN", "LS", "WR")
+        val weights = floatArrayOf(0.8f, 0.6f, 1f, 0.6f, 0.6f, 0.6f, 0.6f)
+        addPerfHeader(perfSignalTable, headers, weights, signalSortCol, signalSortAsc) { col ->
+            if (signalSortCol == col) signalSortAsc = !signalSortAsc else { signalSortCol = col; signalSortAsc = col == 0 }
+            renderSignalTable()
+        }
+        val sorted = sortPerfData(lastSignalData, signalSortCol, signalSortAsc)
+        for ((sig, d) in sorted) {
             addPerfSignalRow(perfSignalTable, sig, d)
         }
-        val totalSig = signalData.values.fold(PerfData()) { acc, d -> acc.merge(d) }
+        val totalSig = lastSignalData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
         addPerfSignalRow(perfSignalTable, "TOTAL", totalSig, isTotal = true)
+    }
+
+    private fun sortPerfData(data: List<Pair<String, PerfData>>, col: Int, asc: Boolean): List<Pair<String, PerfData>> {
+        val sorted = when (col) {
+            0 -> data.sortedBy { it.first }
+            1 -> data.sortedBy { it.second.pnl }
+            2 -> data.sortedBy { if (lastChannelMkCount.isNotEmpty()) (lastChannelMkCount[it.first] ?: 0) else it.second.channelCount }
+            3 -> data.sortedBy { it.second.trades }
+            4 -> data.sortedBy { it.second.wins }
+            5 -> data.sortedBy { it.second.losses }
+            6 -> data.sortedBy { it.second.winrate() }
+            else -> data.sortedBy { it.second.pnl }
+        }
+        return if (asc) sorted else sorted.reversed()
     }
 
     private data class PerfData(
@@ -826,25 +869,22 @@ class MainActivity : AppCompatActivity() {
         fun winrate() = if (trades > 0) (wins * 100 / trades) else 0
     }
 
-    private fun addPerfHeader(container: LinearLayout, vararg cols: String) {
+    private fun addPerfHeader(container: LinearLayout, headers: Array<String>, weights: FloatArray, sortCol: Int, sortAsc: Boolean, onSort: (Int) -> Unit) {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, dp(8)); setBackgroundColor(Color.parseColor("#1A1A2E")) }
-        val weights = floatArrayOf(1.2f, 1f, 0.6f, 0.6f, 0.6f, 0.6f, 0.6f)
-        cols.forEachIndexed { i, c ->
-            val tv = TextView(this).apply { text = c; setTextColor(getColor(R.color.text_muted)); textSize = 10f; setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER }
+        headers.forEachIndexed { i, c ->
+            val arrow = if (i == sortCol) if (sortAsc) " \u25B2" else " \u25BC" else ""
+            val tv = TextView(this).apply {
+                text = "$c$arrow"; setTextColor(getColor(if (i == sortCol) R.color.accent else R.color.text_muted))
+                textSize = 10f; setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER
+                setOnClickListener { onSort(i) }; isClickable = true
+            }
             row.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weights.getOrElse(i) { 1f }))
         }
         container.addView(row)
     }
 
-    private fun addPerfSignalHeader(container: LinearLayout) {
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, dp(8)); setBackgroundColor(Color.parseColor("#1A1A2E")) }
-        val headers = arrayOf("SN", "CN", "P&L", "TR", "WN", "LS", "WR")
-        val weights = floatArrayOf(0.8f, 0.6f, 1f, 0.6f, 0.6f, 0.6f, 0.6f)
-        headers.forEachIndexed { i, c ->
-            val tv = TextView(this).apply { text = c; setTextColor(getColor(R.color.text_muted)); textSize = 10f; setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER }
-            row.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weights[i]))
-        }
-        container.addView(row)
+    private fun addPerfSignalHeader(container: LinearLayout, headers: Array<String>, weights: FloatArray, sortCol: Int, sortAsc: Boolean, onSort: (Int) -> Unit) {
+        addPerfHeader(container, headers, weights, sortCol, sortAsc, onSort)
     }
 
     private fun addPerfRow(container: LinearLayout, label: String, d: PerfData, sn: Int = 0, isTotal: Boolean = false) {
@@ -859,7 +899,8 @@ class MainActivity : AppCompatActivity() {
         cell(d.trades.toString(), 0.6f, getColor(R.color.text_primary))
         cell(d.wins.toString(), 0.6f, getColor(R.color.success))
         cell(d.losses.toString(), 0.6f, getColor(R.color.danger))
-        cell("${d.winrate()}", 0.6f, getColor(R.color.primary_light))
+        val wr = d.winrate()
+        cell("$wr", 0.6f, getColor(if (wr >= 50) R.color.success else R.color.danger))
         container.addView(row)
         if (!isTotal) { container.addView(View(this).apply { setBackgroundColor(Color.parseColor("#2A2A4A")) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)) }
     }
@@ -876,7 +917,8 @@ class MainActivity : AppCompatActivity() {
         cell(d.trades.toString(), 0.6f, getColor(R.color.text_primary))
         cell(d.wins.toString(), 0.6f, getColor(R.color.success))
         cell(d.losses.toString(), 0.6f, getColor(R.color.danger))
-        cell("${d.winrate()}", 0.6f, getColor(R.color.primary_light))
+        val wr = d.winrate()
+        cell("$wr", 0.6f, getColor(if (wr >= 50) R.color.success else R.color.danger))
         container.addView(row)
         if (!isTotal) { container.addView(View(this).apply { setBackgroundColor(Color.parseColor("#2A2A4A")) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)) }
     }
