@@ -866,6 +866,16 @@ def list_files(path: str = ""):
 # =============================================================
 # MAIN
 # =============================================================
+@app.post("/api/restart")
+def restart_server():
+    """Redémarre uvicorn pour recharger bot_api.py."""
+    import threading
+    def _delayed_exit():
+        import time; time.sleep(1)
+        os._exit(0)
+    threading.Thread(target=_delayed_exit, daemon=True).start()
+    return {"status": "restarting"}
+
 if __name__ == "__main__":
     import uvicorn
     print(f"🚀 CopyTrading API démarrée sur {API_HOST}:{API_PORT}")
