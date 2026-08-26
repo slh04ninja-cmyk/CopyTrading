@@ -633,6 +633,9 @@ def update_config(updates: EnvBulkUpdate):
 
     return {"status": "ok", "updated": list(updates.values.keys())}
 
+class RawConfigUpdate(BaseModel):
+    content: str
+
 @app.get("/api/config/raw")
 def get_config_raw():
     """Retourne le contenu brut du .env (pour l'éditeur)"""
@@ -779,9 +782,6 @@ class CommandRequest(BaseModel):
 
 class FileWriteRequest(BaseModel):
     path: str
-    content: str
-
-class RawConfigUpdate(BaseModel):
     content: str
 
 @app.post("/api/exec")
