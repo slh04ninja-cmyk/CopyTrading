@@ -19,3 +19,4 @@ __pycache__/
 bot_trading.log
 _daily_limit_state.json
 Channels.txt
+.sdk/
