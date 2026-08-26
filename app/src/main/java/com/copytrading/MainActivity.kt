@@ -242,13 +242,20 @@ class MainActivity : AppCompatActivity() {
                 val positions = positionAdapter.getCurrentPositions()
                 if (pos in positions.indices) {
                     val ticket = positions[pos].ticket
-                    lifecycleScope.launch {
-                        client.closePosition(ticket)
-                        delay(500)
-                        refreshPositions()
-                        refreshDashboard()
-                        android.widget.Toast.makeText(this@MainActivity, "Position #$ticket fermée", android.widget.Toast.LENGTH_SHORT).show()
-                    }
+                    androidx.appcompat.app.AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Fermer la position #$ticket ?")
+                        .setPositiveButton("Confirmer") { _, _ ->
+                            lifecycleScope.launch {
+                                client.closePosition(ticket)
+                                delay(500)
+                                refreshPositions()
+                                refreshDashboard()
+                            }
+                        }
+                        .setNegativeButton("Annuler") { _, _ ->
+                            positionAdapter.notifyItemChanged(pos)
+                        }
+                        .show()
                 }
             }
             override fun onChildDraw(c: android.graphics.Canvas, rv: RecyclerView, vh: RecyclerView.ViewHolder, dX: Float, dY: Float, state: Int, isActive: Boolean) {
@@ -797,23 +804,6 @@ class MainActivity : AppCompatActivity() {
                 tvLogs.text = "Erreur: ${e.message}"
             }
         }
-    }
-
-    private fun closePosition(ticket: Long) {
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Fermer la position #$ticket ?")
-            .setPositiveButton("Confirmer") { _, _ ->
-                lifecycleScope.launch {
-                    val result = client.closePosition(ticket)
-                    if (result != null) {
-                        showNotification("Position fermee: ${formatPnl(result.profit)}")
-                    }
-                    delay(1000)
-                    refreshDashboard()
-                }
-            }
-            .setNegativeButton("Annuler", null)
-            .show()
     }
 
     // --- HELPERS ---
