@@ -321,7 +321,7 @@ class MainActivity : AppCompatActivity() {
         btnOverview.setOnClickListener {
             overviewContent.visibility = View.VISIBLE
             performanceContent.visibility = View.GONE
-            btnOverview.setBackgroundColor(getColor(R.color.accent))
+            btnOverview.setBackgroundResource(R.drawable.dash_tab_active_bg)
             btnOverview.setTextColor(Color.WHITE)
             btnPerformance.setBackgroundColor(Color.TRANSPARENT)
             btnPerformance.setTextColor(getColor(R.color.text_muted))
@@ -329,7 +329,7 @@ class MainActivity : AppCompatActivity() {
         btnPerformance.setOnClickListener {
             overviewContent.visibility = View.GONE
             performanceContent.visibility = View.VISIBLE
-            btnPerformance.setBackgroundColor(getColor(R.color.accent))
+            btnPerformance.setBackgroundResource(R.drawable.dash_tab_active_bg)
             btnPerformance.setTextColor(Color.WHITE)
             btnOverview.setBackgroundColor(Color.TRANSPARENT)
             btnOverview.setTextColor(getColor(R.color.text_muted))
