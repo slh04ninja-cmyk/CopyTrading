@@ -725,13 +725,13 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCloseAll"
                     android:layout_width="match_parent"
-                    android:layout_height="36dp"
+                    android:layout_height="52dp"
                     android:text="TOUT FERMER"
-                    android:textSize="10sp"
+                    android:textSize="14sp"
                     android:textStyle="bold"
-                    android:letterSpacing="0.05"
+                    android:letterSpacing="0.08"
                     android:backgroundTint="@color/danger"
-                    app:cornerRadius="10dp"/>
+                    app:cornerRadius="14dp"/>
             </LinearLayout>
         </FrameLayout>
 

@@ -233,6 +233,40 @@ class MainActivity : AppCompatActivity() {
         positionAdapter = PositionAdapter()
         rvPositions.layoutManager = LinearLayoutManager(this)
         rvPositions.adapter = positionAdapter
+
+        // Swipe-to-close
+        val swipeCallback = object : androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(0, androidx.recyclerview.widget.ItemTouchHelper.LEFT) {
+            override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder) = false
+            override fun onSwiped(vh: RecyclerView.ViewHolder, direction: Int) {
+                val pos = vh.adapterPosition
+                val positions = positionAdapter.getCurrentPositions()
+                if (pos in positions.indices) {
+                    val ticket = positions[pos].ticket
+                    lifecycleScope.launch {
+                        client.closePosition(ticket)
+                        delay(500)
+                        refreshPositions()
+                        refreshDashboard()
+                        showToast("Position #$ticket fermée")
+                    }
+                }
+            }
+            override fun onChildDraw(c: android.graphics.Canvas, rv: RecyclerView, vh: RecyclerView.ViewHolder, dX: Float, dY: Float, state: Int, isActive: Boolean) {
+                val itemView = vh.itemView
+                val bg = android.graphics.Paint().apply { color = android.graphics.Color.parseColor("#FF5252") }
+                val icon = androidx.core.content.ContextCompat.getDrawable(this@MainActivity, android.R.drawable.ic_menu_delete)
+                if (dX < 0) {
+                    c.drawRect(itemView.right + dX, itemView.top.toFloat(), itemView.right.toFloat(), itemView.bottom.toFloat(), bg)
+                    icon?.let {
+                        val iconMargin = (itemView.height - it.intrinsicHeight) / 2
+                        it.setBounds(itemView.right - iconMargin - it.intrinsicWidth, itemView.top + iconMargin, itemView.right - iconMargin, itemView.bottom - iconMargin)
+                        it.draw(c)
+                    }
+                }
+                super.onChildDraw(c, rv, vh, dX, dY, state, isActive)
+            }
+        }
+        androidx.recyclerview.widget.ItemTouchHelper(swipeCallback).attachToRecyclerView(rvPositions)
     }
 
     private fun setupTabs() {
