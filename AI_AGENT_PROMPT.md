@@ -406,7 +406,7 @@ gh run view <RUN_ID> --repo slh04ninja-cmyk/CopyTrading
 - **Francais** — langue principale
 - **Pas d'emojis** dans l'UI Android
 - **read_file** : toujours stripper les numeros de ligne avant d'ecrire dans des fichiers source
-- **Security bugs** : user a dit "laisse tomber" — ne pas corriger
+
 - **Fichiers a ne pas supprimer** : bias_filters.py, bot_messages.py, bot_documentation_v16.html, telegram_listener_v15.py, telegram_listener_v16.py
 
 ---
