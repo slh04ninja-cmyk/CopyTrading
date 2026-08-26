@@ -109,7 +109,7 @@ class MainActivity : AppCompatActivity() {
     private var channelSortAsc = false
     private var signalSortCol = 2
     private var signalSortAsc = false
-    private var sessionSortCol = 2
+    private var sessionSortCol = 0
     private var sessionSortAsc = false
     private var lastChannelData: List<Pair<String, PerfData>> = emptyList()
     private var lastChannelMkCount: Map<String, Int> = emptyMap()
@@ -892,6 +892,8 @@ class MainActivity : AppCompatActivity() {
             addPerfSignalRow(perfSessionTable, heure, d)
         }
         val totalSess = lastSessionData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
+        // CN total = unique channels across all hours (not sum of per-hour CN)
+        totalSess.channelCount = lastChannelTrades.size
         addPerfSignalRow(perfSessionTable, "TOTAL", totalSess, isTotal = true)
     }
 
