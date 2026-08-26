@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+ <title>CopyTrading — Bot Manager</title>
+ <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+ <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+/* ===== VARIABLES (exact Android colors.xml) ===== */
+:root {
+ --primary: #6C63FF;
+ --primary-dark: #5A52E0;
+ --primary-light: #8B83FF;
+ --accent: #6C63FF;
+ --accent-light: #8B83FF;
+ --background: #0F0F1A;
+ --bg-secondary: #1A1A2E;
+ --card-background: #16213E;
+ --card-background-alt: #1A2744;
+ --bg-input: #0F0F1A;
+ --text-primary: #E8E8F0;
+ --text-secondary: #8888AA;
+ --text-muted: #555577;
+ --profit: #00E676;
+ --loss: #FF5252;
+ --warning: #FFB74D;
+ --success: #00E676;
+ --success-dim: #00C853;
+ --danger: #FF5252;
+ --danger-dim: #D32F2F;
+ --border: #2A2A4A;
+ --divider: #2A2A4A;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+ font-family: 'Inter', -apple-system, sans-serif;
+ background: var(--background);
+ color: var(--text-primary);
+ min-height: 100vh;
+ overflow-x: hidden;
+ -webkit-font-smoothing: antialiased;
+}
+
+/* ===== SETUP SCREEN ===== */
+.setup-container {
+ min-height: 100vh; display: flex; flex-direction: column;
+ align-items: center; justify-content: center; padding: 24px;
+ background: linear-gradient(135deg, var(--background) 0%, #1a1040 50%, var(--background) 100%);
+}
+.setup-logo {
+ width: 80px; height: 80px; border-radius: 24px;
+ background: linear-gradient(135deg, var(--accent), #9C27B0);
+ display: flex; align-items: center; justify-content: center;
+ margin-bottom: 20px; box-shadow: 0 8px 32px rgba(108,99,255,0.3);
+ animation: float 3s ease-in-out infinite;
+}
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+.setup-logo .material-icons-round { font-size: 40px; color: white; }
+.setup-container h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
+.setup-subtitle { color: var(--text-secondary); font-size: 16px; margin-bottom: 32px; }
+.setup-form { width: 100%; max-width: 360px; }
+.input-group { margin-bottom: 16px; }
+.input-group label {
+ display: block; font-size: 12px; font-weight: 600;
+ color: var(--text-secondary); text-transform: uppercase;
+ letter-spacing: 0.5px; margin-bottom: 6px;
+}
+.input-group input {
+ width: 100%; padding: 14px 16px; background: var(--card-background);
+ border: 1.5px solid var(--border); border-radius: 10px;
+ color: var(--text-primary); font-size: 15px; font-family: 'Inter', sans-serif;
+ transition: 0.25s ease; outline: none;
+}
+.input-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108,99,255,0.15); }
+.btn-primary {
+ width: 100%; padding: 14px;
+ background: linear-gradient(135deg, var(--accent), #8B5CF6);
+ border: none; border-radius: 10px; color: white;
+ font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif;
+ cursor: pointer; display: flex; align-items: center; justify-content: center;
+ gap: 8px; transition: 0.25s ease; margin-top: 8px;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(108,99,255,0.35); }
+.btn-secondary {
+ padding: 12px 20px; background: var(--card-background);
+ border: 1.5px solid var(--border); border-radius: 10px;
+ color: var(--text-primary); font-size: 14px; font-weight: 500;
+ font-family: 'Inter', sans-serif; cursor: pointer;
+ display: flex; align-items: center; gap: 6px; transition: 0.25s ease;
+}
+.btn-secondary:hover { border-color: var(--accent); background: var(--card-background-alt); }
+.setup-status { text-align: center; margin-top: 16px; font-size: 14px; min-height: 20px; }
+.setup-status.success { color: var(--success); }
+.setup-status.error { color: var(--danger); }
+
+/* ===== DRAWER LAYOUT ===== */
+.drawer-layout { position: relative; width: 100%; min-height: 100vh; overflow: hidden; }
+.drawer-overlay {
+ position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+ background: rgba(0,0,0,0.5); z-index: 200;
+ opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+}
+.drawer-overlay.open { opacity: 1; pointer-events: auto; }
+.drawer {
+ position: fixed; top: 0; left: 0;
+ width: 280px; height: 100%; background: var(--bg-secondary);
+ z-index: 210; transform: translateX(-100%);
+ transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+ display: flex; flex-direction: column; padding: 20px;
+}
+.drawer.open { transform: translateX(0); }
+.drawer-title { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-top: 40px; margin-bottom: 32px; }
+.drawer-item {
+ display: flex; align-items: center; gap: 12px; width: 100%;
+ padding: 14px 12px; border: none; background: transparent;
+ color: var(--text-primary); font-size: 15px; font-weight: 500;
+ font-family: 'Inter', sans-serif; cursor: pointer; border-radius: 10px;
+ transition: 0.25s ease; text-align: left;
+}
+.drawer-item:hover { background: var(--card-background); }
+.drawer-item .material-icons-round { font-size: 22px; color: var(--accent-light); }
+.drawer-divider { height: 1px; background: var(--border); margin: 12px 0; }
+.drawer-item.danger { color: var(--danger); }
+.drawer-item.danger .material-icons-round { color: var(--danger); }
+
+/* ===== APP HEADER (matches Android activity_main.xml) ===== */
+.app-header {
+ display: flex; align-items: center; justify-content: space-between;
+ padding: 12px 16px; background: var(--bg-secondary);
+ border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100;
+}
+.header-left, .header-right { flex: 1; }
+.header-right { text-align: right; display: flex; align-items: center; justify-content: flex-end; }
+.header-center h1 { font-size: 18px; font-weight: 700; text-align: center; letter-spacing: -0.3px; }
+.bot-status-badge {
+ display: inline-flex; align-items: center; gap: 6px;
+ padding: 4px 12px; border-radius: 20px; font-size: 11px;
+ font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.bot-status-badge.online { background: rgba(0,230,118,0.12); color: var(--success); }
+.bot-status-badge.offline { background: rgba(255,82,82,0.12); color: var(--danger); }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.icon-btn {
+ width: 40px; height: 40px; border: none; background: transparent;
+ color: var(--text-secondary); border-radius: 12px; cursor: pointer;
+ display: inline-flex; align-items: center; justify-content: center; transition: 0.25s ease;
+}
+.icon-btn:hover { background: var(--card-background); color: var(--text-primary); }
+
+/* ===== BOTTOM TAB BAR (matches Android 60dp height, 3dp pill) ===== */
+.tab-bar {
+ display: flex; background: var(--bg-secondary); border-top: 1px solid var(--border);
+ position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; height: 60px;
+}
+.tab {
+ flex: 1; padding: 12px 8px; border: none; background: transparent;
+ color: var(--text-muted); font-size: 11px; font-weight: 500;
+ font-family: 'Inter', sans-serif; cursor: pointer;
+ display: flex; flex-direction: column; align-items: center; gap: 3px;
+ transition: 0.25s ease; position: relative; z-index: 1;
+}
+.tab .material-icons-round { font-size: 20px; }
+.tab.active { color: var(--accent-light); }
+.tab-pill {
+ position: absolute; top: 0; left: 0; width: 25%; height: 3px;
+ background: var(--accent); border-radius: 0 0 3px 3px;
+ transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); z-index: 2;
+}
+
+/* ===== MAIN CONTENT ===== */
+.tab-content { padding: 16px; max-width: 600px; margin: 0 auto; padding-bottom: 80px; }
+.panel { display: none; animation: fadeIn 0.3s ease; }
+.panel.active { display: block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* ===== DASHBOARD SUB-TABS (matches Android MaterialButtonToggleGroup) ===== */
+.dash-tabs {
+ display: flex; gap: 0; margin-bottom: 12px;
+ background: var(--card-background); border-radius: 8px;
+ border: 1px solid var(--border); overflow: hidden;
+}
+.dash-tab {
+ flex: 1; padding: 10px; border: none; background: transparent;
+ color: var(--text-muted); font-size: 13px; font-weight: 600;
+ font-family: 'Inter', sans-serif; cursor: pointer; transition: 0.25s ease;
+}
+.dash-tab.active { background: var(--accent); color: white; }
+.dash-panel { display: none; animation: fadeIn 0.3s ease; }
+.dash-panel.active { display: block; }
+
+/* ===== P&L CARDS (matches Android MaterialCardView) ===== */
+.pnl-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.pnl-card {
+ background: var(--card-background); border-radius: 16px;
+ padding: 14px; border: 1px solid var(--divider);
+ transition: 0.25s ease;
+}
+.pnl-card:hover { border-color: var(--accent); }
+.pnl-label {
+ font-size: 11px; font-weight: 600; color: var(--text-secondary);
+ text-transform: uppercase; letter-spacing: 0.03; margin-bottom: 4px;
+}
+.pnl-value { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-top: 4px; }
+.pnl-value.positive { color: var(--profit); }
+.pnl-value.negative { color: var(--loss); }
+
+/* ===== TOTAL P&L CARD (matches Android centered layout) ===== */
+.pnl-card-total {
+ background: var(--card-background); border-radius: 16px;
+ padding: 20px; text-align: center; border: 1px solid var(--divider);
+ margin-bottom: 10px;
+ background: linear-gradient(135deg, rgba(108,99,255,0.15), rgba(139,92,246,0.1));
+ border-color: rgba(108,99,255,0.3);
+}
+.pnl-card-total .pnl-label { letter-spacing: 0.1; }
+.pnl-card-total .pnl-value { font-size: 36px; margin-top: 4px; }
+.pnl-account-row { margin-top: 10px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap; }
+.pnl-account-label { color: var(--text-secondary); }
+.pnl-account-value { color: var(--text-primary); font-weight: 700; }
+.pnl-account-sep { color: var(--text-muted); }
+
+/* ===== DAILY LIMIT CARD (matches Android ProgressBar) ===== */
+.limit-card {
+ background: var(--card-background); border-radius: 16px;
+ padding: 14px; margin-bottom: 10px; border: 1px solid var(--divider);
+}
+.limit-header {
+ display: flex; align-items: center; gap: 8px;
+ font-size: 13px; font-weight: 600; color: var(--text-primary);
+}
+.limit-header .material-icons-round { font-size: 18px; color: var(--warning); }
+.limit-pct { margin-left: auto; color: var(--warning); font-weight: 700; }
+.limit-bar {
+ height: 6px; background: var(--background); border-radius: 3px;
+ overflow: hidden; margin-top: 10px; margin-bottom: 8px;
+}
+.limit-fill {
+ height: 100%; background: var(--primary); border-radius: 3px;
+ transition: width 0.8s ease;
+}
+.limit-text { font-size: 12px; color: var(--text-secondary); text-align: center; }
+
+/* ===== STATS CARD (matches Android LinearLayout rows with dividers) ===== */
+.stats-card {
+ background: var(--card-background); border-radius: 16px;
+ padding: 14px 16px; margin-bottom: 10px; border: 1px solid var(--divider);
+}
+.stat-row {
+ display: flex; align-items: center; justify-content: space-between;
+ padding: 8px 0;
+}
+.stat-row + .stat-row { border-top: 1px solid var(--divider); }
+.stat-label {
+ font-size: 12px; color: var(--text-muted);
+ display: flex; align-items: center; gap: 6px;
+}
+.stat-label .material-icons-round { font-size: 16px; }
+.stat-val { font-size: 16px; font-weight: 700; }
+.stat-val.green { color: var(--success); }
+.stat-val.red { color: var(--danger); }
+.stat-val.accent { color: var(--accent-light); }
+
+/* ===== START/STOP BUTTON (matches Android MaterialButton 52dp height, 14dp radius) ===== */
+.btn-start-stop {
+ width: 100%; height: 52px; border: none; border-radius: 14px;
+ font-size: 14px; font-weight: 700; font-family: 'Inter', sans-serif;
+ cursor: pointer; display: flex; align-items: center; justify-content: center;
+ gap: 8px; transition: 0.25s ease; text-transform: uppercase; letter-spacing: 0.08;
+ margin-bottom: 16px;
+}
+.btn-start-stop.stop { background: var(--danger); color: white; }
+.btn-start-stop.start { background: var(--success); color: white; }
+.btn-start-stop:hover { transform: translateY(-1px); }
+
+/* ===== CLOSE ALL BUTTON ===== */
+.btn-close-all {
+ width: 100%; height: 36px; border: none; border-radius: 10px;
+ font-size: 10px; font-weight: 700; font-family: 'Inter', sans-serif;
+ cursor: pointer; display: flex; align-items: center; justify-content: center;
+ gap: 6px; transition: 0.25s ease; text-transform: uppercase; letter-spacing: 0.05;
+ background: var(--danger-dim); color: white;
+}
+.btn-close-all:hover { transform: translateY(-1px); }
+.btn-close-all.loading { background: var(--warning); pointer-events: none; }
+.btn-close-all.success { background: var(--success); pointer-events: none; }
+
+/* ===== POSITIONS ===== */
+.positions-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.positions-header h3 { font-size: 16px; font-weight: 600; letter-spacing: 0.02; }
+.positions-header .badge {
+ background: var(--accent); color: white; font-size: 11px;
+ font-weight: 700; padding: 2px 8px; border-radius: 10px;
+}
+.positions-footer {
+ position: fixed; bottom: 60px; left: 0; right: 0; z-index: 50;
+ padding: 12px 16px;
+ background: var(--background);
+ border-top: 1px solid var(--border);
+}
+.positions-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 60px; }
+/* Swipe-to-close wrapper */
+.pos-swipe-wrapper {
+ position: relative; overflow: hidden;
+ border-radius: 10px; touch-action: pan-y;
+}
+.pos-close-zone {
+ position: absolute; top: 0; right: 0; bottom: 0;
+ width: 100%; background: linear-gradient(270deg, var(--danger), #FF1744);
+ display: flex; align-items: center; justify-content: flex-end; padding-right: 20px;
+ opacity: 0; transition: opacity 0.2s ease;
+ z-index: 0;
+}
+.pos-close-zone .material-icons-round {
+ color: white; font-size: 28px;
+}
+.pos-close-zone-text {
+ color: white; font-size: 14px; font-weight: 700;
+ margin-left: 8px; text-transform: uppercase; letter-spacing: 0.05;
+}
+.position-card {
+ background: var(--card-background); border-radius: 10px;
+ padding: 10px 14px; border: 1px solid var(--divider);
+ transition: transform 0.15s ease, border-color 0.25s ease;
+ position: relative; z-index: 1;
+}
+.position-card:hover { border-color: var(--accent); }
+.pos-swipe-wrapper.swiping .position-card {
+ transition: none;
+}
+.pos-swipe-wrapper.closing .position-card {
+ transform: translateX(-110%) !important;
+ transition: transform 0.3s ease-in;
+}
+.pos-row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.pos-sym { display: flex; align-items: center; gap: 8px; }
+.pos-symbol { font-size: 15px; font-weight: 800; }
+.pos-dot { width: 8px; height: 8px; border-radius: 50%; }
+.pos-dot.buy { background: var(--success); }
+.pos-dot.sell { background: var(--danger); }
+.pos-profit { font-size: 17px; font-weight: 800; }
+.pos-profit.positive { color: var(--profit); }
+.pos-profit.negative { color: var(--loss); }
+.pos-row2 {
+ display: flex; align-items: center; gap: 6px; padding: 6px 0;
+ border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider);
+ margin-bottom: 6px; flex-wrap: wrap;
+}
+.pos-row2-item { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.pos-row2-item span { font-weight: 500; color: var(--text-primary); }
+.pos-sep { color: var(--text-muted); font-size: 10px; }
+.pos-row3 { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; }
+.pos-badges { display: flex; gap: 4px; }
+.pos-badge {
+ font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+ text-transform: uppercase; letter-spacing: 0.3px;
+}
+.pos-badge-channel { background: rgba(108,99,255,0.15); color: var(--accent-light); }
+.pos-badge-signal { background: rgba(57,210,192,0.12); color: #39D2C0; }
+.pos-badge-order { background: rgba(255,183,77,0.15); color: var(--warning); }
+.btn-close-pos {
+ padding: 6px 14px; background: rgba(255,82,82,0.12);
+ border: 1px solid rgba(255,82,82,0.3); border-radius: 6px;
+ color: var(--danger); font-size: 11px; font-weight: 600;
+ font-family: 'Inter', sans-serif; cursor: pointer; transition: 0.25s ease;
+}
+.btn-close-pos:hover { background: var(--danger); color: white; }
+
+/* ===== CONFIG ===== */
+.config-card {
+ background: var(--card-background); border-radius: 16px;
+ padding: 18px; border: 1px solid var(--divider);
+}
+.config-card h3 {
+ font-size: 14px; font-weight: 600; color: var(--text-secondary);
+ margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.config-card h3 .material-icons-round { font-size: 20px; color: var(--accent); }
+.config-card textarea {
+ width: 100%; min-height: 400px; padding: 14px; background: var(--bg-input);
+ border: 1.5px solid var(--border); border-radius: 10px;
+ color: var(--text-primary); font-size: 12px;
+ font-family: 'JetBrains Mono', 'Fira Code', monospace;
+ resize: vertical; outline: none; transition: 0.25s ease; line-height: 1.6;
+}
+.config-card textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108,99,255,0.1); }
+.config-actions { display: flex; gap: 10px; margin-top: 14px; }
+.config-actions .btn-primary { flex: 1; height: 52px; border-radius: 14px; font-size: 14px; letter-spacing: 0.08; }
+
+/* ===== LOGS ===== */
+.logs-card { background: var(--card-background); border-radius: 16px; border: 1px solid var(--divider); overflow: hidden; }
+.logs-header {
+ display: flex; align-items: center; justify-content: space-between;
+ padding: 14px 18px; border-bottom: 1px solid var(--divider);
+}
+.logs-header h3 {
+ font-size: 14px; font-weight: 600; color: var(--text-secondary);
+ display: flex; align-items: center; gap: 8px;
+}
+.logs-header h3 .material-icons-round { font-size: 20px; color: var(--accent); }
+.logs-output {
+ padding: 14px; font-size: 11px; font-family: 'JetBrains Mono', 'Fira Code', monospace;
+ line-height: 1.7; max-height: 60vh; overflow-y: auto; color: var(--text-secondary);
+ white-space: pre-wrap; word-break: break-all;
+}
+.log-time { color: var(--text-muted); }
+.log-info { color: #64B5F6; }
+.log-success { color: var(--success); }
+.log-warn { color: var(--warning); }
+.log-error { color: var(--danger); }
+.log-trade { color: var(--accent-light); }
+
+/* ===== PERFORMANCE TABLE ===== */
+.perf-card { background: var(--card-background); border-radius: 16px; border: 1px solid var(--divider); overflow: hidden; }
+.perf-header {
+ display: flex; align-items: center; justify-content: space-between;
+ padding: 14px 16px; border-bottom: 1px solid var(--divider);
+}
+.perf-header h3 { font-size: 14px; font-weight: 600; }
+.perf-date { font-size: 11px; color: var(--text-muted); }
+.perf-table { width: 100%; border-collapse: collapse; }
+.perf-table th {
+ padding: 10px 12px; text-align: left; font-size: 10px;
+ color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+ font-weight: 600; border-bottom: 1px solid var(--divider);
+ background: rgba(255,255,255,0.02);
+}
+.perf-table td { padding: 10px 12px; font-size: 13px; font-weight: 500; border-bottom: 1px solid var(--divider); }
+.perf-table tr:last-child td { border-bottom: none; }
+.perf-table tr:hover { background: rgba(108,99,255,0.03); }
+.perf-pnl { font-weight: 700; }
+.perf-pnl.pos { color: var(--success); }
+.perf-pnl.neg { color: var(--danger); }
+.perf-gain { color: var(--success); font-weight: 600; }
+.perf-loss { color: var(--danger); font-weight: 600; }
+.perf-channel { font-weight: 700; color: var(--accent-light); }
+.perf-total {
+ padding: 12px 16px; border-top: 1px solid var(--divider);
+ display: flex; justify-content: space-between; align-items: center; font-size: 13px;
+}
+.perf-total-label { color: var(--text-muted); font-weight: 600; }
+.perf-total-val { font-size: 16px; font-weight: 800; }
+.perf-total-val.pos { color: var(--success); }
+.perf-total-val.neg { color: var(--danger); }
+
+/* ===== ABOUT ===== */
+.about-card {
+ background: var(--card-background); border-radius: 16px;
+ padding: 24px; border: 1px solid var(--divider); text-align: center;
+}
+.about-logo {
+ width: 64px; height: 64px; border-radius: 20px;
+ background: linear-gradient(135deg, var(--accent), #9C27B0);
+ display: flex; align-items: center; justify-content: center;
+ margin: 0 auto 16px; box-shadow: 0 4px 16px rgba(108,99,255,0.3);
+}
+.about-logo .material-icons-round { font-size: 32px; color: white; }
+.about-title { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+.about-version { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+.about-info { text-align: left; }
+.about-row {
+ display: flex; align-items: center; justify-content: space-between;
+ padding: 12px 0; border-bottom: 1px solid var(--divider);
+}
+.about-row:last-child { border-bottom: none; }
+.about-label { font-size: 13px; color: var(--text-muted); }
+.about-value { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+
+/* ===== TOAST ===== */
+.toast {
+ position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
+ background: var(--card-background); color: var(--text-primary); padding: 12px 24px;
+ border-radius: 10px; font-size: 14px; font-weight: 500;
+ border: 1px solid var(--border); box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+ z-index: 1000; opacity: 0; transition: all 0.4s cubic-bezier(0.4,0,0.2,1); pointer-events: none;
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.toast.success { border-color: var(--success); }
+.toast.error { border-color: var(--danger); }
+
+
+/* ===== CONFIRM DIALOG ===== */
+.confirm-overlay {
+ position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+ background: rgba(0,0,0,0.6); z-index: 500;
+ display: flex; align-items: center; justify-content: center;
+ opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+}
+.confirm-overlay.open { opacity: 1; pointer-events: auto; }
+.confirm-box {
+ background: var(--card-background); border: 1px solid var(--border);
+ border-radius: 16px; padding: 24px; max-width: 320px; width: 90%;
+ text-align: center;
+}
+.confirm-box p { font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 20px; }
+.confirm-actions { display: flex; gap: 10px; }
+.confirm-btn {
+ flex: 1; padding: 12px; border: none; border-radius: 10px;
+ font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif;
+ cursor: pointer; transition: 0.25s ease;
+}
+.confirm-btn.cancel { background: var(--card-background-alt); color: var(--text-primary); border: 1px solid var(--border); }
+.confirm-btn.danger { background: var(--danger); color: white; }
+.confirm-btn:hover { transform: translateY(-1px); }
+
+/* ===== CONFETTI ===== */
+#confettiCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999; }
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ===== ANIMATIONS ===== */
+@keyframes hourglass { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+.hourglass { animation: hourglass 1s linear infinite; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 400px) {
+ .pnl-row { grid-template-columns: 1fr; }
+ .pnl-value { font-size: 22px; }
+ .pnl-card-total .pnl-value { font-size: 28px; }
+}
+</style>
+</head>
+<body>
+ <!-- ===== SETUP SCREEN ===== -->
+ <div id="setupScreen" class="screen">
+ <div class="setup-container">
+ <div class="setup-logo"><span class="material-icons-round">show_chart</span></div>
+ <h1>CopyTrading</h1>
+ <p class="setup-subtitle">Bot Manager</p>
+ <div class="setup-form">
+ <div class="input-group"><label>Adresse du serveur</label><input type="text" id="setupHost" value="192.168.1.100"></div>
+ <div class="input-group"><label>Port</label><input type="text" id="setupPort" value="8000"></div>
+ <div class="input-group"><label>Token API</label><input type="password" id="setupToken" value="••••••••"></div>
+ <button id="btnConnect" class="btn-primary" onclick="connectToServer()"><span class="material-icons-round">link</span> Connexion</button>
+ <div id="setupStatus" class="setup-status"></div>
+ </div>
+ </div>
+ </div>
+
+ <!-- ===== MAIN APP ===== -->
+ <div id="mainApp" class="screen" style="display:none">
+ <div class="drawer-layout">
+
+ <!-- Drawer Overlay -->
+ <div id="drawerOverlay" class="drawer-overlay" onclick="closeDrawer()"></div>
+
+ <!-- Left Drawer -->
+ <div id="drawer" class="drawer">
+ <div class="drawer-title">CopyTrading</div>
+ <button class="drawer-item" onclick="drawerNavigate('config')"><span class="material-icons-round">tune</span>Configuration</button>
+ <button class="drawer-item" onclick="drawerNavigate('logs')"><span class="material-icons-round">terminal</span>Logs</button>
+ <div class="drawer-divider"></div>
+ <button class="drawer-item" onclick="drawerNavigate('about')"><span class="material-icons-round">info</span>A propos</button>
+ <div class="drawer-divider"></div>
+ <button class="drawer-item danger" onclick="drawerNavigate('disconnect')"><span class="material-icons-round">logout</span>Deconnexion</button>
+ </div>
+
+ <!-- Header -->
+ <header class="app-header">
+ <div class="header-left">
+ <button class="icon-btn" onclick="openDrawer()" title="Menu"><span class="material-icons-round">menu</span></button>
+ </div>
+ <div class="header-center"><h1>CopyTrading</h1></div>
+ <div class="header-right">
+ <div class="bot-status-badge online" id="botStatusBadge">
+ <span class="status-dot"></span><span id="tvBotStatus">EN LIGNE</span>
+ </div>
+ </div>
+ </header>
+
+ <!-- Main Content -->
+ <main class="tab-content">
+
+ <!-- ===== DASHBOARD ===== -->
+ <div id="panelDashboard" class="panel active">
+ <div class="dash-tabs">
+ <button class="dash-tab active" onclick="selectDashTab(0)">Overview</button>
+ <button class="dash-tab" onclick="selectDashTab(1)">Performance</button>
+ </div>
+
+ <!-- Overview -->
+ <div id="dashOverview" class="dash-panel active">
+
+ <!-- P&L Cards Row (2 cards, like Android) -->
+ <div class="pnl-row">
+ <div class="pnl-card">
+ <div class="pnl-label">P&amp;L Quotidien</div>
+ <div class="pnl-value positive" id="tvDailyPnl">+127.50$</div>
+ </div>
+ <div class="pnl-card">
+ <div class="pnl-label">P&amp;L Flottant</div>
+ <div class="pnl-value positive" id="tvFloatingPnl">+43.20$</div>
+ </div>
+ </div>
+
+ <!-- Total P&L Card (full width, centered, like Android) -->
+ <div class="pnl-card-total">
+ <div class="pnl-label">TOTAL P&amp;L</div>
+ <div class="pnl-value positive" id="tvTotalPnl">+170.70$</div>
+ <div class="pnl-account-row">
+ <span class="pnl-account-label">Balance </span>
+ <span class="pnl-account-value" id="tvBalance">5,234.50$</span>
+ <span class="pnl-account-sep"> · </span>
+ <span class="pnl-account-label">Equity </span>
+ <span class="pnl-account-value" id="tvEquity">5,405.20$</span>
+ </div>
+ </div>
+
+ <!-- Daily Limit Card -->
+ <div class="limit-card">
+ <div class="limit-header">
+ <span class="material-icons-round">shield</span>
+ <span>Objectif Quotidien</span>
+ <span class="limit-pct" id="tvDailyLimitPct">85.4%</span>
+ </div>
+ <div class="limit-bar"><div class="limit-fill" id="limitFill" style="width:85.4%"></div></div>
+ <div class="limit-text" id="tvDailyLimit">+170.70$ / 200.00$</div>
+ </div>
+
+ <!-- Stats Card -->
+ <div class="stats-card">
+ <div class="stat-row">
+ <div class="stat-label"><span class="material-icons-round">bar_chart</span> Trades</div>
+ <div class="stat-val" id="tvTrades">8</div>
+ </div>
+ <div class="stat-row">
+ <div class="stat-label"><span class="material-icons-round">emoji_events</span> Wins</div>
+ <div class="stat-val green" id="tvWins">6</div>
+ </div>
+ <div class="stat-row">
+ <div class="stat-label"><span class="material-icons-round">close</span> Losses</div>
+ <div class="stat-val red" id="tvLosses">2</div>
+ </div>
+ <div class="stat-row">
+ <div class="stat-label"><span class="material-icons-round">gps_fixed</span> Winrate</div>
+ <div class="stat-val accent" id="tvWinrate">75%</div>
+ </div>
+ </div>
+
+ <!-- Start/Stop Button (52dp height, 14dp radius, like Android) -->
+ <button id="btnStartStop" class="btn-start-stop stop" onclick="toggleBot()">
+ <span class="material-icons-round">stop</span> ARRETER
+ </button>
+
+ </div><!-- /dashOverview -->
+
+ <!-- Performance -->
+ <div id="dashPerformance" class="dash-panel">
+ <div class="perf-card">
+ <div class="perf-header"><h3>Performance par Canal</h3><span class="perf-date">Aujourd'hui</span></div>
+ <table class="perf-table"><thead><tr><th>Canal</th><th>P&L</th><th>SN</th><th>TR</th><th>WN</th><th>LS</th><th>WR</th></tr></thead><tbody id="perfBody"></tbody></table>
+ <div class="perf-total" id="perfTotal"></div>
+ </div>
+ <div class="perf-card" style="margin-top:16px">
+ <div class="perf-header"><h3>Performance par Signal</h3><span class="perf-date">Aujourd'hui</span></div>
+ <table class="perf-table"><thead><tr><th>SN</th><th>CN</th><th>P&L</th><th>TR</th><th>WN</th><th>LS</th><th>WR</th><th>Gain</th><th>Perte</th></tr></thead><tbody id="perfSignalBody"></tbody></table>
+ <div class="perf-total" id="perfSignalTotal"></div>
+ </div>
+ </div>
+ </div><!-- /panelDashboard -->
+
+ <!-- ===== POSITIONS ===== -->
+ <div id="panelPositions" class="panel">
+ <div class="positions-header">
+ <h3>Positions Ouvertes</h3>
+ <span class="badge" id="posCount">7</span>
+ </div>
+ <div id="allPositions" class="positions-list"></div>
+ <div class="positions-footer">
+ <button id="btnCloseAll2" class="btn-close-all" onclick="closeAllPositions()">
+ <span class="material-icons-round">close_fullscreen</span> TOUT FERMER
+ </button>
+ </div>
+ </div>
+
+ <!-- ===== CONFIG ===== -->
+ <div id="panelConfig" class="panel">
+ <div class="config-card">
+ <h3><span class="material-icons-round">settings</span> Configuration</h3>
+ <textarea id="etConfigContent" rows="20" spellcheck="false"></textarea>
+ <div class="config-actions">
+ <button class="btn-primary" onclick="saveConfig()"><span class="material-icons-round">save</span> Sauvegarder</button>
+ <button class="btn-secondary" onclick="loadConfig()"><span class="material-icons-round">refresh</span> Recharger</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- ===== LOGS ===== -->
+ <div id="panelLogs" class="panel">
+ <div class="logs-card">
+ <div class="logs-header">
+ <h3><span class="material-icons-round">terminal</span> Logs</h3>
+ <button class="icon-btn" onclick="loadLogs()" title="Rafraîchir"><span class="material-icons-round">refresh</span></button>
+ </div>
+ <pre id="tvLogs" class="logs-output"></pre>
+ </div>
+ </div>
+
+ <!-- ===== ABOUT ===== -->
+ <div id="panelAbout" class="panel">
+ <div class="about-card">
+ <div class="about-logo"><span class="material-icons-round">show_chart</span></div>
+ <div class="about-title">CopyTrading</div>
+ <div class="about-version">Bot Manager v1.0.0</div>
+ <div class="about-info">
+ <div class="about-row"><span class="about-label">Application</span><span class="about-value">CopyTrading Bot Manager</span></div>
+ <div class="about-row"><span class="about-label">Version</span><span class="about-value">1.0.0</span></div>
+ <div class="about-row"><span class="about-label">Plateforme</span><span class="about-value">Android / Web</span></div>
+ <div class="about-row"><span class="about-label">API</span><span class="about-value">FastAPI (Python)</span></div>
+ <div class="about-row"><span class="about-label">Trading</span><span class="about-value">MetaTrader 5</span></div>
+ <div class="about-row"><span class="about-label">Serveur</span><span class="about-value" id="aboutServer">—</span></div>
+ </div>
+ </div>
+ </div>
+
+ </main>
+
+ <!-- Bottom Tab Bar -->
+ <nav class="tab-bar">
+ <div class="tab-pill" id="pillIndicator"></div>
+ <button class="tab active" onclick="selectTab(0)"><span class="material-icons-round">dashboard</span><span>Dashboard</span></button>
+ <button class="tab" onclick="selectTab(1)"><span class="material-icons-round">list_alt</span><span>Positions</span></button>
+ <button class="tab" onclick="selectTab(2)"><span class="material-icons-round">tune</span><span>Config</span></button>
+ <button class="tab" onclick="selectTab(3)"><span class="material-icons-round">terminal</span><span>Logs</span></button>
+ </nav>
+
+ </div><!-- /drawer-layout -->
+ </div><!-- /mainApp -->
+
+ <div id="toast" class="toast"></div>
+ <canvas id="confettiCanvas"></canvas>
+
+<script>
+// ===== SAMPLE DATA =====
+const SAMPLE_POSITIONS=[
+ {ticket:1847293651,symbol:"XAUUSD",type:"BUY",volume:0.01,open_price:3348.50,current_price:3352.30,sl:3338.50,tp:3356.50,profit:3.80,swap:-0.12,comment:"CH5-ZN-MK",magic:20250226,bot_opened:true,time:"2026-08-23T08:15:00Z"},
+ {ticket:1847293652,symbol:"XAUUSD",type:"BUY",volume:0.01,open_price:3345.50,current_price:3352.30,sl:3338.50,tp:3356.50,profit:6.80,swap:0.00,comment:"CH5-ZN-L1",magic:20250226,bot_opened:true,time:"2026-08-23T08:15:05Z"},
+ {ticket:1847293653,symbol:"XAUUSD",type:"SELL",volume:0.01,open_price:3382.00,current_price:3378.40,sl:3392.00,tp:3374.00,profit:3.60,swap:0.00,comment:"CH7-ZN-MK",magic:20250226,bot_opened:true,time:"2026-08-23T09:30:00Z"},
+ {ticket:1847293654,symbol:"XAUUSD",type:"BUY",volume:0.01,open_price:3350.00,current_price:3347.80,sl:3340.00,tp:3358.00,profit:-2.20,swap:0.00,comment:"CH3-AL-MK",magic:20250226,bot_opened:true,time:"2026-08-23T10:45:00Z"},
+ {ticket:1847293655,symbol:"XAUUSD",type:"BUY",volume:0.01,open_price:3362.00,current_price:3365.50,sl:3352.00,tp:3370.00,profit:3.50,swap:0.00,comment:"CH3-ZN-MK",magic:20250226,bot_opened:true,time:"2026-08-23T11:00:00Z"},
+ {ticket:1847293656,symbol:"XAUUSD",type:"SELL",volume:0.01,open_price:3385.00,current_price:3388.50,sl:3395.00,tp:3377.00,profit:-3.50,swap:0.00,comment:"CH2-PU-MK",magic:20250226,bot_opened:true,time:"2026-08-23T12:15:00Z"},
+ {ticket:1847293657,symbol:"XAUUSD",type:"BUY",volume:0.01,open_price:3348.50,current_price:3352.30,sl:3338.50,tp:3356.50,profit:3.80,swap:0.00,comment:"CH3-MP-MK",magic:20250226,bot_opened:true,time:"2026-08-23T13:00:00Z"}
+];
+const SAMPLE_TRADES=[
+ {ticket:1847293640,symbol:"XAUUSD",type:"BUY",volume:0.01,open_price:3345.00,close_price:3353.00,profit:8.00,commission:-0.05,swap:0.00,comment:"CH5-ZN-MK",open_time:"2026-08-23T03:15:00Z",close_time:"2026-08-23T05:30:00Z"},
+ {ticket:1847293641,symbol:"XAUUSD",type:"BUY",volume:0.01,open_price:3342.00,close_price:3353.00,profit:11.00,commission:-0.05,swap:0.00,comment:"CH5-ZN-L1",open_time:"2026-08-23T03:15:05Z",close_time:"2026-08-23T05:30:00Z"},
+ {ticket:1847293642,symbol:"XAUUSD",type:"SELL",volume:0.01,open_price:3380.00,close_price:3372.00,profit:8.00,commission:-0.05,swap:0.00,comment:"CH7-ZN-MK",open_time:"2026-08-23T05:10:00Z",close_time:"2026-08-23T07:45:00Z"},
+ {ticket:1847293643,symbol:"XAUUSD",type:"BUY",volume:0.01,open_price:3355.00,close_price:3363.50,profit:8.50,commission:-0.05,swap:0.00,comment:"CH2-PU-MK",open_time:"2026-08-23T06:30:00Z",close_time:"2026-08-23T08:15:00Z"},
+ {ticket:1847293644,symbol:"XAUUSD",type:"SELL",volume:0.01,open_price:3370.00,close_price:3375.00,profit:-5.00,commission:-0.05,swap:0.00,comment:"CH4-AL-MK",open_time:"2026-08-23T07:00:00Z",close_time:"2026-08-23T07:30:00Z"},
+ {ticket:1847293645,symbol:"XAUUSD",type:"BUY",volume:0.01,open_price:3340.00,close_price:3348.00,profit:8.00,commission:-0.05,swap:0.00,comment:"CH3-MP-MK",open_time:"2026-08-23T08:00:00Z",close_time:"2026-08-23T10:30:00Z"}
+];
+const SAMPLE_CONFIG=`# =============================================================
+# CopyTrading Bot — Configuration
+# =============================================================
+
+# MetaTrader 5
+MT5_LOGIN=12345678
+MT5_PASSWORD=***
+MT5_SERVER=Exness-MT5Trial9
+MT5_PATH=C:\\Program Files\\MetaTrader 5 EXNESS\\terminal64.exe
+
+# Trading
+MAGIC_NUMBER=20250226
+DAILY_PROFIT_LIMIT=200.0
+TRADING_START_HOUR=3
+TRADING_END_HOUR=20
+LOT_SIZE=0.10
+MAX_POSITIONS=5
+STOP_LOSS_PIPS=50
+TAKE_PROFIT_PIPS=100
+
+# Telegram
+TELEGRAM_BOT_TOKEN=***
+TELEGRAM_CHAT_ID=123456789
+
+# API
+API_PORT=8000
+API_HOST=0.0.0.0
+API_TOKEN=***
+
+# Notifications
+NOTIFY_ON_TRADE=true
+NOTIFY_ON_LIMIT=true
+NOTIFY_ON_ERROR=true`;
+const SAMPLE_LOGS=[
+ {time:"2026-08-23 03:15:00",level:"info",msg:"Bot démarré — v17.1"},
+ {time:"2026-08-23 03:15:01",level:"info",msg:"Connexion MT5... OK (Exness-MT5Trial9)"},
+ {time:"2026-08-23 03:15:01",level:"info",msg:"Compte: #12345678 | Balance: 5,000.00$ | Levier: 1:2000"},
+ {time:"2026-08-23 03:15:02",level:"success",msg:"Telegram connecté — @CopyTradingBot"},
+ {time:"2026-08-23 03:15:02",level:"info",msg:"En attente de signaux..."},
+ {time:"2026-08-23 03:15:03",level:"info",msg:"Heures de trading: 3h-20h UTC"},
+ {time:"2026-08-23 03:15:03",level:"info",msg:"Limite quotidienne: 200.00$"},
+ {time:"2026-08-23 08:15:00",level:"trade",msg:"📈 Signal #47 — XAUUSD BUY @ 2387.50 | SL: 2375.00 | TP: 2410.00"},
+ {time:"2026-08-23 08:15:01",level:"success",msg:"Position ouverte: #1847293651 XAUUSD BUY 0.10 lot"},
+ {time:"2026-08-23 09:30:00",level:"trade",msg:"📉 Signal #48 — EURUSD SELL @ 1.0876 | SL: 1.0920 | TP: 1.0820"},
+ {time:"2026-08-23 09:30:01",level:"success",msg:"Position ouverte: #1847293652 EURUSD SELL 0.05 lot"},
+ {time:"2026-08-23 10:45:00",level:"trade",msg:"📈 Signal #49 — GBPJPY BUY @ 192.450 | SL: 191.500 | TP: 193.500"},
+ {time:"2026-08-23 10:45:01",level:"success",msg:"Position ouverte: #1847293653 GBPJPY BUY 0.03 lot"},
+ {time:"2026-08-23 11:00:00",level:"trade",msg:"📈 Signal #50 — USDJPY BUY @ 149.200 | SL: 148.800 | TP: 150.000"},
+ {time:"2026-08-23 11:00:01",level:"success",msg:"Position ouverte: #1847293654 USDJPY BUY 0.08 lot"},
+ {time:"2026-08-23 12:15:00",level:"trade",msg:"📉 Signal #51 — BTCUSD SELL @ 64250.00 | SL: 64800.00 | TP: 63500.00"},
+ {time:"2026-08-23 12:15:01",level:"success",msg:"Position ouverte: #1847293655 BTCUSD SELL 0.01 lot"},
+ {time:"2026-08-23 12:30:00",level:"warn",msg:"⚠️ Approche limite quotidienne: 85.4%"},
+ {time:"2026-08-23 12:45:00",level:"info",msg:"P&L quotidien: +170.70$ | Flottant: +80.60$"},
+ {time:"2026-08-23 13:00:00",level:"info",msg:"Auto-refresh: 5 positions ouvertes | 6 trades fermés"}
+];
+
+// ===== STATE =====
+let isRunning=true, currentTab=0, positions=[...SAMPLE_POSITIONS], autoRefreshInterval=null;
+
+// ===== DRAWER =====
+function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drawerOverlay').classList.add('open');}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawerOverlay').classList.remove('open');}
+function drawerNavigate(item){closeDrawer();switch(item){case'config':selectTab(2);break;case'logs':selectTab(3);break;case'about':showAboutPanel();break;case'disconnect':showSettings();break;}}
+function showAboutPanel(){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.getElementById('panelAbout').classList.add('active');document.getElementById('aboutServer').textContent=(document.getElementById('setupHost').value||'192.168.1.100')+':'+(document.getElementById('setupPort').value||'8000');document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));}
+
+// ===== SETUP =====
+function connectToServer(){const btn=document.getElementById('btnConnect'),status=document.getElementById('setupStatus');btn.disabled=true;btn.innerHTML='<span class="material-icons-round hourglass">sync</span> Connexion...';status.textContent='';status.className='setup-status';setTimeout(()=>{status.textContent='✅ Connecté !';status.className='setup-status success';setTimeout(()=>{document.getElementById('setupScreen').style.display='none';document.getElementById('mainApp').style.display='block';initApp();},600);},1200);}
+function initApp(){updateBotStatus();updateDashboard();renderPositions();loadConfig();loadLogs();startAutoRefresh();renderPerformance();initSwipeHandlers();}
+
+// ===== TABS =====
+function selectDashTab(i){document.querySelectorAll('.dash-tab').forEach((t,j)=>t.classList.toggle('active',j===i));document.querySelectorAll('.dash-panel').forEach((p,j)=>p.classList.toggle('active',j===i));}
+function selectTab(i){currentTab=i;document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',j===i));document.getElementById('pillIndicator').style.transform=`translateX(${i*100}%)`;document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));['panelDashboard','panelPositions','panelConfig','panelLogs'][i];document.getElementById(['panelDashboard','panelPositions','panelConfig','panelLogs'][i]).classList.add('active');if(i===1)renderPositions();if(i===2)loadConfig();if(i===3)loadLogs();}
+
+// ===== BOT STATUS =====
+function updateBotStatus(){const b=document.getElementById('botStatusBadge'),t=document.getElementById('tvBotStatus'),btn=document.getElementById('btnStartStop');if(isRunning){b.className='bot-status-badge online';t.textContent='EN LIGNE';btn.className='btn-start-stop stop';btn.innerHTML='<span class="material-icons-round">stop</span> ARRETER';}else{b.className='bot-status-badge offline';t.textContent='ARRETE';btn.className='btn-start-stop start';btn.innerHTML='<span class="material-icons-round">play_arrow</span> DEMARRER';}}
+function toggleBot(){isRunning=!isRunning;updateBotStatus();showToast(isRunning?'Bot démarré':'Bot arrêté',isRunning?'success':'error');}
+
+// ===== DASHBOARD =====
+function updateDashboard(){const dp=positions.reduce((s,p)=>s+p.profit,0),fp2=dp;const cp=SAMPLE_TRADES.reduce((s,t)=>s+t.profit,0),tp=cp+fp2;const bal=5234.50,eq=bal+fp2;setPnl('tvDailyPnl',cp);setPnl('tvFloatingPnl',fp2);setPnl('tvTotalPnl',tp);document.getElementById('tvBalance').textContent=fm(bal);document.getElementById('tvEquity').textContent=fm(eq);const w=5,l=1,tr=w+l,wr=Math.round((w/tr)*100);document.getElementById('tvTrades').textContent=tr;document.getElementById('tvWins').textContent=w;document.getElementById('tvLosses').textContent=l;document.getElementById('tvWinrate').textContent=wr+'%';const dl=200,lp=Math.min((tp/dl)*100,100);document.getElementById('tvDailyLimitPct').textContent=lp.toFixed(1)+'%';document.getElementById('tvDailyLimit').textContent=`${fp(tp)} / ${fm(dl)}`;const f=document.getElementById('limitFill');f.style.width=lp+'%';f.className='limit-fill';}
+function setPnl(id,v){const el=document.getElementById(id);el.textContent=fp(v);el.className='pnl-value '+(v>=0?'positive':'negative');}
+
+// ===== POSITIONS =====
+function renderPositions(){document.getElementById('posCount').textContent=positions.length;document.getElementById('allPositions').innerHTML=positions.map(p=>posCard(p,true)).join('');}
+function posCard(p,close){const pc=p.profit>=0?'positive':'negative',tc=p.type==='BUY'?'buy':'sell';const cm=parseComment(p.comment);return`<div class="pos-swipe-wrapper" data-ticket="${p.ticket}"><div class="pos-close-zone"><span class="material-icons-round">delete</span><span class="pos-close-zone-text">Fermer</span></div><div class="position-card" id="pos-${p.ticket}"><div class="pos-row1"><div class="pos-sym"><div class="pos-dot ${tc}"></div><span class="pos-symbol">${p.symbol}</span></div><span class="pos-profit ${pc}">${fp(p.profit)}</span></div><div class="pos-row2"><div class="pos-row2-item"><span>${p.volume.toFixed(2)}</span></div><span class="pos-sep">|</span><div class="pos-row2-item">PE : <span>${fpr(p.open_price,p.symbol)}</span></div><span class="pos-sep">|</span><div class="pos-row2-item">TP : <span>${fpr(p.tp,p.symbol)}</span></div><span class="pos-sep">|</span><div class="pos-row2-item">SL : <span>${fpr(p.sl,p.symbol)}</span></div></div><div class="pos-row3"><div class="pos-badges"><span class="pos-badge pos-badge-channel">${cm.channel}</span><span class="pos-badge pos-badge-signal">${cm.signal}</span><span class="pos-badge pos-badge-order">${cm.order}</span></div></div></div></div>`;}
+function closePos(t){const w=document.querySelector(`.pos-swipe-wrapper[data-ticket="${t}"]`);if(w){w.classList.add('closing');setTimeout(()=>{positions=positions.filter(p=>p.ticket!==t);updateDashboard();renderPositions();showToast(`Position #${t} fermée`,'success');},350);}else{positions=positions.filter(p=>p.ticket!==t);updateDashboard();renderPositions();showToast(`Position #${t} fermée`,'success');}}
+// Swipe-to-close touch handlers
+function initSwipeHandlers(){document.querySelectorAll('.pos-swipe-wrapper').forEach(w=>{let startX=0,startY=0,dx=0,dy=0,swiping=false,isDown=false;const card=w.querySelector('.position-card'),zone=w.querySelector('.pos-close-zone');const THRESHOLD=100;function onStart(cx,cy){startX=cx;startY=cy;dx=0;dy=0;swiping=false;isDown=true;}function onMove(cx,cy){if(!isDown)return;dx=cx-startX;dy=cy-startY;if(!swiping&&dx<-10&&Math.abs(dx)>Math.abs(dy)){swiping=true;w.classList.add('swiping');}if(swiping&&dx<0){const pct=Math.min(Math.abs(dx)/w.offsetWidth,1);card.style.transform=`translateX(${dx}px)`;zone.style.opacity=Math.min(pct*1.5,1);}}function onEnd(){if(!isDown)return;isDown=false;w.classList.remove('swiping');if(swiping&&Math.abs(dx)>THRESHOLD){closePos(parseInt(w.dataset.ticket));}else{card.style.transition='transform 0.25s ease';card.style.transform='translateX(0)';zone.style.opacity='0';setTimeout(()=>{card.style.transition='';},250);}swiping=false;}w.addEventListener('touchstart',e=>onStart(e.touches[0].clientX,e.touches[0].clientY),{passive:true});w.addEventListener('touchmove',e=>{onMove(e.touches[0].clientX,e.touches[0].clientY);if(swiping)e.preventDefault();},{passive:false});w.addEventListener('touchend',onEnd);w.addEventListener('mousedown',e=>{e.preventDefault();onStart(e.clientX,e.clientY);});document.addEventListener('mousemove',e=>{if(isDown)onMove(e.clientX,e.clientY);});document.addEventListener('mouseup',onEnd);});}
+// Re-init swipe after render
+const _origRender=renderPositions;renderPositions=function(){_origRender();initSwipeHandlers();};
+function closeAllPositions(){showConfirm(`Fermer les ${positions.length} positions ?`,()=>{const btn=document.getElementById('btnCloseAll2');btn.className='btn-close-all loading';btn.innerHTML='<span class="material-icons-round hourglass">sync</span> Fermeture...';setTimeout(()=>{const n=positions.length;positions=[];btn.className='btn-close-all success';btn.innerHTML='<span class="material-icons-round">check</span> FERMÉ';burstConfetti();setTimeout(()=>{btn.className='btn-close-all';btn.innerHTML='<span class="material-icons-round">close_fullscreen</span> TOUT FERMER';updateDashboard();renderPositions();showToast(`${n} positions fermées`,'success');},2000);},1000);});}
+function showConfirm(msg,onConfirm){const o=document.getElementById('confirmOverlay');document.getElementById('confirmMsg').textContent=msg;o.classList.add('open');document.getElementById('confirmYes').onclick=()=>{o.classList.remove('open');onConfirm();};document.getElementById('confirmNo').onclick=()=>{o.classList.remove('open');};}
+
+// ===== CONFIG =====
+function loadConfig(){document.getElementById('etConfigContent').textContent=SAMPLE_CONFIG;}
+function saveConfig(){showToast('Configuration sauvegardée','success');}
+
+// ===== LOGS =====
+function loadLogs(){const c=document.getElementById('tvLogs');c.innerHTML=SAMPLE_LOGS.map(l=>`<span class="log-time">${l.time}</span> <span class="log-${l.level}">${l.msg}</span>`).join('\n');c.scrollTop=c.scrollHeight;}
+
+// ===== AUTO REFRESH =====
+function startAutoRefresh(){if(autoRefreshInterval)clearInterval(autoRefreshInterval);autoRefreshInterval=setInterval(()=>{positions.forEach(p=>{const ch=(Math.random()-0.48)*(p.symbol.includes('JPY')?0.05:p.symbol==='XAUUSD'?1.5:p.symbol==='BTCUSD'?15:0.0003);p.current_price+=ch;p.profit+=ch*p.volume*(p.type==='BUY'?1:-1)*(p.symbol.includes('JPY')?100:p.symbol==='XAUUSD'?100:p.symbol==='BTCUSD'?1:100000);p.profit=Math.round(p.profit*100)/100;});updateDashboard();if(currentTab===1)renderPositions();},5000);}
+
+// ===== SETTINGS =====
+function showSettings(){closeDrawer();document.getElementById('mainApp').style.display='none';document.getElementById('setupScreen').style.display='flex';const btn=document.getElementById('btnConnect');btn.disabled=false;btn.innerHTML='<span class="material-icons-round">link</span> Connexion';document.getElementById('setupStatus').textContent='';}
+
+// ===== TOAST =====
+function showToast(m,t=''){const s=document.getElementById('toast');s.textContent=m;s.className='toast show '+(t||'');setTimeout(()=>s.className='toast',2500);}
+
+// ===== CONFETTI =====
+function burstConfetti(){const cv=document.getElementById('confettiCanvas'),cx=cv.getContext('2d');cv.width=innerWidth;cv.height=innerHeight;const ps=[],cols=['#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#FFEAA7','#DDA0DD','#98D8C8','#F7DC6F','#6C63FF','#FF9800'];for(let i=0;i<80;i++)ps.push({x:cv.width/2,y:cv.height/2,vx:(Math.random()-.5)*15,vy:(Math.random()-.5)*15-5,sz:Math.random()*8+3,col:cols[~~(Math.random()*cols.length)],rot:Math.random()*360,rs:(Math.random()-.5)*10,op:1,sh:Math.random()>.5?'r':'c'});let f=0;const mx=90;(function anim(){if(f>=mx){cx.clearRect(0,0,cv.width,cv.height);return;}cx.clearRect(0,0,cv.width,cv.height);ps.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.3;p.rot+=p.rs;p.op=Math.max(0,1-f/mx);p.vx*=.99;cx.save();cx.translate(p.x,p.y);cx.rotate(p.rot*Math.PI/180);cx.globalAlpha=p.op;cx.fillStyle=p.col;if(p.sh==='r')cx.fillRect(-p.sz/2,-p.sz/2,p.sz,p.sz*.6);else{cx.beginPath();cx.arc(0,0,p.sz/2,0,Math.PI*2);cx.fill();}cx.restore();});f++;requestAnimationFrame(anim);})();}
+
+// ===== HELPERS =====
+function fp(v){return(v>=0?'+':'')+v.toFixed(2)+'$';}
+function fm(v){return v.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+'$';}
+function fpr(p,s){if(s==='XAUUSD')return p.toFixed(2);if(s==='BTCUSD')return p.toFixed(2);if(s.includes('JPY'))return p.toFixed(3);return p.toFixed(5);}
+function parseComment(c){const parts=c.split('-');const channel=parts[0]||'';const signalMap={ZN:'Zone',PU:'Prix Unique',AL:'Quick Alert',MP:'Market Price'};const orderMap={MK:'Market',L1:'Limit 1',L2:'Limit 2'};return{channel:channel,signal:signalMap[parts[1]]||parts[1]||'',order:orderMap[parts[2]]||parts[2]||''};}
+
+// ===== PERFORMANCE =====
+function renderPerformance(){const data=[{channel:'CH2',pnl:8.00,sn:3,tr:2,wn:2,ls:0},{channel:'CH3',pnl:14.10,sn:5,tr:4,wn:3,ls:1},{channel:'CH4',pnl:-5.00,sn:2,tr:1,wn:0,ls:1},{channel:'CH5',pnl:28.60,sn:4,tr:4,wn:4,ls:0},{channel:'CH7',pnl:11.60,sn:2,tr:2,wn:2,ls:0}];const body=document.getElementById('perfBody');body.innerHTML=data.map(d=>{const wr=d.tr>0?Math.round(d.wn/d.tr*100):0;return`<tr><td class="perf-channel">${d.channel}</td><td class="perf-pnl ${d.pnl>=0?'pos':'neg'}">${d.pnl>=0?'+':''}${d.pnl.toFixed(2)}</td><td>${d.sn}</td><td>${d.tr}</td><td>${d.wn}</td><td>${d.ls}</td><td>${wr}</td></tr>`;}).join('');const tp=data.reduce((s,d)=>s+d.pnl,0);document.getElementById('perfTotal').innerHTML=`<span class="perf-total-label">Total</span><span class="perf-total-val ${tp>=0?'pos':'neg'}">${tp>=0?'+':''}${tp.toFixed(2)}</span>`;const signals=[{signal:'ZN',channels:2,pnl:36.60,tr:6,wn:6,ls:0,gain:36.60,loss:0},{signal:'PU',channels:1,pnl:-5.00,tr:1,wn:0,ls:1,gain:0,loss:-5.00},{signal:'AL',channels:1,pnl:-2.20,tr:1,wn:0,ls:1,gain:0,loss:-2.20},{signal:'MP',channels:1,pnl:3.80,tr:1,wn:1,ls:0,gain:3.80,loss:0}];const sb=document.getElementById('perfSignalBody');sb.innerHTML=signals.map(s=>{const wr=s.tr>0?Math.round(s.wn/s.tr*100):0;return`<tr><td class="perf-channel">${s.signal}</td><td>${s.channels}</td><td class="perf-pnl ${s.pnl>=0?'pos':'neg'}">${s.pnl>=0?'+':''}${s.pnl.toFixed(2)}</td><td>${s.tr}</td><td>${s.wn}</td><td>${s.ls}</td><td>${wr}</td><td class="perf-gain">+${s.gain.toFixed(2)}</td><td class="perf-loss">${s.loss.toFixed(2)}</td></tr>`;}).join('');const stp=signals.reduce((s,d)=>s+d.pnl,0);document.getElementById('perfSignalTotal').innerHTML=`<span class="perf-total-label">Total</span><span class="perf-total-val ${stp>=0?'pos':'neg'}">${stp>=0?'+':''}${stp.toFixed(2)}</span>`;}
+</script>
+
+<!-- CONFIRM DIALOG -->
+<div id="confirmOverlay" class="confirm-overlay">
+ <div class="confirm-box">
+ <p id="confirmMsg"></p>
+ <div class="confirm-actions">
+ <button id="confirmNo" class="confirm-btn cancel">Annuler</button>
+ <button id="confirmYes" class="confirm-btn danger">Fermer tout</button>
+ </div>
+ </div>
+</div>
+</body>
+</html>

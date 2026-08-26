@@ -9,9 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.copytrading.R
 import com.copytrading.model.Position
 
-class PositionAdapter(
-    private val onCloseClick: (Long) -> Unit
-) : RecyclerView.Adapter<PositionAdapter.ViewHolder>() {
+class PositionAdapter : RecyclerView.Adapter<PositionAdapter.ViewHolder>() {
 
     private var positions: List<Position> = emptyList()
 
@@ -44,7 +42,7 @@ class PositionAdapter(
         private val badgeChannel: TextView = itemView.findViewById(R.id.badgeChannel)
         private val badgeSignal: TextView = itemView.findViewById(R.id.badgeSignal)
         private val badgeOrder: TextView = itemView.findViewById(R.id.badgeOrder)
-        private val btnClose: View = itemView.findViewById(R.id.btnClose)
+
 
         fun bind(pos: Position) {
             tvSymbol.text = pos.symbol
@@ -85,9 +83,7 @@ class PositionAdapter(
                 badgeOrder.visibility = View.GONE
             }
 
-            btnClose.setOnClickListener {
-                onCloseClick(pos.ticket)
-            }
+
         }
     }
 }

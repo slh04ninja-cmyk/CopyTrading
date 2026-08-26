@@ -78,6 +78,10 @@ class MainActivity : AppCompatActivity() {
     // Controls
     private lateinit var btnStartStop: MaterialButton
     private lateinit var btnCloseAll: MaterialButton
+    private lateinit var confirmOverlay: View
+    private lateinit var tvConfirmMsg: TextView
+    private lateinit var btnConfirmNo: View
+    private lateinit var btnConfirmYes: View
 
     // Positions
     private lateinit var rvPositions: RecyclerView
@@ -186,6 +190,10 @@ class MainActivity : AppCompatActivity() {
 
         btnStartStop = findViewById(R.id.btnStartStop)
         btnCloseAll = findViewById(R.id.btnCloseAll)
+        confirmOverlay = findViewById(R.id.confirmOverlay)
+        tvConfirmMsg = findViewById(R.id.tvConfirmMsg)
+        btnConfirmNo = findViewById(R.id.btnConfirmNo)
+        btnConfirmYes = findViewById(R.id.btnConfirmYes)
 
         rvPositions = findViewById(R.id.rvPositions)
         tvNoPositions = findViewById(R.id.tvNoPositions)
@@ -222,9 +230,7 @@ class MainActivity : AppCompatActivity() {
         tvLogs = findViewById(R.id.tvLogs)
         btnRefreshLogs = findViewById(R.id.btnRefreshLogs)
 
-        positionAdapter = PositionAdapter { ticket ->
-            closePosition(ticket)
-        }
+        positionAdapter = PositionAdapter()
         rvPositions.layoutManager = LinearLayoutManager(this)
         rvPositions.adapter = positionAdapter
     }
@@ -365,6 +371,17 @@ class MainActivity : AppCompatActivity() {
 
         btnCloseAll.setOnClickListener {
             if (!closeAllBusy) {
+                showConfirmDialog()
+            }
+        }
+
+        btnConfirmNo.setOnClickListener {
+            confirmOverlay.visibility = View.GONE
+        }
+
+        btnConfirmYes.setOnClickListener {
+            confirmOverlay.visibility = View.GONE
+            if (!closeAllBusy) {
                 morphCloseAll()
             }
         }
@@ -376,6 +393,13 @@ class MainActivity : AppCompatActivity() {
         btnRefreshLogs.setOnClickListener {
             loadLogs()
         }
+    }
+
+    // --- CONFIRM DIALOG ---
+    private fun showConfirmDialog() {
+        val count = positionAdapter.itemCount
+        tvConfirmMsg.text = "Fermer les $count positions ?"
+        confirmOverlay.visibility = View.VISIBLE
     }
 
     // --- MORPH BUTTON ANIMATION ---

@@ -648,69 +648,92 @@
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
         <!-- POSITIONS PANEL -->
-        <androidx.core.widget.NestedScrollView
+        <FrameLayout
             android:id="@+id/panelPositions"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:visibility="gone"
-            android:clipToPadding="false"
-            android:paddingBottom="16dp">
+            android:visibility="gone">
 
-            <LinearLayout
+            <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingHorizontal="16dp"
-                android:paddingTop="12dp">
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="72dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="12dp">
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="12dp">
+
+                        <TextView
+                            android:id="@+id/tvPositionsTitle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Positions Ouvertes"
+                            android:textColor="@color/text_primary"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.02"/>
+                    </LinearLayout>
 
                     <TextView
-                        android:id="@+id/tvPositionsTitle"
-                        android:layout_width="0dp"
+                        android:id="@+id/tvNoPositions"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Positions Ouvertes"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:letterSpacing="0.02"/>
+                        android:gravity="center"
+                        android:text="Aucune position ouverte"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:padding="32dp"
+                        android:visibility="gone"/>
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnCloseAll"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:text="TOUT FERMER"
-                        android:textSize="10sp"
-                        android:textStyle="bold"
-                        android:letterSpacing="0.05"
-                        android:backgroundTint="@color/danger"
-                        app:cornerRadius="10dp"/>
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvPositions"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false"/>
                 </LinearLayout>
+            </androidx.core.widget.NestedScrollView>
 
-                <TextView
-                    android:id="@+id/tvNoPositions"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:text="Aucune position ouverte"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp"
-                    android:padding="32dp"
-                    android:visibility="gone"/>
+            <!-- Fixed bottom button -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:orientation="vertical"
+                android:background="@color/background"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="16dp">
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rvPositions"
+                <View
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:nestedScrollingEnabled="false"/>
+                    android:layout_height="1dp"
+                    android:background="@color/border"
+                    android:layout_marginBottom="12dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCloseAll"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:text="TOUT FERMER"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05"
+                    android:backgroundTint="@color/danger"
+                    app:cornerRadius="10dp"/>
             </LinearLayout>
-        </androidx.core.widget.NestedScrollView>
+        </FrameLayout>
 
         <!-- CONFIG PANEL -->
         <ScrollView
@@ -1041,5 +1064,69 @@
             android:paddingHorizontal="12dp"
             android:background="?attr/selectableItemBackground"/>
     </LinearLayout>
+
+    <!-- CONFIRM DIALOG -->
+    <FrameLayout
+        android:id="@+id/confirmOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99000000"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginHorizontal="32dp"
+            android:orientation="vertical"
+            android:background="@color/card_background"
+            android:padding="24dp"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/tvConfirmMsg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Fermer les positions ?"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_marginBottom="20dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnConfirmNo"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="Annuler"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    app:cornerRadius="10dp"
+                    android:layout_marginEnd="8dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnConfirmYes"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="Fermer tout"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:backgroundTint="@color/danger"
+                    app:cornerRadius="10dp"
+                    android:layout_marginStart="8dp"/>
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
 
 </androidx.drawerlayout.widget.DrawerLayout>
