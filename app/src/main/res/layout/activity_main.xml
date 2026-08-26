@@ -46,19 +46,31 @@
 
         <!-- Right: Status badge -->
         <LinearLayout
+            android:id="@+id/botStatusBadge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="end"
-            android:orientation="horizontal">
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp"
+            android:background="@drawable/status_badge_bg">
+
+            <View
+                android:id="@+id/statusDot"
+                android:layout_width="7dp"
+                android:layout_height="7dp"
+                android:background="@color/success"
+                android:layout_marginEnd="6dp"/>
 
             <TextView
                 android:id="@+id/tvBotStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=" EN LIGNE"
+                android:text="EN LIGNE"
                 android:textColor="@color/success"
                 android:textSize="11sp"
-                android:textStyle="bold"/>
+                android:textStyle="bold"
+                android:letterSpacing="0.05"/>
         </LinearLayout>
     </LinearLayout>
 
@@ -322,6 +334,13 @@
                                 android:orientation="horizontal">
 
                                 <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="🛡️"
+                                    android:textSize="14sp"
+                                    android:layout_marginEnd="8dp"/>
+
+                                <TextView
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
                                     android:layout_weight="1"
@@ -330,6 +349,16 @@
                                     android:textSize="13sp"
                                     android:textStyle="bold"
                                     android:letterSpacing="0.03"/>
+
+                                <TextView
+                                    android:id="@+id/tvDailyLimitPct"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="0%"
+                                    android:textColor="@color/warning"
+                                    android:textSize="13sp"
+                                    android:textStyle="bold"
+                                    android:layout_marginEnd="8dp"/>
 
                                 <TextView
                                     android:id="@+id/tvDailyLimit"
@@ -970,6 +999,9 @@
             android:text="Configuration"
             android:textColor="@color/text_primary"
             android:textSize="15sp"
+            android:drawableStart="@android:drawable/ic_menu_manage"
+            android:drawableTint="@color/accent_light"
+            android:drawablePadding="12dp"
             android:paddingHorizontal="12dp"
             android:background="?attr/selectableItemBackground"/>
 
@@ -981,6 +1013,9 @@
             android:text="Logs"
             android:textColor="@color/text_primary"
             android:textSize="15sp"
+            android:drawableStart="@android:drawable/ic_menu_view"
+            android:drawableTint="@color/accent_light"
+            android:drawablePadding="12dp"
             android:paddingHorizontal="12dp"
             android:background="?attr/selectableItemBackground"/>
 
@@ -998,6 +1033,9 @@
             android:text="A propos"
             android:textColor="@color/text_primary"
             android:textSize="15sp"
+            android:drawableStart="@android:drawable/ic_menu_info_details"
+            android:drawableTint="@color/accent_light"
+            android:drawablePadding="12dp"
             android:paddingHorizontal="12dp"
             android:background="?attr/selectableItemBackground"/>
     </LinearLayout>

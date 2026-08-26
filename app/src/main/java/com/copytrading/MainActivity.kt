@@ -53,6 +53,8 @@ class MainActivity : AppCompatActivity() {
 
     // Header
     private lateinit var tvBotStatus: TextView
+    private lateinit var botStatusBadge: View
+    private lateinit var statusDot: View
     private lateinit var btnSettings: ImageView
 
     // P&L Cards
@@ -70,6 +72,7 @@ class MainActivity : AppCompatActivity() {
 
     // Daily Limit
     private lateinit var tvDailyLimit: TextView
+    private lateinit var tvDailyLimitPct: TextView
     private lateinit var progressDailyLimit: ProgressBar
 
     // Controls
@@ -162,6 +165,8 @@ class MainActivity : AppCompatActivity() {
         drawerLayout = findViewById(R.id.drawerLayout)
 
         tvBotStatus = findViewById(R.id.tvBotStatus)
+        botStatusBadge = findViewById(R.id.botStatusBadge)
+        statusDot = findViewById(R.id.statusDot)
         btnSettings = findViewById(R.id.btnSettings)
 
         tvDailyPnl = findViewById(R.id.tvDailyPnl)
@@ -176,6 +181,7 @@ class MainActivity : AppCompatActivity() {
         tvWinrate = findViewById(R.id.tvWinrate)
 
         tvDailyLimit = findViewById(R.id.tvDailyLimit)
+        tvDailyLimitPct = findViewById(R.id.tvDailyLimitPct)
         progressDailyLimit = findViewById(R.id.progressDailyLimit)
 
         btnStartStop = findViewById(R.id.btnStartStop)
@@ -559,18 +565,24 @@ class MainActivity : AppCompatActivity() {
             "running" -> {
                 tvBotStatus.text = "EN LIGNE"
                 tvBotStatus.setTextColor(getColor(R.color.success))
+                statusDot.background.setTint(getColor(R.color.success))
+                botStatusBadge.background.setTint(android.graphics.Color.parseColor("#1900E676"))
                 btnStartStop.text = "ARRETER"
                 btnStartStop.setBackgroundColor(getColor(R.color.danger))
             }
             "stopped" -> {
                 tvBotStatus.text = "ARRETE"
                 tvBotStatus.setTextColor(getColor(R.color.danger))
+                statusDot.background.setTint(getColor(R.color.danger))
+                botStatusBadge.background.setTint(android.graphics.Color.parseColor("#19FF5252"))
                 btnStartStop.text = "DEMARRER"
                 btnStartStop.setBackgroundColor(getColor(R.color.success))
             }
             "error" -> {
                 tvBotStatus.text = "ERREUR"
                 tvBotStatus.setTextColor(getColor(R.color.warning))
+                statusDot.background.setTint(getColor(R.color.warning))
+                botStatusBadge.background.setTint(android.graphics.Color.parseColor("#19FFB74D"))
                 btnStartStop.text = "DEMARRER"
                 btnStartStop.setBackgroundColor(getColor(R.color.success))
             }
@@ -597,6 +609,7 @@ class MainActivity : AppCompatActivity() {
         tvWinrate.text = "${dash.winrate}%"
 
         tvDailyLimit.text = "${formatPnl(dash.total_pnl)} / ${formatMoney(dash.daily_limit)}"
+        tvDailyLimitPct.text = "${dash.limit_pct.toInt()}%"
         progressDailyLimit.progress = dash.limit_pct.toInt().coerceIn(0, 100)
 
         positionAdapter.setPositions(dash.open_positions)
