@@ -247,7 +247,7 @@ class MainActivity : AppCompatActivity() {
                         delay(500)
                         refreshPositions()
                         refreshDashboard()
-                        showToast("Position #$ticket fermée")
+                        android.widget.Toast.makeText(this@MainActivity, "Position #$ticket fermée", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             }
