@@ -388,26 +388,30 @@ def get_dashboard():
     if not _ensure_mt5():
         raise HTTPException(status_code=503, detail="MT5 non connecté")
 
-    start = _get_trading_day_start()
     now = datetime.now(timezone.utc)
+    start = _get_trading_day_start()
+
+    # Hors plage trading (20h-3h UTC) → valeurs à zéro
+    in_trading = TRADING_START_HOUR <= now.hour < TRADING_END_HOUR
 
     # P&L quotidien (deals)
-    deals = mt5.history_deals_get(start, now)
     daily_pnl = 0.0
     trades_count = 0
     wins = 0
     losses = 0
 
-    if deals:
-        for d in deals:
-            if d.entry != mt5.DEAL_ENTRY_OUT:
-                continue
-            daily_pnl += d.profit
-            trades_count += 1
-            if d.profit > 0:
-                wins += 1
-            elif d.profit < 0:
-                losses += 1
+    if in_trading:
+        deals = mt5.history_deals_get(start, now)
+        if deals:
+            for d in deals:
+                if d.entry != mt5.DEAL_ENTRY_OUT:
+                    continue
+                daily_pnl += d.profit
+                trades_count += 1
+                if d.profit > 0:
+                    wins += 1
+                elif d.profit < 0:
+                    losses += 1
 
     # Positions ouvertes
     positions = mt5.positions_get()
