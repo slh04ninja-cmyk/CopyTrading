@@ -21,6 +21,15 @@ Application Kotlin qui se connecte a l'API REST du bot (bot_api.py) pour affiche
 - **Dossier bot** : `C:\TradingBot\`
 - **Pas de SSH** — acces uniquement via l'API REST ou RDP
 
+### Authentification
+
+Tous les appels API necessitent le header :
+```
+Authorization: Bearer <API_TOKEN>
+```
+
+Le token est dans le fichier `.env` du serveur (`C:\TradingBot\.env`), variable `API_TOKEN`.
+
 ### Endpoints API principaux
 
 | Endpoint | Methode | Description |
@@ -40,22 +49,77 @@ Application Kotlin qui se connecte a l'API REST du bot (bot_api.py) pour affiche
 | `/api/restart` | POST | Redemarrer uvicorn (recharge bot_api.py) |
 | `/api/positions/close-all` | POST | Fermer toutes les positions |
 
-**Authentification** : Header `Authorization: Bearer <API_TOKEN>`
+### Exemples de commandes
+
+```bash
+# Status du bot
+curl -s -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/status
+
+# Dashboard
+curl -s -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/dashboard
+
+# Positions ouvertes
+curl -s -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/positions
+
+# Historique trades (30 jours)
+curl -s -H "Authorization: Bearer <TOKEN>" "http://38.247.138.124:8000/api/trades?days=30"
+
+# Lire un fichier du serveur
+curl -s -H "Authorization: Bearer <TOKEN>" "http://38.247.138.124:8000/api/file/read?path=bot_api.py"
+
+# Executer une commande
+curl -X POST -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
+  -d '{"command": "tasklist /FI \"IMAGENAME eq python.exe\""}' \
+  http://38.247.138.124:8000/api/exec
+
+# Lire les logs
+curl -s -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/logs
+```
 
 ### Upload + Restart workflow
 
 ```bash
 # 1. Upload le fichier
-curl -X POST -H 'Authorization: Bearer <TOKEN>' -H 'Content-Type: application/json' \
-  -d '{"path": "bot_api.py", "content": "..."}' http://38.247.138.124:8000/api/file
+curl -X POST -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
+  -d '{"path": "bot_api.py", "content": "<contenu du fichier>"}' \
+  http://38.247.138.124:8000/api/file
 
-# 2. Redemarrer uvicorn
-curl -X POST -H 'Authorization: Bearer <TOKEN>' http://38.247.138.124:8000/api/restart
+# 2. Redemarrer uvicorn (pour bot_api.py)
+curl -X POST -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/restart
+
+# OU redemarrer le bot (pour telegram_listener)
+curl -X POST -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/bot/stop
+sleep 2
+curl -X POST -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/bot/start
 ```
 
 ---
 
 ## Repos GitHub
+
+### Cloner les repos
+
+```bash
+# Configurer le token GitHub (une seule fois)
+git config --global credential.helper store
+echo "https://slh04ninja-cmyk:<TOKEN>@github.com" > ~/.git-credentials
+
+# Cloner tgm (bot)
+git clone https://github.com/slh04ninja-cmyk/tgm.git /data/data/com.termux/files/home/tgm
+
+# Cloner CopyTrading (app Android)
+git clone https://github.com/slh04ninja-cmyk/CopyTrading.git /data/data/com.termux/files/home/CopyTrading
+
+# Cloner CT (copie isolee)
+git clone https://github.com/slh04ninja-cmyk/CT.git /data/data/com.termux/files/home/CT
+```
+
+### Token GitHub
+
+- **Compte** : `slh04ninja-cmyk`
+- **Token** : stocke dans la config git locale (credential store)
+- **Usage** : `git push origin main` pour tous les repos
+- **IMPORTANT** : ne jamais commit le token dans les fichiers
 
 ### tgm (Bot principal)
 - **Repo** : `slh04ninja-cmyk/tgm` (prive)
@@ -75,6 +139,8 @@ curl -X POST -H 'Authorization: Bearer <TOKEN>' http://38.247.138.124:8000/api/r
 - **Structure** :
   - `app/src/main/java/com/copytrading/` — code Kotlin
   - `app/src/main/res/layout/` — layouts XML
+  - `app/src/main/res/values/colors.xml` — couleurs
+  - `app/src/main/res/drawable/` — drawables XML
   - `.github/workflows/` — CI build APK
 
 ### CT (Copie isolee)
@@ -82,10 +148,6 @@ curl -X POST -H 'Authorization: Bearer <TOKEN>' http://38.247.138.124:8000/api/r
 - **Usage** : test isole pour install.bat + wizard
 - **App renommee** : CopyTrading2
 - **Dossier serveur** : `C:\TradingBot2\`
-
-### Token de push
-- **Compte** : `slh04ninja-cmyk`
-- **Token** : utilise pour `git push` — stocke dans la config git locale
 
 ---
 
@@ -120,8 +182,8 @@ curl -X POST -H 'Authorization: Bearer <TOKEN>' http://38.247.138.124:8000/api/r
 
 | Variable | Description | Defaut |
 |---|---|---|
-| `TRADING_START_HOUR` | Heure debut trading UTC | 3 |
-| `TRADING_END_HOUR` | Heure fin trading UTC | 20 |
+| `TRADING_START_HOUR` | Heure debut trading UTC | 5 |
+| `TRADING_END_HOUR` | Heure fin trading UTC | 19 |
 | `MAX_SL_USD` | Stop loss max en USD | 10.0 |
 | `LIMIT_OFFSET_1` | Offset L1 en USD | 3.0 |
 | `LIMIT_OFFSET_2` | Offset L2 en USD | 6.0 |
@@ -144,6 +206,21 @@ Format : `Canal_N : -100XXXXXXXXXX # NomDuCanal`
 - 108 canaux configures
 - `CHANNEL_NUM_MAP` : mapping canal → numero
 
+### SL par signal
+
+- Un seul prix SL calcule (via `_cap_sl` avec entry du MK)
+- Applique identiquement a MK, L1, L2
+- Risque total < 3×MAX_SL_USD car L1/L2 entrent plus proche du SL
+- `LIMIT_OFFSET_1 = 3.0$`, `LIMIT_OFFSET_2 = 6.0$`
+
+### Deleted message tracker
+
+- Module-level `_signal_tracker` dict → `signal_tracker.json`
+- Verification toutes les **1 minute** (60s)
+- Max 3 jours retention
+- Pas de logs — tableau dans PDF quotidien uniquement
+- Colonnes : CH, Canal, S. Reçu, S. Supprimé, Message
+
 ---
 
 ## Architecture de l'App Android
@@ -160,7 +237,9 @@ Format : `Canal_N : -100XXXXXXXXXX # NomDuCanal`
 - `ApiClient.kt` — client HTTP pour l'API du bot
 - `ApiModels.kt` — data classes (Trade, Position, Dashboard, etc.)
 - `DateRangePickerDialog.kt` — picker de dates custom
+- `PositionAdapter.kt` — adapter RecyclerView pour les positions
 - `activity_main.xml` — layout principal
+- `item_position.xml` — layout d'une carte position
 
 ### Panels de l'app
 
@@ -169,7 +248,7 @@ Format : `Canal_N : -100XXXXXXXXXX # NomDuCanal`
    - Par Canal (CH) — avec expandable detail (PF, RR, MD)
    - Par Signal (ZN, PU, MP, QA, AL)
    - Par Session (heure UTC 00h-23h)
-3. **Positions** — positions ouvertes avec badges CH/signal/ordre
+3. **Positions** — positions ouvertes avec badges CH/signal/ordre, swipe-to-close
 4. **Config** — edition des variables .env
 5. **Logs** — affichage des logs du bot
 
@@ -178,49 +257,53 @@ Format : `Canal_N : -100XXXXXXXXXX # NomDuCanal`
 - Accent : `#6C63FF`
 - Font : Inter
 - Material Icons Round
-- Pas d'emojis dans l'UI
+- Pas d'emojis dans l'UI (sauf icone daily limit)
+
+### Positions UI
+- Cartes compactes avec badges CH/signal/ordre
+- Swipe-to-close (gauche) avec confirmation AlertDialog
+- Bouton "TOUT FERMER" fixe en bas avec confirmation
+- panelPositions est un FrameLayout (pas NestedScrollView)
 
 ---
 
-## Workflow Modification App Android + Build APK
+## Build APK (GitHub Actions)
 
-### Etapes
+### Workflow
 
-1. **Modifier le code**
-   - Fichiers Kotlin : `app/src/main/java/com/copytrading/`
-   - Layouts XML : `app/src/main/res/layout/`
-   - Couleurs : `app/src/main/res/values/colors.xml`
+1. **Modifier le code** Kotlin/XML localement
+2. **Commit + Push** → declenche le build automatique
+3. **Attendre** ~2-3 minutes
+4. **Telecharger** l'APK
+5. **Envoyer** a l'utilisateur
 
-2. **Commit + Push**
-   ```bash
-   cd /data/data/com.termux/files/home/CopyTrading
-   git add -A
-   git commit -m "feat: description du changement"
-   git push origin main
-   ```
+### Commandes completes
 
-3. **Attendre le build GitHub Actions**
-   ```bash
-   # Recuperer le dernier run
-   gh run list --limit 1 --json databaseId -q '.[0].databaseId'
-   
-   # Attendre la fin du build
-   gh run watch <RUN_ID> --exit-status
-   ```
+```bash
+# 1. Aller dans le dossier
+cd /data/data/com.termux/files/home/CopyTrading
 
-4. **Telecharger l'APK**
-   ```bash
-   rm -f /data/data/com.termux/files/home/Download/app-debug.apk
-   gh run download <RUN_ID> -n copytrading-debug -D /data/data/com.termux/files/home/Download/
-   cp /data/data/com.termux/files/home/Download/app-debug.apk /data/data/com.termux/files/home/CopyTrading.apk
-   ```
+# 2. Modifier les fichiers...
 
-5. **Envoyer l'APK a l'utilisateur**
-   ```
-   MEDIA:/data/data/com.termux/files/home/CopyTrading.apk
-   ```
+# 3. Commit + Push
+git add -A
+git commit -m "feat: description du changement"
+git push origin main
 
-6. **L'utilisateur installe** depuis `/storage/emulated/0/Download/CopyTrading.apk`
+# 4. Attendre le build (recuperer le dernier run)
+gh run list --repo slh04ninja-cmyk/CopyTrading --limit 1
+
+# 5. Attendre la fin
+gh run watch <RUN_ID> --exit-status
+
+# 6. Telecharger l'APK
+rm -f apk_download/app-debug.apk
+gh run download <RUN_ID> --repo slh04ninja-cmyk/CopyTrading -n copytrading-debug -D apk_download
+cp apk_download/app-debug.apk /storage/emulated/0/Download/CopyTrading.apk
+
+# 7. Envoyer a l'utilisateur
+# MEDIA:/storage/emulated/0/Download/CopyTrading.apk
+```
 
 ### Points importants
 
@@ -229,40 +312,83 @@ Format : `Canal_N : -100XXXXXXXXXX # NomDuCanal`
 - Toujours `rm -f` l'ancien APK avant de telecharger (conflit de zip)
 - L'APK est un debug build (pas signe release)
 - Pas besoin de rebuild si seul le bot (bot_api.py) est modifie — utiliser `/api/file` + `/api/restart`
+- L'installation via `pm install` ne marche pas depuis Termux (permission Xiaomi) — envoyer via Telegram
 
-### Modification du bot (cote serveur)
+---
+
+## Modification du bot (cote serveur)
+
+### Modifier bot_api.py
 
 ```bash
 # 1. Modifier le fichier localement
-# 2. Upload via API
-curl -X POST -H 'Authorization: Bearer <TOKEN>' -H 'Content-Type: application/json' \
+# 2. Lire le contenu
+cat /data/data/com.termux/files/home/CopyTrading/bot_api.py
+
+# 3. Upload via API
+curl -X POST -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
   -d '{"path": "bot_api.py", "content": "<contenu>"}' \
   http://38.247.138.124:8000/api/file
 
-# 3. Redemarrer uvicorn
-curl -X POST -H 'Authorization: Bearer <TOKEN>' \
-  http://38.247.138.124:8000/api/restart
+# 4. Redemarrer uvicorn
+curl -X POST -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/restart
 
-# 4. Verifier
-curl -s -H 'Authorization: Bearer <TOKEN>' \
-  http://38.247.138.124:8000/api/status
+# 5. Verifier
+curl -s -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/status
 ```
 
-### Modification du telegram listener
+### Modifier telegram_listener_v17_1.py
 
 ```bash
-# 1. Modifier telegram_listener_v17_1.py localement
+# 1. Modifier le fichier localement
 # 2. Upload via API (chemin relatif)
-curl -X POST -H 'Authorization: Bearer <TOKEN>' -H 'Content-Type: application/json' \
+curl -X POST -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
   -d '{"path": "telegram_listener_v17_1.py", "content": "<contenu>"}' \
   http://38.247.138.124:8000/api/file
 
 # 3. Redemarrer le bot (pas uvicorn)
-curl -X POST -H 'Authorization: Bearer <TOKEN>' \
-  http://38.247.138.124:8000/api/bot/stop
+curl -X POST -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/bot/stop
 sleep 2
-curl -X POST -H 'Authorization: Bearer <TOKEN>' \
-  http://38.247.138.124:8000/api/bot/start
+curl -X POST -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/bot/start
+
+# 4. Verifier
+curl -s -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/status
+```
+
+### Modifier signal_parser_v15.py ou bot_messages_v15.py
+
+Meme workflow que telegram_listener — upload + restart bot.
+
+---
+
+## Commandes Git utiles
+
+```bash
+# Voir les fichiers modifies
+git status
+
+# Voir l'historique
+git log --oneline -10
+
+# Voir les differences
+git diff
+
+# Voir les differences avec origin
+git diff origin/main
+
+# Stash des changements temporaires
+git stash
+git stash pop
+
+# Pull les changements d'un autre agent
+git fetch origin
+git pull --rebase origin main
+
+# Voir les GitHub Actions recents
+gh run list --repo slh04ninja-cmyk/CopyTrading --limit 5
+
+# Voir les details d'un build
+gh run view <RUN_ID> --repo slh04ninja-cmyk/CopyTrading
 ```
 
 ---
@@ -273,8 +399,37 @@ curl -X POST -H 'Authorization: Bearer <TOKEN>' \
 - **Pas de adb** — travail sur telephone Android
 - **Sous-agents** casses (DaemonThreadPoolExecutor) — modifications manuelles
 - **Variables .env** non reloaded dynamiquement — redemarrage necessaire
-- **P&L quotidien** reset a 3h UTC (TRADING_START_HOUR)
-- **Dashboard** reset a zero hors plage trading (20h-3h UTC)
+- **P&L quotidien** reset a 5h UTC (TRADING_START_HOUR dans bot_api.py)
+- **Dashboard** reset a zero hors plage trading (5h-19h UTC)
 - **Sous-agents max 3** en parallele
 - **Reponses courtes** — minimiser le temps de reponse
 - **Francais** — langue principale
+- **Pas d'emojis** dans l'UI Android
+- **read_file** : toujours stripper les numeros de ligne avant d'ecrire dans des fichiers source
+- **Security bugs** : user a dit "laisse tomber" — ne pas corriger
+- **Fichiers a ne pas supprimer** : bias_filters.py, bot_messages.py, bot_documentation_v16.html, telegram_listener_v15.py, telegram_listener_v16.py
+
+---
+
+## Donnees MT5
+
+- **Compte** : 262342460
+- **Serveur** : Exness-MT5Trial16
+- **Leverage** : 500
+- **Données deals** : 2650 trades sur 30 jours
+- **Channels.txt** : 108 canaux
+
+---
+
+## Rapport quotidien
+
+Genere par `_shutdown_end_of_day()` :
+- `report_daily_full()` → texte
+- `_generate_daily_report_pdf()` → PDF avec tableau suppressions
+- `_export_daily_xlsx()` → XLSX
+
+### Tableau suppressions PDF
+- Colonnes : CH(12mm), Canal(40mm), S.Reçu(22mm), S.Supprimé(22mm), Message(restant)
+- Preview 80 chars, format HH:MM
+- Tri par channel_num croissant
+- Filtre trading day start (3h UTC → 3h UTC)
