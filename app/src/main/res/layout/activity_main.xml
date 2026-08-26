@@ -109,38 +109,40 @@
                     android:paddingTop="12dp">
 
                     <!-- DASHBOARD SUB-TABS -->
-                    <com.google.android.material.button.MaterialButtonToggleGroup
+                    <LinearLayout
                         android:id="@+id/toggleDashTabs"
                         android:layout_width="match_parent"
-                        android:layout_height="40dp"
+                        android:layout_height="wrap_content"
                         android:layout_marginBottom="12dp"
-                        app:singleSelection="true"
-                        app:selectionRequired="true"
-                        app:checkedButton="@id/btnOverview"
-                        app:cornerRadius="8dp">
+                        android:background="@drawable/dash_tabs_bg"
+                        android:orientation="horizontal">
 
-                        <com.google.android.material.button.MaterialButton
+                        <TextView
                             android:id="@+id/btnOverview"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
                             android:layout_width="0dp"
-                            android:layout_height="match_parent"
+                            android:layout_height="wrap_content"
                             android:layout_weight="1"
+                            android:paddingVertical="10dp"
+                            android:gravity="center"
                             android:text="Overview"
+                            android:textColor="@color/text_primary"
                             android:textSize="13sp"
                             android:textStyle="bold"
-                            app:cornerRadius="6dp"/>
+                            android:background="@drawable/dash_tab_active_bg"/>
 
-                        <com.google.android.material.button.MaterialButton
+                        <TextView
                             android:id="@+id/btnPerformance"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
                             android:layout_width="0dp"
-                            android:layout_height="match_parent"
+                            android:layout_height="wrap_content"
                             android:layout_weight="1"
+                            android:paddingVertical="10dp"
+                            android:gravity="center"
                             android:text="Performance"
+                            android:textColor="@color/text_muted"
                             android:textSize="13sp"
                             android:textStyle="bold"
-                            app:cornerRadius="6dp"/>
-                    </com.google.android.material.button.MaterialButtonToggleGroup>
+                            android:background="@android:color/transparent"/>
+                    </LinearLayout>
 
                     <!-- OVERVIEW CONTENT -->
                     <LinearLayout
