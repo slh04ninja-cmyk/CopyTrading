@@ -36,6 +36,8 @@ import com.copytrading.ui.PositionAdapter
 
 
 import com.copytrading.ui.DateRangePickerDialog
+import com.copytrading.config.ConfigParser
+import com.copytrading.config.ConfigFieldView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.delay
@@ -133,8 +135,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var pillIndicator: View
 
     // Config
-    private lateinit var etConfigContent: EditText
+    private lateinit var configContainer: LinearLayout
     private lateinit var btnSaveConfig: MaterialButton
+    private var configGroups: List<ConfigParser.Group> = emptyList()
 
     // Logs
     private lateinit var tvLogs: TextView
@@ -224,7 +227,7 @@ class MainActivity : AppCompatActivity() {
         panelLogs = findViewById(R.id.panelLogs)
         pillIndicator = findViewById(R.id.pillIndicator)
 
-        etConfigContent = findViewById(R.id.etConfigContent)
+        configContainer = findViewById(R.id.configContainer)
         btnSaveConfig = findViewById(R.id.btnSaveConfig)
 
         tvLogs = findViewById(R.id.tvLogs)
@@ -701,68 +704,148 @@ class MainActivity : AppCompatActivity() {
                 val config = client.getConfig()
                 if (config != null) {
                     val cfg = config.config
-                    val sb = StringBuilder()
-                    val sections = listOf(
-                        "CONNEXION TELEGRAM" to listOf("TG_API_ID", "TG_API_HASH"),
-                        "CONNEXION METATRADER 5" to listOf("MT5_LOGIN", "MT5_PASSWORD", "MT5_SERVER", "MT5_PATH"),
-                        "CANAUX TELEGRAM" to listOf("TG_FOLDER", "TG_ALERT_CHANNEL") +
-                                cfg.keys.filter { it.startsWith("TG_CHANNEL") }.sorted(),
-                        "SYSTEME MARKET + LIMIT" to listOf("LIMIT_ENABLED", "LIMIT_COUNT", "LIMIT_OFFSET_1", "LIMIT_OFFSET_2", "LIMIT_EXPIRY_MIN"),
-                        "LOTS" to listOf("LOT_TOTAL", "LOT_MARKET", "LOT_LIMIT1", "LOT_LIMIT2"),
-                        "TAKE PROFIT" to listOf("TP_FIXED_GAIN_USD", "TP_PAR_DEFAUT", "TP_MULTIPE1", "TP_MULTIPE2"),
-                        "STOP LOSS" to listOf("MAX_SL_USD"),
-                        "TOLERANCES" to listOf("TOLERANCE_ZN", "TOLERANCE_PU", "TOLERANCE_MP", "FUSION_TOLERANCE", "TP_DISTANCE_MIN_RATIO"),
-                        "FILTRES HORAIRE" to listOf("TIME_FILTER_ENABLED", "TRADING_START_HOUR", "TRADING_END_HOUR"),
-                        "FILTRES NEWS" to listOf("NEWS_FILTER_ENABLED", "NEWS_MIN_IMPACT", "NEWS_WINDOW_BEFORE_BLOCK", "NEWS_WINDOW_BEFORE_CLOSE", "NEWS_WINDOW_AFTER"),
-                        "FILTRES TRADINGVIEW" to listOf("TV_FILTER_ENABLED", "TV_FILTER_SYMBOL", "TV_FILTER_SCREENER", "TV_FILTER_EXCHANGE", "TV_FILTER_TIMEFRAME", "TV_FILTER_CACHE_TTL", "TV_STRONG_BUY", "TV_BUY", "TV_STRONG_SELL", "TV_SELL", "TV_NEUTRAL_ALLOW"),
-                        "FILTRE CONFLIT" to listOf("CONFLIT_FILTER_ENABLED"),
-                        "GESTION DU RISQUE" to listOf("MAX_POSITIONS", "MAX_SPREAD_POINTS", "DAILY_PROFIT_LIMIT"),
-                        "QUICK ALERT" to listOf("QUICK_ALERT_SL_OFFSET", "RR_RATIO_DEFAULT"),
-                        "PARAMETRES MT5" to listOf("MAGIC_NUMBER", "SLIPPAGE", "ORDER_EXPIRY_MINUTES", "POLL_INTERVAL_SEC"),
-                        "ALERTES & LOGS" to listOf("LOG_TRADE_MANAGEMENT", "ALERT_TRADE_MANAGEMENT", "ALERT_DAILY_PERFORMANCE"),
-                        "MODE DE FONCTIONNEMENT" to listOf("DEMO_MODE", "RUNTIME_MINUTES")
-                    )
-                    val usedKeys = mutableSetOf<String>()
-                    for ((title, keys) in sections) {
-                        val lines = keys.mapNotNull { k ->
-                            cfg[k]?.let { v ->
-                                usedKeys.add(k)
-                                // Supprimer commentaire apres la valeur (tout apres "  # ")
-                                val clean = v.replace(Regex("\\s{2,}#.*$"), "").trim()
-                                "$k=$clean"
-                            }
-                        }
-                        if (lines.isNotEmpty()) {
-                            if (sb.isNotEmpty()) sb.appendLine()
-                            sb.appendLine("# $title")
-                            lines.forEach { sb.appendLine(it) }
-                        }
-                    }
-                    // Remaining keys not in any section
-                    val remaining = cfg.keys.filter { it !in usedKeys }.sorted()
-                    if (remaining.isNotEmpty()) {
-                        if (sb.isNotEmpty()) sb.appendLine()
-                        sb.appendLine("# AUTRES PARAMETRES")
-                        remaining.forEach { k -> sb.appendLine("$k=${cfg[k]}") }
-                    }
-                    etConfigContent.setText(sb.toString())
+                    // Construire le texte .env à partir du dictionnaire
+                    val envText = buildEnvText(cfg)
+                    // Parser avec ConfigParser
+                    configGroups = ConfigParser.parse(envText)
+                    // Rendre les groupes dynamiquement
+                    renderConfigGroups(configGroups)
                 } else {
-                    etConfigContent.setText("Erreur: impossible de charger la config")
+                    configContainer.removeAllViews()
+                    val tv = TextView(this@MainActivity).apply {
+                        text = "Erreur: impossible de charger la config"
+                        setTextColor(getColor(R.color.danger))
+                    }
+                    configContainer.addView(tv)
                 }
             } catch (e: Exception) {
-                etConfigContent.setText("Erreur: ${e.message}")
+                configContainer.removeAllViews()
+                val tv = TextView(this@MainActivity).apply {
+                    text = "Erreur: ${e.message}"
+                    setTextColor(getColor(R.color.danger))
+                }
+                configContainer.addView(tv)
             }
         }
     }
 
+    /**
+     * Construit un texte .env structuré à partir du dictionnaire de config API
+     */
+    private fun buildEnvText(cfg: Map<String, String>): String {
+        val sb = StringBuilder()
+        val sections = listOf(
+            "CONNEXION TELEGRAM" to listOf("TG_API_ID", "TG_API_HASH"),
+            "CONNEXION METATRADER 5" to listOf("MT5_LOGIN", "MT5_PASSWORD", "MT5_SERVER", "MT5_PATH"),
+            "CANAUX TELEGRAM" to listOf("TG_FOLDER", "TG_ALERT_CHANNEL") +
+                    cfg.keys.filter { it.startsWith("TG_CHANNEL") }.sorted(),
+            "SYSTEME MARKET + LIMIT" to listOf("LIMIT_ENABLED", "LIMIT_COUNT", "LIMIT_OFFSET_1", "LIMIT_OFFSET_2", "LIMIT_EXPIRY_MIN"),
+            "LOTS" to listOf("LOT_TOTAL", "LOT_MARKET", "LOT_LIMIT1", "LOT_LIMIT2"),
+            "TAKE PROFIT" to listOf("TP_FIXED_GAIN_USD", "TP_PAR_DEFAUT", "TP_MULTIPE1", "TP_MULTIPE2"),
+            "STOP LOSS" to listOf("MAX_SL_USD"),
+            "TOLERANCES" to listOf("TOLERANCE_ZN", "TOLERANCE_PU", "TOLERANCE_MP", "FUSION_TOLERANCE", "TP_DISTANCE_MIN_RATIO"),
+            "FILTRES HORAIRE" to listOf("TIME_FILTER_ENABLED", "TRADING_START_HOUR", "TRADING_END_HOUR"),
+            "FILTRES NEWS" to listOf("NEWS_FILTER_ENABLED", "NEWS_MIN_IMPACT", "NEWS_WINDOW_BEFORE_BLOCK", "NEWS_WINDOW_BEFORE_CLOSE", "NEWS_WINDOW_AFTER"),
+            "FILTRES TRADINGVIEW" to listOf("TV_FILTER_ENABLED", "TV_FILTER_SYMBOL", "TV_FILTER_SCREENER", "TV_FILTER_EXCHANGE", "TV_FILTER_TIMEFRAME", "TV_FILTER_CACHE_TTL", "TV_STRONG_BUY", "TV_BUY", "TV_STRONG_SELL", "TV_SELL", "TV_NEUTRAL_ALLOW"),
+            "FILTRE CONFLIT" to listOf("CONFLIT_FILTER_ENABLED"),
+            "GESTION DU RISQUE" to listOf("MAX_POSITIONS", "MAX_SPREAD_POINTS", "DAILY_PROFIT_LIMIT"),
+            "QUICK ALERT" to listOf("QUICK_ALERT_SL_OFFSET", "RR_RATIO_DEFAULT"),
+            "PARAMETRES MT5" to listOf("MAGIC_NUMBER", "SLIPPAGE", "ORDER_EXPIRY_MINUTES", "POLL_INTERVAL_SEC"),
+            "ALERTES & LOGS" to listOf("LOG_TRADE_MANAGEMENT", "ALERT_TRADE_MANAGEMENT", "ALERT_DAILY_PERFORMANCE"),
+            "MODE DE FONCTIONNEMENT" to listOf("DEMO_MODE", "RUNTIME_MINUTES")
+        )
+        val usedKeys = mutableSetOf<String>()
+        for ((title, keys) in sections) {
+            val lines = keys.mapNotNull { k ->
+                cfg[k]?.let { v ->
+                    usedKeys.add(k)
+                    val clean = v.replace(Regex("\\s{2,}#.*$"), "").trim()
+                    "$k=$clean"
+                }
+            }
+            if (lines.isNotEmpty()) {
+                if (sb.isNotEmpty()) sb.appendLine()
+                sb.appendLine("# ── $title ──")
+                lines.forEach { sb.appendLine(it) }
+            }
+        }
+        val remaining = cfg.keys.filter { it !in usedKeys }.sorted()
+        if (remaining.isNotEmpty()) {
+            if (sb.isNotEmpty()) sb.appendLine()
+            sb.appendLine("# ── AUTRES PARAMETRES ──")
+            remaining.forEach { k -> sb.appendLine("$k=${cfg[k]}") }
+        }
+        return sb.toString()
+    }
+
+    /**
+     * Génère dynamiquement les vues pour chaque groupe de config
+     */
+    private fun renderConfigGroups(groups: List<ConfigParser.Group>) {
+        configContainer.removeAllViews()
+
+        for (group in groups) {
+            if (group.fields.isEmpty()) continue
+
+            // Carte de groupe
+            val card = com.google.android.material.card.MaterialCardView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    bottomMargin = dp(16)
+                }
+                setCardBackgroundColor(getColor(R.color.card_background))
+                radius = dp(16).toFloat()
+                cardElevation = 0f
+                strokeWidth = dp(2)
+                strokeColor = getColor(R.color.divider)
+            }
+
+            val cardContent = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(18), dp(14), dp(18), dp(14))
+            }
+
+            // Titre de section
+            val title = TextView(this).apply {
+                text = group.title.uppercase()
+                setTextColor(getColor(R.color.primary_light))
+                textSize = 14f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                letterSpacing = 0.05f
+                setPadding(0, 0, 0, dp(12))
+            }
+            cardContent.addView(title)
+
+            // Champs du groupe
+            for (field in group.fields) {
+                val fieldView = ConfigFieldView.create(this, field)
+                cardContent.addView(fieldView)
+            }
+
+            card.addView(cardContent)
+            configContainer.addView(card)
+        }
+    }
+
     private fun saveConfig() {
-        val configText = etConfigContent.text.toString()
         val values = mutableMapOf<String, String>()
-        configText.lines().forEach { line ->
-            val trimmed = line.trim()
-            if (trimmed.isNotEmpty() && !trimmed.startsWith("#") && trimmed.contains("=")) {
-                val (key, value) = trimmed.split("=", limit = 2)
-                values[key.trim()] = value.trim()
+        val channelLists = mutableMapOf<String, List<String>>()
+
+        // Parcourir tous les groupes et lire les valeurs des widgets
+        for (group in configGroups) {
+            for (field in group.fields) {
+                if (field.isMergedChannel) {
+                    // §6 — Récupérer la liste des canaux
+                    val channels = ConfigFieldView.getChannelList(configContainer, field)
+                    channelLists[field.key] = channels
+                    // Aussi mettre à jour la valeur pour le dictionnaire
+                    values[field.key] = channels.joinToString(", ")
+                } else {
+                    val value = ConfigFieldView.getValue(configContainer, field)
+                    values[field.key] = value
+                }
             }
         }
 

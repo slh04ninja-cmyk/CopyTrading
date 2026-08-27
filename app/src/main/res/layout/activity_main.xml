@@ -761,29 +761,13 @@
                     android:letterSpacing="0.02"
                     android:layout_marginBottom="12dp"/>
 
-                <com.google.android.material.card.MaterialCardView
+                <!-- Conteneur dynamique pour les groupes de config -->
+                <LinearLayout
+                    android:id="@+id/configContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    app:cardBackgroundColor="@color/card_background"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="1dp"
-                    app:strokeColor="@color/divider">
-
-                    <EditText
-                        android:id="@+id/etConfigContent"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="600dp"
-                        android:background="@android:color/transparent"
-                        android:fontFamily="monospace"
-                        android:gravity="top"
-                        android:inputType="textMultiLine"
-                        android:padding="14dp"
-                        android:textColor="@color/text_primary"
-                        android:textSize="12sp"/>
-                </com.google.android.material.card.MaterialCardView>
+                    android:orientation="vertical"
+                    android:layout_marginBottom="12dp"/>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSaveConfig"
