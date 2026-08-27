@@ -738,7 +738,7 @@ class MainActivity : AppCompatActivity() {
             "CONNEXION TELEGRAM" to listOf("TG_API_ID", "TG_API_HASH"),
             "CONNEXION METATRADER 5" to listOf("MT5_LOGIN", "MT5_PASSWORD", "MT5_SERVER", "MT5_PATH"),
             "CANAUX TELEGRAM" to listOf("TG_FOLDER", "TG_ALERT_CHANNEL") +
-                    cfg.keys.filter { it.startsWith("TG_CHANNEL") }.sorted(),
+                    cfg.keys.filter { it.startsWith("TG_CHANNEL") && it != "TG_CHANNEL_MERGED" }.sorted(),
             "SYSTEME MARKET + LIMIT" to listOf("LIMIT_ENABLED", "LIMIT_COUNT", "LIMIT_OFFSET_1", "LIMIT_OFFSET_2", "LIMIT_EXPIRY_MIN"),
             "LOTS" to listOf("LOT_TOTAL", "LOT_MARKET", "LOT_LIMIT1", "LOT_LIMIT2"),
             "TAKE PROFIT" to listOf("TP_FIXED_GAIN_USD", "TP_PAR_DEFAUT", "TP_MULTIPE1", "TP_MULTIPE2"),
