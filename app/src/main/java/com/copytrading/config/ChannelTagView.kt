@@ -160,8 +160,16 @@ class ChannelTagView(context: Context) : LinearLayout(context) {
     }
 
     private fun isValidChannel(ch: String): Boolean {
-        if (ch.startsWith("@")) return true
-        if (ch.startsWith("-100") && ch.length > 4 && ch.substring(4).all { it.isDigit() }) return true
+        if (ch.startsWith("@")) {
+            val username = ch.substring(1)
+            if (username.length < 5 || username.length > 32) return false
+            if (!username[0].isLetter()) return false
+            if (username.startsWith("_") || username.endsWith("_")) return false
+            if (username.contains("__")) return false
+            if (!username.all { it.isLetterOrDigit() || it == '_' }) return false
+            return true
+        }
+        if (ch.startsWith("-100") && ch.length == 14 && ch.substring(1).all { it.isDigit() }) return true
         return false
     }
 
