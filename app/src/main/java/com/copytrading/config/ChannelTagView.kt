@@ -3,7 +3,9 @@ package com.copytrading.config
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Context
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.text.Editable
@@ -11,24 +13,33 @@ import android.text.InputType
 import android.text.TextWatcher
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.animation.OvershootInterpolator
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 
+/**
+ * Tag/token input for channel list.
+ * Matches prototype HTML: pill tags with × button, Enter to add, Backspace to remove last.
+ */
 class ChannelTagView(context: Context) : LinearLayout(context) {
 
     private val channels = mutableListOf<String>()
-    private val chipContainer: LinearLayout
+    private val chipContainer: FlowLayout
     private val inputField: EditText
-    private val container: FrameLayout
+    private val wrapper: FrameLayout
 
     init {
         orientation = VERTICAL
 
-        container = FrameLayout(context).apply {
+        // Outer wrapper with border (highlights on focus-within)
+        wrapper = FrameLayout(context).apply {
             background = GradientDrawable().apply {
                 setColor(Color.parseColor("#0F0F1A"))
                 cornerRadius = dp(10).toFloat()
@@ -37,25 +48,58 @@ class ChannelTagView(context: Context) : LinearLayout(context) {
             setPadding(dp(10), dp(8), dp(10), dp(8))
         }
 
-        chipContainer = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
+        // Flow layout for chips + input (like CSS flex-wrap)
+        chipContainer = FlowLayout(context)
 
-        inputField = EditText(context).apply {
+        // Input field
+        inputField = object : EditText(context) {
+            override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+                // Catch Enter key BEFORE EditText processes it
+                if (event.action == KeyEvent.ACTION_DOWN &&
+                    (event.keyCode == KeyEvent.KEYCODE_ENTER ||
+                     event.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
+                     event.keyCode == KeyEvent.KEYCODE_SEARCH)) {
+                    addFromInput()
+                    return true
+                }
+                // Catch Backspace on empty field
+                if (event.action == KeyEvent.ACTION_DOWN &&
+                    event.keyCode == KeyEvent.KEYCODE_DEL &&
+                    text.isEmpty() && channels.isNotEmpty()) {
+                    removeChannel(channels.size - 1)
+                    return true
+                }
+                return super.dispatchKeyEvent(event)
+            }
+        }.apply {
             setBackgroundColor(Color.TRANSPARENT)
             setTextColor(Color.parseColor("#E8E8F0"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             typeface = Typeface.MONOSPACE
-            hint = "Ajouter canal..."
+            hint = "Ajouter un canal…"
             setHintTextColor(Color.parseColor("#555577"))
-            setPadding(dp(4), dp(2), dp(4), dp(2))
-            minWidth = dp(120)
-            // MULTI_LINE so Enter inserts \n, maxLines=1 to keep single line
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+            minWidth = dp(100)
+            // Single line text, IME action = Done
+            inputType = InputType.TYPE_CLASS_TEXT
+            imeOptions = EditorInfo.IME_ACTION_DONE
             maxLines = 1
+            isSingleLine = true
+            isFocusable = true
+            isFocusableInTouchMode = true
         }
 
-        // Catch Enter via TextWatcher (most reliable across ALL keyboards)
+        // IME_ACTION_DONE fallback (some keyboards use this)
+        inputField.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE ||
+                actionId == EditorInfo.IME_ACTION_GO ||
+                actionId == EditorInfo.IME_ACTION_SEND) {
+                addFromInput()
+                true
+            } else false
+        }
+
+        // TextWatcher fallback: detect newline inserted by keyboard
         inputField.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -63,34 +107,34 @@ class ChannelTagView(context: Context) : LinearLayout(context) {
                 val text = s?.toString() ?: return
                 if (text.contains("\n") || text.contains("\r")) {
                     inputField.removeTextChangedListener(this)
-                    val clean = text.replace("\n", "").replace("\r", "").trim()
-                    inputField.setText("")
+                    val clean = text.replace(Regex("[\\r\\n]"), "").trim()
+                    inputField.setText(clean)
+                    inputField.setSelection(clean.length)
                     inputField.addTextChangedListener(this)
-                    if (clean.isNotEmpty()) {
-                        addChannels(clean)
-                    }
+                    if (clean.isNotEmpty()) addFromInput()
                 }
             }
         })
 
-        // Focus highlight
+        // Focus-within border highlight
         inputField.setOnFocusChangeListener { _, hasFocus ->
-            (container.background as? GradientDrawable)?.setStroke(
+            (wrapper.background as? GradientDrawable)?.setStroke(
                 dp(2), Color.parseColor(if (hasFocus) "#6C63FF" else "#2A2A4A")
             )
         }
 
-        chipContainer.addView(inputField, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { gravity = Gravity.CENTER_VERTICAL })
+        // Add input to flow layout
+        chipContainer.addView(inputField, FlowLayout.LayoutParams(
+            FlowLayout.LayoutParams.WRAP_CONTENT,
+            FlowLayout.LayoutParams.WRAP_CONTENT
+        ))
 
-        container.addView(chipContainer, FrameLayout.LayoutParams(
+        wrapper.addView(chipContainer, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.WRAP_CONTENT
         ))
 
-        addView(container, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        addView(wrapper, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
     }
 
     fun setChannels(list: List<String>) {
@@ -101,24 +145,30 @@ class ChannelTagView(context: Context) : LinearLayout(context) {
 
     fun getChannels(): List<String> = channels.toList()
 
-    private fun addChannels(text: String) {
+    private fun addFromInput() {
+        val text = inputField.text.toString().trim()
+        if (text.isEmpty()) return
         val parts = text.replace(Regex("\\s+-\\s+"), ",").split(Regex("[,;/.]+"))
         for (ch in parts.map { it.trim() }.filter { it.isNotEmpty() }) {
             channels.add(ch)
-            addChipAnimated(ch)
         }
+        inputField.setText("")
+        rebuildChips()
+        // Keep focus on input
+        inputField.requestFocus()
     }
 
     private fun removeChannel(index: Int) {
         if (index !in channels.indices) return
         val chipView = chipContainer.getChildAt(index) ?: return
+        // Scale-down fade animation (like CSS .removing)
         AnimatorSet().apply {
             playTogether(
                 ObjectAnimator.ofFloat(chipView, "scaleX", 1f, 0.4f),
                 ObjectAnimator.ofFloat(chipView, "scaleY", 1f, 0.4f),
                 ObjectAnimator.ofFloat(chipView, "alpha", 1f, 0f)
             )
-            duration = 200
+            duration = 240
             addListener(object : android.animation.AnimatorListenerAdapter() {
                 override fun onAnimationEnd(a: android.animation.Animator) {
                     channels.removeAt(index)
@@ -132,64 +182,103 @@ class ChannelTagView(context: Context) : LinearLayout(context) {
     private fun rebuildChips() {
         chipContainer.removeAllViews()
         for ((i, ch) in channels.withIndex()) {
-            chipContainer.addView(createChip(ch, i), i, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { marginEnd = dp(6); gravity = Gravity.CENTER_VERTICAL })
+            val chip = createChip(ch) { removeChannel(i) }
+            chipContainer.addView(chip, i)
         }
-        chipContainer.addView(inputField, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { gravity = Gravity.CENTER_VERTICAL })
+        // Re-add input at end
+        chipContainer.addView(inputField)
     }
 
-    private fun addChipAnimated(text: String) {
-        val chip = createChip(text, channels.size - 1)
-        val insertIndex = chipContainer.childCount - 1
-        chipContainer.addView(chip, insertIndex, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { marginEnd = dp(6); gravity = Gravity.CENTER_VERTICAL })
-        chip.scaleX = 0.4f; chip.scaleY = 0.4f; chip.alpha = 0f
-        AnimatorSet().apply {
-            playTogether(
-                ObjectAnimator.ofFloat(chip, "scaleX", 0.4f, 1f),
-                ObjectAnimator.ofFloat(chip, "scaleY", 0.4f, 1f),
-                ObjectAnimator.ofFloat(chip, "alpha", 0f, 1f)
-            )
-            duration = 350
-            interpolator = OvershootInterpolator(1.5f)
-            start()
-        }
-    }
-
-    private fun createChip(text: String, index: Int): View {
-        return LinearLayout(context).apply {
+    private fun createChip(text: String, onRemove: () -> Unit): View {
+        // Pill-shaped tag (matches prototype .tag CSS)
+        val chip = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#266C63FF"))
-                cornerRadius = dp(6).toFloat()
+                setColor(Color.parseColor("#266C63FF")) // rgba(108,99,255,0.15)
+                setStroke(dp(1), Color.parseColor("#596C63FF")) // rgba(108,99,255,0.35)
+                cornerRadius = dp(99).toFloat() // pill shape
             }
-            setPadding(dp(8), dp(4), dp(6), dp(4))
-
-            addView(TextView(context).apply {
-                this.text = text
-                setTextColor(Color.parseColor("#8B83FF"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                typeface = Typeface.MONOSPACE
-            })
-            addView(TextView(context).apply {
-                this.text = " ×"
-                setTextColor(Color.parseColor("#AAAAAA"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                typeface = Typeface.DEFAULT_BOLD
-                setPadding(dp(4), 0, 0, 0)
-                setOnClickListener { removeChannel(index) }
-            })
+            setPadding(dp(10), dp(4), dp(6), dp(4))
         }
+
+        // Tag text
+        chip.addView(TextView(context).apply {
+            this.text = text
+            setTextColor(Color.parseColor("#E8E8F0"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            typeface = Typeface.MONOSPACE
+        })
+
+        // × remove button (matches prototype .tag-remove-btn)
+        chip.addView(TextView(context).apply {
+            this.text = "\u00D7"
+            setTextColor(Color.parseColor("#8888AA"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(dp(6), 0, 0, 0)
+            setOnClickListener { onRemove() }
+        })
+
+        return chip
     }
 
     private fun dp(value: Int): Int =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value.toFloat(), context.resources.displayMetrics).toInt()
+
+    /**
+     * Simple FlowLayout that wraps children like CSS flex-wrap
+     */
+    private class FlowLayout(context: Context) : LinearLayout(context) {
+        init {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val width = MeasureSpec.getSize(widthMeasureSpec)
+            var x = 0
+            var y = 0
+            var maxHeight = 0
+
+            for (i in 0 until childCount) {
+                val child = getChildAt(i)
+                measureChild(child, widthMeasureSpec, heightMeasureSpec)
+                val lp = child.layoutParams as? LayoutParams
+                val childW = child.measuredWidth + (lp?.leftMargin ?: 0) + (lp?.rightMargin ?: 0)
+                val childH = child.measuredHeight + (lp?.topMargin ?: 0) + (lp?.bottomMargin ?: 0)
+
+                if (x + childW > width && x > 0) {
+                    x = 0
+                    y += maxHeight
+                    maxHeight = 0
+                }
+                x += childW
+                if (childH > maxHeight) maxHeight = childH
+            }
+            setMeasuredDimension(width, y + maxHeight + paddingTop + paddingBottom)
+        }
+
+        override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+            val width = r - l
+            var x = paddingLeft
+            var y = paddingTop
+            var maxHeight = 0
+
+            for (i in 0 until childCount) {
+                val child = getChildAt(i)
+                val lp = child.layoutParams as? LayoutParams
+                val childW = child.measuredWidth + (lp?.leftMargin ?: 0) + (lp?.rightMargin ?: 0)
+                val childH = child.measuredHeight + (lp?.topMargin ?: 0) + (lp?.bottomMargin ?: 0)
+
+                if (x + childW > width && x > paddingLeft) {
+                    x = paddingLeft
+                    y += maxHeight
+                    maxHeight = 0
+                }
+                child.layout(x, y, x + child.measuredWidth, y + child.measuredHeight)
+                x += childW
+                if (childH > maxHeight) maxHeight = childH
+            }
+        }
+    }
 }
