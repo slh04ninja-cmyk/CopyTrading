@@ -104,8 +104,9 @@ class ChannelTagView(context: Context) : LinearLayout(context) {
                 for (i in 0 until childCount) {
                     val child = getChildAt(i)
                     measureChild(child, widthMeasureSpec, heightMeasureSpec)
-                    val childWidth = child.measuredWidth + (child.layoutParams as? MarginLayoutParams)?.let { it.leftMargin + it.rightMargin } ?: 0
-                    val childHeight = child.measuredHeight + (child.layoutParams as? MarginLayoutParams)?.let { it.topMargin + it.bottomMargin } ?: 0
+                    val mlp = child.layoutParams as? MarginLayoutParams
+                    val childWidth = child.measuredWidth + (mlp?.leftMargin ?: 0) + (mlp?.rightMargin ?: 0)
+                    val childHeight = child.measuredHeight + (mlp?.topMargin ?: 0) + (mlp?.bottomMargin ?: 0)
 
                     if (x + childWidth > width && x > 0) {
                         x = 0
