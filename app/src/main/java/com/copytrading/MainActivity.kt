@@ -856,20 +856,11 @@ class MainActivity : AppCompatActivity() {
             try {
                 val ok = client.updateConfig(values)
                 if (ok) {
-                    // Redémarrage automatique du bot pour appliquer les nouvelles valeurs
-                    btnSaveConfig.text = "REDÉMARRAGE..."
-                    showNotification("Config sauvee — redemarrage...")
+                    btnSaveConfig.text = "SAUVEGARDE..."
+                    showNotification("Config sauvee")
 
-                    // 1. Redémarrer uvicorn (recharge bot_api.py avec nouvelles valeurs .env)
-                    client.restartServer()
-                    delay(4000)
-
-                    // 2. Redémarrer le bot (telegram_listener)
-                    client.stopBot()
-                    delay(3000)
-                    client.startBot()
-                    delay(2000)
-
+                    // Plus besoin de restart — le dashboard relit le .env dynamiquement
+                    delay(1000)
                     refreshDashboard()
                     burstConfetti(btnSaveConfig) {}
                     showNotification("Bot redemarré avec la nouvelle config")
