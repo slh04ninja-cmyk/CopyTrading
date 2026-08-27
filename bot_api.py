@@ -622,6 +622,10 @@ def update_config(updates: EnvBulkUpdate):
         # Ne pas écraser les passwords avec ***
         if value == "***":
             continue
+        # Supprimer les clés vides
+        if value == "" and key in existing:
+            del existing[key]
+            continue
         existing[key] = value
 
     # Réécrire le fichier

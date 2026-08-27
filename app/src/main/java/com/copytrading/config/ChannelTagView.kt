@@ -150,12 +150,19 @@ class ChannelTagView(context: Context) : LinearLayout(context) {
         if (text.isEmpty()) return
         val parts = text.replace(Regex("\\s+-\\s+"), ",").split(Regex("[,;/.]+"))
         for (ch in parts.map { it.trim() }.filter { it.isNotEmpty() }) {
-            channels.add(ch)
+            if (isValidChannel(ch)) {
+                channels.add(ch)
+            }
         }
         inputField.setText("")
         rebuildChips()
-        // Keep focus on input
         inputField.requestFocus()
+    }
+
+    private fun isValidChannel(ch: String): Boolean {
+        if (ch.startsWith("@")) return true
+        if (ch.startsWith("-100") && ch.length > 4 && ch.substring(4).all { it.isDigit() }) return true
+        return false
     }
 
     private fun removeChannel(index: Int) {
