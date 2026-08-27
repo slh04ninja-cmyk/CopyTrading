@@ -124,9 +124,9 @@ class ChannelTagView(context: Context) : LinearLayout(context) {
         }
 
         // Add input to flow layout
-        chipContainer.addView(inputField, FlowLayout.LayoutParams(
-            FlowLayout.LayoutParams.WRAP_CONTENT,
-            FlowLayout.LayoutParams.WRAP_CONTENT
+        chipContainer.addView(inputField, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
         ))
 
         wrapper.addView(chipContainer, FrameLayout.LayoutParams(
