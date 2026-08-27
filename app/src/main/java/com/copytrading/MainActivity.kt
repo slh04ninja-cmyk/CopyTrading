@@ -856,8 +856,18 @@ class MainActivity : AppCompatActivity() {
             try {
                 val ok = client.updateConfig(values)
                 if (ok) {
+                    // Redémarrage automatique du bot pour appliquer les nouvelles valeurs
+                    btnSaveConfig.text = "REDÉMARRAGE..."
+                    showNotification("Config sauvee — redemarrage du bot...")
+
+                    client.stopBot()
+                    delay(3000)
+                    client.startBot()
+                    delay(2000)
+
+                    refreshDashboard()
                     burstConfetti(btnSaveConfig) {}
-                    showNotification("Configuration sauvegardee")
+                    showNotification("Bot redemarré avec la nouvelle config")
                 } else {
                     showNotification("Erreur de sauvegarde")
                 }
