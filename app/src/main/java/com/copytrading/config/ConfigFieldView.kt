@@ -231,12 +231,26 @@ object ConfigFieldView {
         val row = createInlineRow(context)
         row.addView(createInlineLabel(context, field))
 
+        val isChecked = field.value.lowercase() == "true"
         val switch = SwitchMaterial(context).apply {
-            isChecked = field.value.lowercase() == "true"
+            this.isChecked = isChecked
             tag = field.key
-            // Style
-            thumbTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#E8E8F0"))
-            trackTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#2A2A4A"))
+            // Style — accent quand activé, gris quand désactivé
+            thumbTintList = android.content.res.ColorStateList.valueOf(
+                if (isChecked) Color.parseColor("#FFFFFF") else Color.parseColor("#E8E8F0")
+            )
+            trackTintList = android.content.res.ColorStateList.valueOf(
+                if (isChecked) Color.parseColor("#6C63FF") else Color.parseColor("#2A2A4A")
+            )
+            // Mettre à jour les couleurs au changement
+            setOnCheckedChangeListener { _, checked ->
+                thumbTintList = android.content.res.ColorStateList.valueOf(
+                    if (checked) Color.WHITE else Color.parseColor("#E8E8F0")
+                )
+                trackTintList = android.content.res.ColorStateList.valueOf(
+                    if (checked) Color.parseColor("#6C63FF") else Color.parseColor("#2A2A4A")
+                )
+            }
         }
         val lp = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -254,12 +268,25 @@ object ConfigFieldView {
         row.addView(createInlineLabel(context, field))
 
         val options = ConfigParser.getSelectOptions(field.key)
+        val displayOptions = options.map { it.replaceFirstChar { c -> c.uppercase() } }
         val spinner = Spinner(context, Spinner.MODE_DROPDOWN).apply {
             tag = field.key
 
-            val adapter = ArrayAdapter(context, android.R.layout.simple_spinner_item, options.map {
-                it.replaceFirstChar { c -> c.uppercase() }
-            })
+            // Layout personnalisé pour le texte sélectionné (couleur visible)
+            val selectedLayout = android.R.layout.simple_spinner_item
+            val adapter = object : ArrayAdapter<String>(context, selectedLayout, displayOptions) {
+                override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
+                    val v = super.getView(position, convertView, parent)
+                    (v as? TextView)?.setTextColor(Color.parseColor("#E8E8F0"))
+                    return v
+                }
+                override fun getDropDownView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
+                    val v = super.getDropDownView(position, convertView, parent)
+                    (v as? TextView)?.setTextColor(Color.parseColor("#E8E8F0"))
+                    v.setBackgroundColor(Color.parseColor("#1A1A2E"))
+                    return v
+                }
+            }
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             this.adapter = adapter
 
@@ -329,6 +356,8 @@ object ConfigFieldView {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             typeface = Typeface.DEFAULT
             setPadding(0, 0, dp(context, 8), 0)
+            // §5.2 — label prend tout l'espace disponible, widget à droite
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
     }
 
