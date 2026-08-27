@@ -858,8 +858,13 @@ class MainActivity : AppCompatActivity() {
                 if (ok) {
                     // Redémarrage automatique du bot pour appliquer les nouvelles valeurs
                     btnSaveConfig.text = "REDÉMARRAGE..."
-                    showNotification("Config sauvee — redemarrage du bot...")
+                    showNotification("Config sauvee — redemarrage...")
 
+                    // 1. Redémarrer uvicorn (recharge bot_api.py avec nouvelles valeurs .env)
+                    client.restartServer()
+                    delay(4000)
+
+                    // 2. Redémarrer le bot (telegram_listener)
                     client.stopBot()
                     delay(3000)
                     client.startBot()

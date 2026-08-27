@@ -141,6 +141,13 @@ class ApiClient(private val context: Context) {
         return execute(req, BotActionResponse::class.java)
     }
 
+    // --- RESTART UVICORN ---
+    suspend fun restartServer(): Boolean {
+        val req = buildRequest("/api/restart", "POST")
+        val result = executeRaw(req)
+        return result != null
+    }
+
     // --- CONFIG ---
     suspend fun getConfig(): ConfigResponse? {
         val req = buildRequest("/api/config")
