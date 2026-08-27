@@ -68,6 +68,16 @@ DAILY_PROFIT_LIMIT = float(os.getenv("DAILY_PROFIT_LIMIT", "200.0"))
 TRADING_START_HOUR = int(os.getenv("TRADING_START_HOUR", "3"))
 TRADING_END_HOUR = int(os.getenv("TRADING_END_HOUR", "20"))
 
+def _read_env_dynamic():
+    """Relit les variables dynamiques depuis le .env a chaque appel."""
+    from dotenv import dotenv_values
+    vals = dotenv_values(ENV_FILE)
+    return {
+        "daily_limit": float(vals.get("DAILY_PROFIT_LIMIT", DAILY_PROFIT_LIMIT)),
+        "start_hour": int(vals.get("TRADING_START_HOUR", TRADING_START_HOUR)),
+        "end_hour": int(vals.get("TRADING_END_HOUR", TRADING_END_HOUR)),
+    }
+
 # =============================================================
 # APP
 # =============================================================
@@ -388,11 +398,17 @@ def get_dashboard():
     if not _ensure_mt5():
         raise HTTPException(status_code=503, detail="MT5 non connecté")
 
+    # Lire les variables dynamiquement depuis le .env
+    env = _read_env_dynamic()
+    daily_limit = env["daily_limit"]
+    start_hour = env["start_hour"]
+    end_hour = env["end_hour"]
+
     now = datetime.now(timezone.utc)
     start = _get_trading_day_start()
 
-    # Hors plage trading (20h-3h UTC) → valeurs à zéro
-    in_trading = TRADING_START_HOUR <= now.hour < TRADING_END_HOUR
+    # Hors plage trading → valeurs à zéro
+    in_trading = start_hour <= now.hour < end_hour
 
     # P&L quotidien (deals)
     daily_pnl = 0.0
@@ -456,9 +472,9 @@ def get_dashboard():
         "winrate": round(winrate, 1),
         "open_positions": open_positions,
         "open_count": len(open_positions),
-        "daily_limit": DAILY_PROFIT_LIMIT,
-        "limit_pct": round((daily_pnl + floating_pnl) / DAILY_PROFIT_LIMIT * 100, 1) if DAILY_PROFIT_LIMIT > 0 else 0,
-        "trading_hours": f"{TRADING_START_HOUR}h-{TRADING_END_HOUR}h UTC",
+        "daily_limit": daily_limit,
+        "limit_pct": round((daily_pnl + floating_pnl) / daily_limit * 100, 1) if daily_limit > 0 else 0,
+        "trading_hours": f"{start_hour}h-{end_hour}h UTC",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
