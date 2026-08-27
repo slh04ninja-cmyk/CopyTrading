@@ -75,9 +75,12 @@ class ChannelTagView(context: Context) : LinearLayout(context) {
             }
         }
 
-        // Backspace sur champ vide → supprimer dernière pastille
+        // KEYCODE_ENTER listener (certains claviers n'envoient pas IME_ACTION_DONE)
         inputField.setOnKeyListener { _, keyCode, event ->
-            if (keyCode == KeyEvent.KEYCODE_DEL && event.action == KeyEvent.ACTION_DOWN) {
+            if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
+                addFromInput()
+                true
+            } else if (keyCode == KeyEvent.KEYCODE_DEL && event.action == KeyEvent.ACTION_DOWN) {
                 if (inputField.text.isEmpty() && channels.isNotEmpty()) {
                     removeChannel(channels.size - 1)
                     true
