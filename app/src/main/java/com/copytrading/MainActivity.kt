@@ -840,10 +840,9 @@ class MainActivity : AppCompatActivity() {
                     // §6 — Récupérer la liste des canaux
                     val channels = ConfigFieldView.getChannelList(configContainer, field)
                     channelLists[field.key] = channels
-                    // Expandre en cles individuelles TG_CHANNEL_1=..., TG_CHANNEL_2=...
+                    // Expandre en cles individuelles TG_CHANNEL_1=..., TG_CHANNEL_2=... (renuméroter)
                     for ((i, ch) in channels.withIndex()) {
-                        val key = if (i < field.originalChannelKeys.size) field.originalChannelKeys[i] else "TG_CHANNEL_${i + 1}"
-                        values[key] = ch
+                        values["TG_CHANNEL_${i + 1}"] = ch
                     }
                     // Supprimer les anciennes cles qui n'ont plus de canal
                     for (j in channels.size until field.originalChannelKeys.size) {
