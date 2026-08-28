@@ -173,8 +173,11 @@ class ChannelTagView(context: Context) : LinearLayout(context) {
         return false
     }
 
+    private var isRemoving = false
+
     private fun removeChannel(index: Int) {
-        if (index !in channels.indices) return
+        if (index !in channels.indices || isRemoving) return
+        isRemoving = true
         val chipView = chipContainer.getChildAt(index) ?: return
         // Scale-down fade animation (like CSS .removing)
         AnimatorSet().apply {
@@ -188,6 +191,7 @@ class ChannelTagView(context: Context) : LinearLayout(context) {
                 override fun onAnimationEnd(a: android.animation.Animator) {
                     channels.removeAt(index)
                     rebuildChips()
+                    isRemoving = false
                 }
             })
             start()
