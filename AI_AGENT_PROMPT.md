@@ -202,9 +202,11 @@ Exemple : `CH5-ZN-MK` = Canal 5, signal Zone, ordre Market
 
 ### Channels.txt
 
-Format : `Canal_N : -100XXXXXXXXXX # NomDuCanal`
+Format : `Canal_N : NomDuCanal`
 - 108 canaux configures
 - `CHANNEL_NUM_MAP` : mapping canal → numero
+- Fichier nettoie (ASCII printable uniquement, sans emojis)
+- Lu depuis le dossier du bot (`C:\TradingBot\Channels.txt`)
 
 ### SL par signal
 
@@ -316,24 +318,73 @@ cp apk_download/app-debug.apk /storage/emulated/0/Download/CopyTrading.apk
 
 ---
 
+## Workflow de modification (SERVEUR → GitHub)
+
+**Le serveur est la reference. GitHub = sauvegarde.**
+
+### Etapes
+
+1. **Lire** les fichiers du serveur via API (`/api/file/read` ou `/api/exec`)
+2. **Modifier** localement dans le workspace
+3. **Uploader** sur le serveur via `/api/file`
+4. **Redemarrer** le bot via `/api/bot/stop` + `/api/bot/start`
+5. **Tester** — verifier via `/api/status` et `/api/logs`
+6. **Valider** — si OK, pull du serveur vers le local puis push sur GitHub
+
+```bash
+# ETAPE 1: Lire un fichier du serveur
+curl -s -H "Authorization: Bearer <TOKEN>" "http://38.247.138.124:8000/api/file/read?path=bot_api.py"
+# OU
+curl -s -X POST -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
+  -d '{"command": "type C:\\TradingBot\\Channels.txt"}' \
+  http://38.247.138.124:8000/api/exec
+
+# ETAPE 2: Modifier localement (workspace)
+# ...
+
+# ETAPE 3: Uploader sur le serveur
+curl -X POST -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
+  -d '{"path": "telegram_listener_v17_1.py", "content": "<contenu>"}' \
+  http://38.247.138.124:8000/api/file
+
+# ETAPE 4: Redemarrer le bot
+curl -s -X POST -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/bot/stop
+sleep 2
+curl -s -X POST -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/bot/start
+
+# ETAPE 5: Verifier
+curl -s -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/status
+
+# ETAPE 6: Valider → push sur GitHub
+cd /home/work/.openclaw/workspace/tgm
+git add telegram_listener_v17_1.py Channels.txt
+git commit -m "feat: description"
+git push origin main
+```
+
+### Redemarrage
+
+- **bot_api.py** → `/api/restart` (recharge uvicorn)
+- **telegram_listener** → `/api/bot/stop` + `/api/bot/start`
+- **signal_parser / bot_messages** → meme que telegram_listener
+
+---
+
 ## Modification du bot (cote serveur)
 
 ### Modifier bot_api.py
 
 ```bash
 # 1. Modifier le fichier localement
-# 2. Lire le contenu
-cat /data/data/com.termux/files/home/CopyTrading/bot_api.py
-
-# 3. Upload via API
+# 2. Upload via API
 curl -X POST -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
   -d '{"path": "bot_api.py", "content": "<contenu>"}' \
   http://38.247.138.124:8000/api/file
 
-# 4. Redemarrer uvicorn
+# 3. Redemarrer uvicorn
 curl -X POST -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/restart
 
-# 5. Verifier
+# 4. Verifier
 curl -s -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/status
 ```
 
@@ -433,3 +484,34 @@ Genere par `_shutdown_end_of_day()` :
 - Preview 80 chars, format HH:MM
 - Tri par channel_num croissant
 - Filtre trading day start (3h UTC → 3h UTC)
+
+---
+
+## Rapport hebdomadaire
+
+Genere chaque **vendredi** a la fin de la session de trading par `_shutdown_end_of_day()`.
+
+### Trigger
+```python
+# telegram_listener_v17_1.py, ligne 1528
+if date_cls.today().weekday() == 4:  # 4 = vendredi
+    weekly_data = _collect_weekly_report_data()
+    weekly_pdf = _generate_weekly_report_pdf(weekly_data)
+    _send_telegram_document(weekly_pdf, f"📊 Rapport Hebdo {start} → {end}")
+```
+
+### Fichiers
+- `_collect_weekly_report_data()` — collecte les deals MT5 de la semaine (lundi→vendredi)
+- `_generate_weekly_report_pdf()` — genere le PDF
+
+### Contenu du PDF
+1. **Header** — titre + sous-titre periode
+2. **5 KPI cards** — P&L realise, Winrate, Wins/Losses, Total Trades (canaux), Max Drawdown
+3. **Performance quotidienne** — tableau Lu-Ve avec statut (Profit/Perte)
+4. **Performance par signal** — type (ZN/PU/MP/QA) × jour avec P&L
+5. **Performance par canal** — trie par P&L, win rate, multi-pages
+6. **Signaux supprimes** — liste bullet par canal (depuis _signal_tracker)
+
+### Channels.txt
+- Les noms des canaux sont lus depuis `Channels.txt` (meme dossier que le bot)
+- Format nettoie : `Canal_N : NomDuCanal` (ASCII printable)
