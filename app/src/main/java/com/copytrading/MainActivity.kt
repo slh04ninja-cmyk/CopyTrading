@@ -740,6 +740,7 @@ class MainActivity : AppCompatActivity() {
             "CANAUX TELEGRAM" to listOf("TG_FOLDER", "TG_ALERT_CHANNEL") +
                     cfg.keys.filter { it.startsWith("TG_CHANNEL") && it != "TG_CHANNEL_MERGED" }.sorted(),
             "SYSTEME MARKET + LIMIT" to listOf("LIMIT_ENABLED", "LIMIT_COUNT", "LIMIT_OFFSET_1", "LIMIT_OFFSET_2", "LIMIT_EXPIRY_MIN"),
+            "TRADE HORS ZONE" to listOf("TRADE_HORS_ZONE", "MAX_DISTANCE", "MAX_TEMPS"),
             "LOTS" to listOf("LOT_TOTAL", "LOT_MARKET", "LOT_LIMIT1", "LOT_LIMIT2"),
             "TAKE PROFIT" to listOf("TP_FIXED_GAIN_USD", "TP_PAR_DEFAUT", "TP_MULTIPE1", "TP_MULTIPE2"),
             "STOP LOSS" to listOf("MAX_SL_USD"),

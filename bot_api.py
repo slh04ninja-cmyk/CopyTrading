@@ -617,36 +617,53 @@ def update_config(updates: EnvBulkUpdate):
             key, _, value = stripped.partition("=")
             existing[key.strip()] = value.strip()
 
-    # Appliquer les mises à jour
+    # Séparer les canaux TG_CHANNEL_X envoyés par l'app
+    incoming_channels = []
     for key, value in updates.values.items():
-        # Ne pas écraser les passwords avec ***
+        if key.startswith("TG_CHANNEL_") and key[11:].isdigit():
+            if value:  # ignorer les vides
+                incoming_channels.append((key, value))
+    incoming_channels.sort()  # TG_CHANNEL_1, TG_CHANNEL_2, ...
+
+    # Appliquer les autres mises à jour (non-canaux)
+    for key, value in updates.values.items():
+        if key.startswith("TG_CHANNEL_"):
+            continue  # canaux gérés séparément
         if value == "***":
             continue
-        # Supprimer les clés vides
-        if value == "" and key in existing:
-            del existing[key]
-            continue
-        existing[key] = value
-
+        if value == "":
+            existing.pop(key, None)
+        else:
+            existing[key] = value
     # Réécrire le fichier
+    # 1. Supprimer TOUS les anciens TG_CHANNEL_X
+    # 2. Réécrire les autres clés
+    # 3. Insérer les nouveaux canaux au bon endroit
     new_lines = []
-    written_keys = set()
+    channel_insert_idx = -1
     for line in lines:
         stripped = line.strip()
         if stripped and not stripped.startswith("#") and "=" in stripped:
             key = stripped.split("=", 1)[0].strip()
+            if key.startswith("TG_CHANNEL_") and key[11:].isdigit():
+                # Supprimer — on réécrira les nouveaux après
+                if channel_insert_idx < 0:
+                    channel_insert_idx = len(new_lines)
+                continue
             if key in existing:
                 new_lines.append(f"{key}={existing[key]}\n")
-                written_keys.add(key)
-            else:
-                new_lines.append(line)
+            # else: clé supprimée → on saute
         else:
+            # Ligne de commentaire — repérer l'insertion après Fallback
+            if "Fallback" in stripped or "TG_ALERT_CHANNEL" in stripped:
+                channel_insert_idx = len(new_lines) + 1
             new_lines.append(line)
 
-    # Ajouter les nouvelles clés
-    for key, value in existing.items():
-        if key not in written_keys:
-            new_lines.append(f"{key}={value}\n")
+    # Insérer les nouveaux canaux
+    if channel_insert_idx < 0:
+        channel_insert_idx = len(new_lines)
+    for j, (key, value) in enumerate(incoming_channels):
+        new_lines.insert(channel_insert_idx + j, f"{key}={value}\n")
 
     with open(ENV_FILE, "w", encoding="utf-8") as f:
         f.writelines(new_lines)
@@ -889,11 +906,11 @@ def list_files(path: str = ""):
 @app.post("/api/restart")
 def restart_server():
     """Redémarre uvicorn pour recharger bot_api.py."""
-    import threading
-    def _delayed_exit():
-        import time; time.sleep(1)
-        os._exit(0)
-    threading.Thread(target=_delayed_exit, daemon=True).start()
+    import threading, sys
+    def _restart():
+        import time; time.sleep(2)
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+    threading.Thread(target=_restart, daemon=True).start()
     return {"status": "restarting"}
 
 if __name__ == "__main__":
