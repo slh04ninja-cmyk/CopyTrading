@@ -108,6 +108,8 @@ class MainActivity : AppCompatActivity() {
     // Performance
     private lateinit var overviewContent: LinearLayout
     private lateinit var performanceContent: LinearLayout
+    private lateinit var positionsContent: LinearLayout
+    private lateinit var positionsFooter: LinearLayout
     private lateinit var perfChannelTable: LinearLayout
     private lateinit var perfSignalTable: LinearLayout
     private lateinit var perfSessionTable: LinearLayout
@@ -216,6 +218,8 @@ class MainActivity : AppCompatActivity() {
 
         overviewContent = findViewById(R.id.overviewContent)
         performanceContent = findViewById(R.id.performanceContent)
+        positionsContent = findViewById(R.id.positionsContent)
+        positionsFooter = findViewById(R.id.positionsFooter)
         perfChannelTable = findViewById(R.id.perfChannelTable)
         perfSignalTable = findViewById(R.id.perfSignalTable)
         perfSessionTable = findViewById(R.id.perfSessionTable)
@@ -302,12 +306,18 @@ class MainActivity : AppCompatActivity() {
             panelPositions.visibility = View.GONE
             panelConfig.visibility = View.GONE
             panelLogs.visibility = View.GONE
+            positionsFooter.visibility = View.GONE
 
             when (index) {
-                0 -> swipeRefresh.visibility = View.VISIBLE
+                0 -> {
+                    swipeRefresh.visibility = View.VISIBLE
+                    if (positionsContent.visibility == View.VISIBLE) {
+                        positionsFooter.visibility = View.VISIBLE
+                    }
+                }
                 1 -> {
                     panelPositions.visibility = View.VISIBLE
-                    refreshPositions()
+                    refreshPerformanceForRange(dateFrom, dateTo)
                 }
                 2 -> {
                     panelConfig.visibility = View.VISIBLE
@@ -370,7 +380,8 @@ class MainActivity : AppCompatActivity() {
     private fun setupDashTabs() {
         btnOverview.setOnClickListener {
             overviewContent.visibility = View.VISIBLE
-            performanceContent.visibility = View.GONE
+            positionsContent.visibility = View.GONE
+            positionsFooter.visibility = View.GONE
             btnOverview.setBackgroundResource(R.drawable.dash_tab_active_bg)
             btnOverview.setTextColor(Color.WHITE)
             btnPerformance.setBackgroundColor(Color.TRANSPARENT)
@@ -378,11 +389,13 @@ class MainActivity : AppCompatActivity() {
         }
         btnPerformance.setOnClickListener {
             overviewContent.visibility = View.GONE
-            performanceContent.visibility = View.VISIBLE
+            positionsContent.visibility = View.VISIBLE
+            positionsFooter.visibility = View.VISIBLE
             btnPerformance.setBackgroundResource(R.drawable.dash_tab_active_bg)
             btnPerformance.setTextColor(Color.WHITE)
             btnOverview.setBackgroundColor(Color.TRANSPARENT)
             btnOverview.setTextColor(getColor(R.color.text_muted))
+            refreshPositions()
         }
     }
 
@@ -589,8 +602,11 @@ class MainActivity : AppCompatActivity() {
                 while (true) {
                     try {
                         refreshDashboard()
-                        if (performanceContent.visibility == View.VISIBLE) {
+                        if (panelPositions.visibility == View.VISIBLE) {
                             refreshPerformanceForRange(dateFrom, dateTo)
+                        }
+                        if (positionsContent.visibility == View.VISIBLE) {
+                            refreshPositions()
                         }
                     } catch (_: Exception) {}
                     delay(5000)

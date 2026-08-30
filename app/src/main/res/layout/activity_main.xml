@@ -137,7 +137,7 @@
                             android:layout_weight="1"
                             android:paddingVertical="10dp"
                             android:gravity="center"
-                            android:text="Performance"
+                            android:text="Positions"
                             android:textColor="@color/text_muted"
                             android:textSize="13sp"
                             android:textStyle="bold"
@@ -525,149 +525,15 @@
 
                     </LinearLayout>
 
-                    <!-- PERFORMANCE CONTENT -->
+                                        <!-- POSITIONS CONTENT -->
                     <LinearLayout
-                        android:id="@+id/performanceContent"
+                        android:id="@+id/positionsContent"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:visibility="gone">
 
-                        <!-- DATE RANGE PICKER -->
-                        <TextView
-                            android:id="@+id/tvDateRange"
-                            android:layout_width="match_parent"
-                            android:layout_height="44dp"
-                            android:background="@color/card_background"
-                            android:gravity="center_vertical"
-                            android:paddingHorizontal="14dp"
-                            android:text="Aujourd'hui"
-                            android:textColor="@color/text_primary"
-                            android:textSize="14sp"
-                            android:drawableEnd="@android:drawable/ic_menu_my_calendar"
-                            android:drawableTint="@color/text_muted"
-                            android:layout_marginBottom="12dp"/>
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="16dp"
-                            app:cardBackgroundColor="@color/card_background"
-                            app:cardCornerRadius="16dp"
-                            app:cardElevation="0dp"
-                            app:strokeWidth="1dp"
-                            app:strokeColor="@color/divider">
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="vertical">
-                                <TextView
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:text="Performance par Canal"
-                                    android:textColor="@color/text_primary"
-                                    android:textSize="14sp"
-                                    android:textStyle="bold"
-                                    android:padding="14dp"
-                                    android:background="@color/bg_secondary"/>
-                                <LinearLayout
-                                    android:id="@+id/perfChannelTable"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:orientation="vertical"
-                                    android:padding="12dp"/>
-                            </LinearLayout>
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="16dp"
-                            app:cardBackgroundColor="@color/card_background"
-                            app:cardCornerRadius="16dp"
-                            app:cardElevation="0dp"
-                            app:strokeWidth="1dp"
-                            app:strokeColor="@color/divider">
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="vertical">
-                                <TextView
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:text="Performance par Signal"
-                                    android:textColor="@color/text_primary"
-                                    android:textSize="14sp"
-                                    android:textStyle="bold"
-                                    android:padding="14dp"
-                                    android:background="@color/bg_secondary"/>
-                                <LinearLayout
-                                    android:id="@+id/perfSignalTable"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:orientation="vertical"
-                                    android:padding="12dp"/>
-                            </LinearLayout>
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="16dp"
-                            app:cardBackgroundColor="@color/card_background"
-                            app:cardCornerRadius="16dp"
-                            app:cardElevation="0dp"
-                            app:strokeWidth="1dp"
-                            app:strokeColor="@color/divider">
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="vertical">
-                                <TextView
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:text="Performance par Session"
-                                    android:textColor="@color/text_primary"
-                                    android:textSize="14sp"
-                                    android:textStyle="bold"
-                                    android:padding="14dp"
-                                    android:background="@color/bg_secondary"/>
-                                <LinearLayout
-                                    android:id="@+id/perfSessionTable"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:orientation="vertical"
-                                    android:padding="12dp"/>
-                            </LinearLayout>
-                        </com.google.android.material.card.MaterialCardView>
-
-                    </LinearLayout>
-
-                </LinearLayout>
-            </androidx.core.widget.NestedScrollView>
-        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-        <!-- POSITIONS PANEL -->
-        <FrameLayout
-            android:id="@+id/panelPositions"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone">
-
-            <androidx.core.widget.NestedScrollView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:clipToPadding="false"
-                android:paddingBottom="72dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="12dp">
-
-                    <LinearLayout
+<LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:gravity="center_vertical"
@@ -702,40 +568,186 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:nestedScrollingEnabled="false"/>
+                    </LinearLayout>
+
+
                 </LinearLayout>
             </androidx.core.widget.NestedScrollView>
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-            <!-- Fixed bottom button -->
-            <LinearLayout
+                <!-- HISTORIQUE PANEL -->
+        <FrameLayout
+            android:id="@+id/panelPositions"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom"
-                android:orientation="vertical"
-                android:background="@color/background"
-                android:paddingHorizontal="16dp"
-                android:paddingTop="12dp"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
                 android:paddingBottom="16dp">
 
-                <View
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/border"
-                    android:layout_marginBottom="12dp"/>
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="12dp">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnCloseAll"
+                <LinearLayout
+                    android:id="@+id/performanceContent"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:text="TOUT FERMER"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.08"
-                    android:backgroundTint="@color/danger"
-                    app:cornerRadius="14dp"/>
-            </LinearLayout>
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    >
+
+                    <!-- DATE RANGE PICKER -->
+                    <TextView
+                        android:id="@+id/tvDateRange"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:background="@color/card_background"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="14dp"
+                        android:text="Aujourd'hui"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:drawableEnd="@android:drawable/ic_menu_my_calendar"
+                        android:drawableTint="@color/text_muted"
+                        android:layout_marginBottom="12dp"/>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp"
+                        app:cardBackgroundColor="@color/card_background"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/divider">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Performance par Canal"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:padding="14dp"
+                                android:background="@color/bg_secondary"/>
+                            <LinearLayout
+                                android:id="@+id/perfChannelTable"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:padding="12dp"/>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp"
+                        app:cardBackgroundColor="@color/card_background"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/divider">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Performance par Signal"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:padding="14dp"
+                                android:background="@color/bg_secondary"/>
+                            <LinearLayout
+                                android:id="@+id/perfSignalTable"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:padding="12dp"/>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp"
+                        app:cardBackgroundColor="@color/card_background"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="@color/divider">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Performance par Session"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:padding="14dp"
+                                android:background="@color/bg_secondary"/>
+                            <LinearLayout
+                                android:id="@+id/perfSessionTable"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:padding="12dp"/>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                </LinearLayout>
+                </LinearLayout>
+            </androidx.core.widget.NestedScrollView>
         </FrameLayout>
 
-        <!-- CONFIG PANEL -->
+
+                <!-- Fixed bottom button (sous-onglet Positions) -->
+        <LinearLayout
+            android:id="@+id/positionsFooter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:orientation="vertical"
+            android:background="@color/background"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="16dp"
+            android:visibility="gone">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/border"
+                android:layout_marginBottom="12dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCloseAll"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="TOUT FERMER"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08"
+                android:backgroundTint="@color/danger"
+                app:cornerRadius="14dp"/>
+        </LinearLayout>
+
+<!-- CONFIG PANEL -->
         <ScrollView
             android:id="@+id/panelConfig"
             android:layout_width="match_parent"
@@ -926,7 +938,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Positions"
+                    android:text="Historique"
                     android:textColor="@color/text_muted"
                     android:textSize="11sp"
                     android:layout_marginTop="3dp"/>
