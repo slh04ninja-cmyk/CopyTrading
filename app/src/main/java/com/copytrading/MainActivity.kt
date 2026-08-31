@@ -314,6 +314,7 @@ class MainActivity : AppCompatActivity() {
                     if (positionsContent.visibility == View.VISIBLE) {
                         positionsFooter.visibility = View.VISIBLE
                     }
+                    updateDashboardBottomPadding()
                 }
                 1 -> {
                     panelPositions.visibility = View.VISIBLE
@@ -382,6 +383,7 @@ class MainActivity : AppCompatActivity() {
             overviewContent.visibility = View.VISIBLE
             positionsContent.visibility = View.GONE
             positionsFooter.visibility = View.GONE
+            updateDashboardBottomPadding()
             btnOverview.setBackgroundResource(R.drawable.dash_tab_active_bg)
             btnOverview.setTextColor(Color.WHITE)
             btnPerformance.setBackgroundColor(Color.TRANSPARENT)
@@ -391,12 +393,20 @@ class MainActivity : AppCompatActivity() {
             overviewContent.visibility = View.GONE
             positionsContent.visibility = View.VISIBLE
             positionsFooter.visibility = View.VISIBLE
+            updateDashboardBottomPadding()
             btnPerformance.setBackgroundResource(R.drawable.dash_tab_active_bg)
             btnPerformance.setTextColor(Color.WHITE)
             btnOverview.setBackgroundColor(Color.TRANSPARENT)
             btnOverview.setTextColor(getColor(R.color.text_muted))
             refreshPositions()
         }
+    }
+
+    /** ★ Fix : le footer fixe "TOUT FERMER" (~93dp) recouvrait la dernière position.
+     *  On réserve l'espace en bas du scroll quand le footer est visible. */
+    private fun updateDashboardBottomPadding() {
+        val bottom = if (positionsFooter.visibility == View.VISIBLE) dp(104) else dp(16)
+        panelDashboard.setPadding(0, 0, 0, bottom)
     }
 
     private fun setupListeners() {
