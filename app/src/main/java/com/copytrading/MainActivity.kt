@@ -956,11 +956,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // SN = nombre d'ordres MK (Market) par canal
+        // SN = nombre d'ordres MK (Market) + L3 (HORS-ZONE) par canal
         val channelMkCount = mutableMapOf<String, Int>()
         for (t in trades) {
             val parts = t.comment.split("-")
-            if (parts.size >= 3 && parts[2] == "MK") {
+            if (parts.size >= 3 && (parts[2] == "MK" || parts[2] == "L3")) {
                 val channel = parts[0]
                 channelMkCount[channel] = (channelMkCount[channel] ?: 0) + 1
             }
