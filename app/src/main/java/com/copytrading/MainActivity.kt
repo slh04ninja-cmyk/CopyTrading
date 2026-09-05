@@ -119,9 +119,9 @@ class MainActivity : AppCompatActivity() {
     private var dateTo: String = ""
     private var channelSortCol = 1 // 0=ch, 1=pnl, 2=sn, 3=tr, 4=wn, 5=ls, 6=wr
     private var channelSortAsc = false
-    private var signalSortCol = 2
+    private var signalSortCol = 1 // 0=signal, 1=pnl, 2=cn, 3=tr, 4=wn, 5=ls, 6=wr
     private var signalSortAsc = false
-    private var sessionSortCol = 0
+    private var sessionSortCol = 0 // 0=heure, 1=pnl, 2=cn, 3=tr, 4=wn, 5=ls, 6=wr
     private var sessionSortAsc = false
     private var lastChannelData: List<Pair<String, PerfData>> = emptyList()
     private var lastChannelMkCount: Map<String, Int> = emptyMap()
@@ -973,7 +973,9 @@ class MainActivity : AppCompatActivity() {
             val parts = t.comment.split("-")
             if (parts.size >= 2) {
                 val channel = parts[0]  // CH5, CH3, etc.
-                val signal = parts[1]   // ZN, PU, MP, QA, AL
+                val type = parts[1]     // ZN, PU, MP, QA, AL
+                // Hors-zone (L3/L4) separe du ZN dans la zone -> ligne HZ
+                val signal = if (type == "ZN" && parts.size >= 3 && (parts[2] == "L3" || parts[2] == "L4")) "HZ" else type
                 positionSignals[t.ticket] = Pair(channel, signal)
                 channelData.getOrPut(channel) { PerfData() }.add(t, signal)
                 signalData.getOrPut(signal) { PerfData() }.add(t)
@@ -1064,8 +1066,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderSignalTable() {
         perfSignalTable.removeAllViews()
-        val headers = arrayOf("Signal", "CN", "P&L", "TR", "WN", "LS", "WR")
-        val weights = floatArrayOf(0.8f, 0.6f, 1f, 0.6f, 0.6f, 0.6f, 0.6f)
+        val headers = arrayOf("Signal", "P&L", "CN", "TR", "WN", "LS", "WR")
+        val weights = floatArrayOf(0.8f, 1f, 0.6f, 0.6f, 0.6f, 0.6f, 0.6f)
         addPerfHeader(perfSignalTable, headers, weights, signalSortCol, signalSortAsc) { col ->
             if (signalSortCol == col) signalSortAsc = !signalSortAsc else { signalSortCol = col; signalSortAsc = col == 0 }
             renderSignalTable()
@@ -1080,8 +1082,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderSessionTable() {
         perfSessionTable.removeAllViews()
-        val headers = arrayOf("Heure", "CN", "P&L", "TR", "WN", "LS", "WR")
-        val weights = floatArrayOf(0.8f, 0.6f, 1f, 0.6f, 0.6f, 0.6f, 0.6f)
+        val headers = arrayOf("Heure", "P&L", "CN", "TR", "WN", "LS", "WR")
+        val weights = floatArrayOf(0.8f, 1f, 0.6f, 0.6f, 0.6f, 0.6f, 0.6f)
         addPerfHeader(perfSessionTable, headers, weights, sessionSortCol, sessionSortAsc) { col ->
             if (sessionSortCol == col) sessionSortAsc = !sessionSortAsc else { sessionSortCol = col; sessionSortAsc = col == 0 }
             renderSessionTable()
@@ -1099,9 +1101,9 @@ class MainActivity : AppCompatActivity() {
     private fun sortPerfData(data: List<Pair<String, PerfData>>, col: Int, asc: Boolean, isSignal: Boolean = false): List<Pair<String, PerfData>> {
         val sorted = if (isSignal) {
             when (col) {
-                0 -> data.sortedBy { it.first }
-                1 -> data.sortedBy { it.second.channelCount }
-                2 -> data.sortedBy { it.second.pnl }
+                0 -> data.sortedBy { signalSortKey(it.first) }
+                1 -> data.sortedBy { it.second.pnl }
+                2 -> data.sortedBy { it.second.channelCount }
                 3 -> data.sortedBy { it.second.trades }
                 4 -> data.sortedBy { it.second.wins }
                 5 -> data.sortedBy { it.second.losses }
@@ -1122,6 +1124,9 @@ class MainActivity : AppCompatActivity() {
         }
         return if (asc) sorted else sorted.reversed()
     }
+
+    /** Cle de tri des signaux : HZ (hors-zone L3/L4) juste apres ZN. */
+    private fun signalSortKey(name: String): String = if (name == "HZ") "ZN~" else name
 
     private data class PerfData(
         var pnl: Double = 0.0, var trades: Int = 0, var wins: Int = 0, var losses: Int = 0,
@@ -1252,8 +1257,8 @@ class MainActivity : AppCompatActivity() {
             row.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weight))
         }
         cell(label, 0.8f, getColor(R.color.primary_light), bold = true)
-        cell(d.channelCount.toString(), 0.6f, getColor(R.color.text_primary))
         cell(String.format("%+.2f", d.pnl), 1f, if (d.pnl >= 0) getColor(R.color.success) else getColor(R.color.danger), bold = true)
+        cell(d.channelCount.toString(), 0.6f, getColor(R.color.text_primary))
         cell(d.trades.toString(), 0.6f, getColor(R.color.text_primary))
         cell(d.wins.toString(), 0.6f, getColor(R.color.success))
         cell(d.losses.toString(), 0.6f, getColor(R.color.danger))
