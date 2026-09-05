@@ -19,6 +19,7 @@ import android.view.animation.OvershootInterpolator
 import android.widget.*
 import androidx.drawerlayout.widget.DrawerLayout
 import android.app.DatePickerDialog
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 import android.widget.LinearLayout
@@ -115,6 +116,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var perfSignalTable: LinearLayout
     private lateinit var perfSessionTable: LinearLayout
     private lateinit var tvDateRange: TextView
+    private lateinit var btnPdfReport: ImageView
     private var dateFrom: String = ""
     private var dateTo: String = ""
     private var channelSortCol = 1 // 0=ch, 1=pnl, 2=sn, 3=tr, 4=wn, 5=ls, 6=wr
@@ -225,6 +227,7 @@ class MainActivity : AppCompatActivity() {
         perfSignalTable = findViewById(R.id.perfSignalTable)
         perfSessionTable = findViewById(R.id.perfSessionTable)
         tvDateRange = findViewById(R.id.tvDateRange)
+        btnPdfReport = findViewById(R.id.btnPdfReport)
 
         panelDashboard = findViewById(R.id.panelDashboard)
         panelPositions = findViewById(R.id.panelPositions)
@@ -365,6 +368,50 @@ class MainActivity : AppCompatActivity() {
                 tvDateRange.text = if (start == end) s else "$s - $e"
                 refreshPerformanceForRange(start, end)
             }.show()
+        }
+
+        // Bouton rapport PDF : genere le rapport pour la periode choisie et l'ouvre
+        btnPdfReport.setOnClickListener {
+            if (dateFrom.isEmpty() || dateTo.isEmpty()) {
+                Snackbar.make(btnPdfReport, "Choisis une periode avec le calendrier", Snackbar.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            btnPdfReport.isEnabled = false
+            btnPdfReport.alpha = 0.5f
+            lifecycleScope.launch {
+                try {
+                    val dir = File(getExternalFilesDir(null), "rapports").apply { mkdirs() }
+                    val pdfFile = File(dir, "rapport_$dateFrom-$dateTo.pdf")
+                    val ok = client.downloadReport(dateFrom, dateTo, pdfFile)
+                    if (ok && pdfFile.exists() && pdfFile.length() > 0) {
+                        openPdf(pdfFile)
+                    } else {
+                        val err = client.lastErrorMessage.ifEmpty { "HTTP ${client.lastErrorCode}" }
+                        Snackbar.make(btnPdfReport, "Erreur generation PDF: $err", Snackbar.LENGTH_LONG).show()
+                    }
+                } catch (e: Exception) {
+                    Snackbar.make(btnPdfReport, "Erreur: ${e.message}", Snackbar.LENGTH_LONG).show()
+                } finally {
+                    btnPdfReport.isEnabled = true
+                    btnPdfReport.alpha = 1f
+                }
+            }
+        }
+    }
+
+    /** Ouvre le PDF genere via le FileProvider (intent viewer PDF). */
+    private fun openPdf(file: File) {
+        try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                this, "$packageName.fileprovider", file
+            )
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/pdf")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, "Ouvrir le rapport"))
+        } catch (e: Exception) {
+            Snackbar.make(btnPdfReport, "Aucune app pour ouvrir le PDF (fichier dans ${file.parent})", Snackbar.LENGTH_LONG).show()
         }
     }
 

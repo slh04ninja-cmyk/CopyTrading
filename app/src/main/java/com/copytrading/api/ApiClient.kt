@@ -174,6 +174,32 @@ class ApiClient(private val context: Context) {
         return execute(req, ServerFileResponse::class.java)
     }
 
+    // --- RAPPORT PDF (periode choisie) ---
+    suspend fun downloadReport(fromDate: String, toDate: String, destFile: java.io.File): Boolean {
+        val req = buildRequest("/api/report?from_date=$fromDate&to_date=$toDate")
+        return withContext(Dispatchers.IO) {
+            try {
+                // generation PDF cote serveur ~5-15s -> timeout etendu
+                val longClient = client.newBuilder().readTimeout(120, TimeUnit.SECONDS).build()
+                longClient.newCall(req).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        lastErrorCode = response.code
+                        false
+                    } else {
+                        response.body?.byteStream()?.use { input ->
+                            destFile.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        true
+                    }
+                }
+            } catch (e: Exception) {
+                lastErrorCode = -1
+                lastErrorMessage = e.message ?: "Erreur telechargement rapport"
+                false
+            }
+        }
+    }
+
     // --- CLOSE POSITION ---
     suspend fun closePosition(ticket: Long): CloseResponse? {
         val req = buildRequest("/api/positions/$ticket/close", "POST")
