@@ -40,6 +40,7 @@ import com.copytrading.config.ConfigParser
 import com.copytrading.config.ConfigFieldView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.cos
@@ -370,12 +371,35 @@ class MainActivity : AppCompatActivity() {
     private fun refreshPerformanceForRange(fromDate: String, toDate: String) {
         lifecycleScope.launch {
             try {
-                val trades = client.getTrades(fromDate = fromDate, toDate = toDate)
+                // Filtre: ne garder que les canaux presents dans Channels.txt (serveur).
+                // Les 2 appels en parallele (pas de latence ajoutee).
+                val activeDeferred = async { loadActiveChannels() }
+                val tradesDeferred = async { client.getTrades(fromDate = fromDate, toDate = toDate) }
+                val activeChannels = activeDeferred.await()
+                val trades = tradesDeferred.await()
                 if (trades != null) {
-                    updatePerformance(trades.trades)
+                    val filtered = if (activeChannels == null) trades.trades
+                    else trades.trades.filter { t ->
+                        val ch = t.comment.substringBefore("-")
+                        ch in activeChannels || !ch.startsWith("CH")
+                    }
+                    updatePerformance(filtered)
                 }
             } catch (_: Exception) {}
         }
+    }
+
+    /** Lit Channels.txt sur le serveur et renvoie l'ensemble des canaux actifs ("CH5", "CH70"...).
+     *  Retourne null si illisible (=> pas de filtre, affichage complet). */
+    private suspend fun loadActiveChannels(): Set<String>? {
+        return try {
+            val file = client.getServerFile("C:\\TradingBot\\Channels.txt") ?: return null
+            Regex("""Canal_(\d+)\s*:""")
+                .findAll(file.content)
+                .map { "CH${it.groupValues[1]}" }
+                .toSet()
+                .also { if (it.isEmpty()) return null }
+        } catch (_: Exception) { null }
     }
 
     private fun setupDashTabs() {

@@ -167,6 +167,13 @@ class ApiClient(private val context: Context) {
         return execute(req, LogsResponse::class.java)
     }
 
+    // --- SERVER FILE (Channels.txt pour filtrer les canaux actifs) ---
+    suspend fun getServerFile(fileName: String): ServerFileResponse? {
+        val encoded = java.net.URLEncoder.encode(fileName, "UTF-8")
+        val req = buildRequest("/api/file?path=$encoded")
+        return execute(req, ServerFileResponse::class.java)
+    }
+
     // --- CLOSE POSITION ---
     suspend fun closePosition(ticket: Long): CloseResponse? {
         val req = buildRequest("/api/positions/$ticket/close", "POST")

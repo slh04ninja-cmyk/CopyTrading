@@ -108,6 +108,12 @@ data class LogsResponse(
     val returned: Int = 0
 )
 
+data class ServerFileResponse(
+    val path: String = "",
+    val content: String = "",
+    val size: Int = 0
+)
+
 data class CloseResponse(
     val status: String = "",
     val ticket: Long = 0,
