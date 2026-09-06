@@ -97,7 +97,7 @@ class MainActivity : AppCompatActivity() {
     // Trading Hours
     private lateinit var tvTradingHoursCount: TextView
     private lateinit var tvTradingHoursRange: TextView
-    private lateinit var chipGroupHours: com.google.android.material.chip.ChipGroup
+    private lateinit var chipGroupHours: LinearLayout
 
     // Tabs
     private lateinit var tabDashboard: LinearLayout
