@@ -45,6 +45,7 @@ data class DashboardResponse(
     val daily_limit: Double = 0.0,
     val limit_pct: Double = 0.0,
     val trading_hours: String = "",
+    val trading_hours_list: String = "",
     val timestamp: String = ""
 )
 

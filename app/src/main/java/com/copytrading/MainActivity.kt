@@ -153,6 +153,8 @@ class MainActivity : AppCompatActivity() {
     private var tradingHours = BooleanArray(24) { it in 5..20 } // default: 5h-21h
     private var tradingHoursInitialized = false // avoid reset on each refresh
     private var lastHoursSignature: String? = null // evite de reconstruire les chips si inchangé
+    // Heures reelles du .env serveur (source de verite pour l'affichage des chips)
+    private var serverHours = BooleanArray(24) { it in 5..20 }
 
     // Logs
     private lateinit var tvLogs: TextView
@@ -809,7 +811,17 @@ class MainActivity : AppCompatActivity() {
         tvNoPositions.visibility = if (dash.open_positions.isEmpty()) View.VISIBLE else View.GONE
         rvPositions.visibility = if (dash.open_positions.isEmpty()) View.GONE else View.VISIBLE
 
-        // Update trading hours dashboard
+        // Heures de trading reelles depuis le .env serveur (trading_hours_list = CSV exact)
+        val hoursList = dash.trading_hours_list
+        if (hoursList.isNotBlank()) {
+            serverHours.fill(false)
+            hoursList.split(",").forEach {
+                val h = it.trim().toIntOrNull()
+                if (h != null && h in 0..23) serverHours[h] = true
+            }
+        }
+
+        // Update trading hours dashboard (lit serverHours = .env, pas l'etat d'edition Config)
         updateTradingHoursDashboard()
     }
 
@@ -1068,41 +1080,40 @@ class MainActivity : AppCompatActivity() {
         tradingHoursInitialized = true
 
         val enabled = cfg["TIME_FILTER_ENABLED"]?.lowercase() == "true"
-        if (!enabled) {
-            tradingHours.fill(false)
-            updateTradingHoursDashboard()
-            return
-        }
-        // Try TRADING_HOURS first (comma-separated list)
-        val hoursStr = cfg["TRADING_HOURS"]
-        if (hoursStr != null && hoursStr.isNotBlank()) {
-            tradingHours.fill(false)
-            hoursStr.split(",").forEach {
-                val h = it.trim().toIntOrNull()
-                if (h != null && h in 0..23) tradingHours[h] = true
+        tradingHours.fill(false)
+        if (enabled) {
+            // Try TRADING_HOURS first (comma-separated list)
+            val hoursStr = cfg["TRADING_HOURS"]
+            if (hoursStr != null && hoursStr.isNotBlank()) {
+                hoursStr.split(",").forEach {
+                    val h = it.trim().toIntOrNull()
+                    if (h != null && h in 0..23) tradingHours[h] = true
+                }
+            } else {
+                // Fallback to START/END_HOUR (old format, END exclusive)
+                val start = cfg["TRADING_START_HOUR"]?.toIntOrNull() ?: 5
+                val end = cfg["TRADING_END_HOUR"]?.toIntOrNull() ?: 21
+                for (i in start until end) tradingHours[i] = true
             }
-        } else {
-            // Fallback to START/END_HOUR (old format, END exclusive)
-            val start = cfg["TRADING_START_HOUR"]?.toIntOrNull() ?: 5
-            val end = cfg["TRADING_END_HOUR"]?.toIntOrNull() ?: 21
-            tradingHours.fill(false)
-            for (i in start until end) tradingHours[i] = true
         }
+        // Affichage initial = meme source (.env); le refresh 5s resynchronisera via dashboard
+        serverHours = tradingHours.copyOf()
         updateTradingHoursDashboard()
     }
 
     private fun updateTradingHoursDashboard() {
-        val count = tradingHours.count { it }
+        val count = serverHours.count { it }
         tvTradingHoursCount.text = "${count}h active"
 
         // Hour tags (2 rows: 00-11 puis 12-23, styled like prototype)
-        // Ne reconstruit que si l'etat a change (le refresh 5s ne doit pas recreer les vues)
-        val signature = tradingHours.joinToString("") { if (it) "1" else "0" }
+        // Source = serverHours (.env reel). Ne reconstruit que si l'etat a change.
+        val signature = serverHours.joinToString("") { if (it) "1" else "0" }
         if (signature == lastHoursSignature && chipGroupHours.childCount > 0) return
         lastHoursSignature = signature
         chipGroupHours.removeAllViews()
         val row1 = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -1110,6 +1121,7 @@ class MainActivity : AppCompatActivity() {
         }
         val row2 = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -1120,21 +1132,24 @@ class MainActivity : AppCompatActivity() {
                 text = String.format("%02d", i)
                 textSize = 9f
                 setTypeface(null, android.graphics.Typeface.BOLD)
-                setPadding(dp(5), dp(2), dp(5), dp(2))
+                gravity = Gravity.CENTER
+                setPadding(dp(2), dp(4), dp(2), dp(4))
                 val bg = android.graphics.drawable.GradientDrawable().apply {
                     cornerRadius = dp(4).toFloat()
-                    if (tradingHours[i]) {
+                    if (serverHours[i]) {
                         setColor(getColor(R.color.primary))
                     } else {
                         setColor(Color.parseColor("#1A1A2E"))
                     }
                 }
                 background = bg
-                setTextColor(if (tradingHours[i]) Color.WHITE else getColor(R.color.text_muted))
+                setTextColor(if (serverHours[i]) Color.WHITE else getColor(R.color.text_muted))
+                // pleine largeur: poids egal pour repartir les 12 chips sur tout le width
                 layoutParams = LinearLayout.LayoutParams(
+                    0,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { marginEnd = dp(3); bottomMargin = dp(3) }
+                    1f
+                ).apply { marginEnd = dp(2); marginStart = dp(2) }
             }
             if (i < 12) row1.addView(tv) else row2.addView(tv)
         }
