@@ -568,7 +568,7 @@
                                 android:id="@+id/chipGroupHours"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:orientation="horizontal"/>
+                                android:orientation="vertical"/>
 
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
