@@ -1003,7 +1003,7 @@ class MainActivity : AppCompatActivity() {
             ).apply { bottomMargin = dp(8) }
         }
 
-        for (i in 0 until24) {
+        for (i in 0 until 24) {
             val cb = CheckBox(this).apply {
                 id = View.generateViewId()
                 text = String.format("%02d", i)
@@ -1074,14 +1074,14 @@ class MainActivity : AppCompatActivity() {
         // Build ranges
         val ranges = mutableListOf<Pair<Int, Int>>()
         var start = -1
-        for (i in 0 until24) {
+        for (i in 0 until 24) {
             if (tradingHours[i] && start == -1) start = i
             if (!tradingHours[i] && start != -1) {
                 ranges.add(start to (i - 1))
                 start = -1
             }
         }
-        if (start != -1) ranges.add(start to23)
+        if (start != -1) ranges.add(start to 23)
 
         val rangeText = when {
             count == 0 -> "No hours selected"
@@ -1094,7 +1094,7 @@ class MainActivity : AppCompatActivity() {
 
         // Chips
         chipGroupHours.removeAllViews()
-        for (i in 0 until24) {
+        for (i in 0 until 24) {
             if (tradingHours[i]) {
                 chipGroupHours.addView(com.google.android.material.chip.Chip(this).apply {
                     text = String.format("%02d", i)
@@ -1139,7 +1139,7 @@ class MainActivity : AppCompatActivity() {
         btnSaveConfig.text = "SAUVEGARDE..."
 
         // Add TRADING_HOURS from24h grid
-        val activeHours = (0 until24).filter { tradingHours[it] }
+        val activeHours = (0 until 24).filter { tradingHours[it] }
         values["TRADING_HOURS"] = activeHours.joinToString(",")
         // Remove old format keys
         values.remove("TRADING_START_HOUR")
