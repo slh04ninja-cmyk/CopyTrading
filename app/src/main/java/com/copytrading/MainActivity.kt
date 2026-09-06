@@ -152,6 +152,7 @@ class MainActivity : AppCompatActivity() {
 
     // Trading Hours state (24 booleans, true = active)
     private var tradingHours = BooleanArray(24) { it in 5..20 } // default: 5h-21h
+    private var tradingHoursInitialized = false // avoid reset on each refresh
 
     // Logs
     private lateinit var tvLogs: TextView
@@ -973,21 +974,24 @@ class MainActivity : AppCompatActivity() {
         }
         val presets = listOf("London 7-16h" to intArrayOf(7,15), "New York 12-21h" to intArrayOf(12,20), "London+NY 7-21h" to intArrayOf(7,20), "24h/24" to intArrayOf(0,23))
         for ((label, range) in presets) {
-            presetsRow.addView(MaterialButton(this).apply {
+            presetsRow.addView(TextView(this).apply {
                 text = label
                 textSize = 10f
                 setTextColor(getColor(R.color.text_muted))
-                setBackgroundColor(Color.TRANSPARENT)
-                strokeWidth = dp(1)
-                strokeColor = android.content.res.ColorStateList.valueOf(getColor(R.color.divider))
-                cornerRadius = dp(8)
+                setPadding(dp(8), dp(6), dp(8), dp(6))
+                val bg = android.graphics.drawable.GradientDrawable().apply {
+                    setStroke(dp(1), getColor(R.color.divider))
+                    cornerRadius = dp(8).toFloat()
+                    setColor(Color.TRANSPARENT)
+                }
+                background = bg
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
                     marginEnd = dp(4)
                 }
                 setOnClickListener {
                     tradingHours.fill(false)
                     for (i in range[0]..range[1]) tradingHours[i] = true
-                    syncHoursCheckboxes(container)
+                    syncHoursGrid(container)
                 }
             })
         }
@@ -1004,45 +1008,63 @@ class MainActivity : AppCompatActivity() {
         }
 
         for (i in 0 until 24) {
-            val cb = CheckBox(this).apply {
-                id = View.generateViewId()
+            val tv = TextView(this).apply {
                 text = String.format("%02d", i)
                 textSize = 14f
-                isChecked = tradingHours[i]
-                setTextColor(getColor(R.color.text_primary))
-                buttonTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.primary))
-                tag = i // store hour index
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                gravity = android.view.Gravity.CENTER
+                setPadding(0, dp(8), 0, dp(8))
+                tag = i
                 layoutParams = GridLayout.LayoutParams().apply {
                     width = 0
                     columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
                     setMargins(dp(2), dp(2), dp(2), dp(2))
                 }
-                setOnCheckedChangeListener { _, checked ->
+                setOnClickListener {
                     val hour = tag as Int
-                    tradingHours[hour] = checked
+                    tradingHours[hour] = !tradingHours[hour]
+                    updateHourBoxStyle(this, tradingHours[hour])
                     updateTradingHoursDashboard()
                 }
             }
-            gridLayout.addView(cb)
+            updateHourBoxStyle(tv, tradingHours[i])
+            gridLayout.addView(tv)
         }
         container.addView(gridLayout)
 
-        // Store reference for sync
         container.tag = gridLayout
-
         return container
     }
 
-    private fun syncHoursCheckboxes(container: View) {
+    private fun updateHourBoxStyle(tv: TextView, active: Boolean) {
+        val bg = android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = dp(10).toFloat()
+            if (active) {
+                setColor(getColor(R.color.primary))
+                setStroke(0, Color.TRANSPARENT)
+            } else {
+                setColor(Color.parseColor("#0F0F1A"))
+                setStroke(dp(2), getColor(R.color.divider))
+            }
+        }
+        tv.background = bg
+        tv.setTextColor(if (active) Color.WHITE else getColor(R.color.text_primary))
+    }
+
+    private fun syncHoursGrid(container: View) {
         val grid = container.tag as? GridLayout ?: return
         for (i in 0 until grid.childCount) {
-            val cb = grid.getChildAt(i) as? CheckBox ?: continue
-            cb.isChecked = tradingHours[cb.tag as Int]
+            val tv = grid.getChildAt(i) as? TextView ?: continue
+            updateHourBoxStyle(tv, tradingHours[tv.tag as Int])
         }
         updateTradingHoursDashboard()
     }
 
     private fun initTradingHoursFromConfig(cfg: Map<String, String>) {
+        // Only init once — avoid reset on each5s refresh
+        if (tradingHoursInitialized) return
+        tradingHoursInitialized = true
+
         val enabled = cfg["TIME_FILTER_ENABLED"]?.lowercase() == "true"
         if (!enabled) {
             tradingHours.fill(false)
@@ -1092,18 +1114,30 @@ class MainActivity : AppCompatActivity() {
         }
         tvTradingHoursRange.text = rangeText
 
-        // Chips
+        // Hour tags (styled like prototype)
         chipGroupHours.removeAllViews()
         for (i in 0 until 24) {
-            if (tradingHours[i]) {
-                chipGroupHours.addView(com.google.android.material.chip.Chip(this).apply {
-                    text = String.format("%02d", i)
-                    textSize = 10f
-                    setChipBackgroundColorResource(R.color.primary)
-                    setTextColor(Color.WHITE)
-                    isClickable = false
-                })
+            val tv = TextView(this).apply {
+                text = String.format("%02d", i)
+                textSize = 9f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setPadding(dp(5), dp(2), dp(5), dp(2))
+                val bg = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = dp(4).toFloat()
+                    if (tradingHours[i]) {
+                        setColor(getColor(R.color.primary))
+                    } else {
+                        setColor(Color.parseColor("#1A1A2E"))
+                    }
+                }
+                background = bg
+                setTextColor(if (tradingHours[i]) Color.WHITE else getColor(R.color.text_muted))
+                layoutParams = android.view.ViewGroup.MarginLayoutParams(
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply { marginEnd = dp(3); bottomMargin = dp(3) }
             }
+            chipGroupHours.addView(tv)
         }
     }
 
