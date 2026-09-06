@@ -957,16 +957,6 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, dp(8), 0, 0)
         }
 
-        // Label
-        container.addView(TextView(this).apply {
-            text = "Trading Hours (UTC)"
-            setTextColor(getColor(R.color.text_secondary))
-            textSize = 13f
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            letterSpacing = 0.03f
-            setPadding(0, 0, 0, dp(8))
-        })
-
         // Presets row
         val presetsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
