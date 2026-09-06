@@ -511,7 +511,7 @@
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
-                    <!-- ACTIVE TRADING HOURS CARD -->
+                    <!-- HEURES DE TRADING CARD -->
                     <com.google.android.material.card.MaterialCardView
                         android:id="@+id/cardTradingHours"
                         android:layout_width="match_parent"
@@ -540,7 +540,7 @@
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
                                     android:layout_weight="1"
-                                    android:text="Active Trading Windows"
+                                    android:text="Heures de Trading"
                                     android:textColor="@color/text_secondary"
                                     android:textSize="14sp"
                                     android:textStyle="bold"/>
@@ -554,15 +554,6 @@
                                     android:textSize="12sp"
                                     android:textStyle="bold"/>
                             </LinearLayout>
-
-                            <TextView
-                                android:id="@+id/tvTradingHoursRange"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:text="5h-21h"
-                                android:textColor="@color/text_primary"
-                                android:textSize="13sp"
-                                android:layout_marginBottom="8dp"/>
 
                             <LinearLayout
                                 android:id="@+id/chipGroupHours"

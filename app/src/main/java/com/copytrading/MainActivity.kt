@@ -96,7 +96,6 @@ class MainActivity : AppCompatActivity() {
 
     // Trading Hours
     private lateinit var tvTradingHoursCount: TextView
-    private lateinit var tvTradingHoursRange: TextView
     private lateinit var chipGroupHours: LinearLayout
 
     // Tabs
@@ -153,6 +152,7 @@ class MainActivity : AppCompatActivity() {
     // Trading Hours state (24 booleans, true = active)
     private var tradingHours = BooleanArray(24) { it in 5..20 } // default: 5h-21h
     private var tradingHoursInitialized = false // avoid reset on each refresh
+    private var lastHoursSignature: String? = null // evite de reconstruire les chips si inchangé
 
     // Logs
     private lateinit var tvLogs: TextView
@@ -179,6 +179,19 @@ class MainActivity : AppCompatActivity() {
 
         startAutoRefresh()
         refreshDashboard()
+        // Charge la config une fois au demarrage pour afficher les vraies heures de trading
+        // (le dashboard ne doit pas montrer le defaut 5..20 tant que Config n'a pas ete ouvert)
+        loadTradingHoursOnce()
+    }
+
+    /** Charge silencieusement la config (heures de trading) au demarrage, sans ouvrir l'onglet Config. */
+    private fun loadTradingHoursOnce() {
+        lifecycleScope.launch {
+            try {
+                val cfg = client.getConfig()?.config ?: return@launch
+                initTradingHoursFromConfig(cfg)
+            } catch (_: Exception) {}
+        }
     }
 
     private fun initViews() {
@@ -247,7 +260,6 @@ class MainActivity : AppCompatActivity() {
 
         // Trading Hours
         tvTradingHoursCount = findViewById(R.id.tvTradingHoursCount)
-        tvTradingHoursRange = findViewById(R.id.tvTradingHoursRange)
         chipGroupHours = findViewById(R.id.chipGroupHours)
 
         configContainer = findViewById(R.id.configContainer)
@@ -823,10 +835,10 @@ class MainActivity : AppCompatActivity() {
                     val envText = buildEnvText(cfg)
                     // Parser avec ConfigParser
                     configGroups = ConfigParser.parse(envText)
+                    // Init trading hours AVANT le rendu (la grille 24h lit tradingHours[] à la création)
+                    initTradingHoursFromConfig(cfg)
                     // Rendre les groupes dynamiquement
                     renderConfigGroups(configGroups)
-                    // Init trading hours from config
-                    initTradingHoursFromConfig(cfg)
                 } else {
                     configContainer.removeAllViews()
                     val tv = TextView(this@MainActivity).apply {
@@ -859,7 +871,6 @@ class MainActivity : AppCompatActivity() {
             "LOTS ET ORDRES" to listOf("LOT_TOTAL", "LOT_MARKET", "LOT_LIMIT1", "LOT_LIMIT2", "LIMIT_ENABLED", "LIMIT_COUNT", "LIMIT_OFFSET_1", "LIMIT_OFFSET_2", "LIMIT_EXPIRY_MIN", "ORDER_EXPIRY_MINUTES", "SLIPPAGE"),
             "GESTION DES TRADES" to listOf("TP_FIXED_GAIN_USD", "TP_MULTIPE1", "TP_MULTIPE2", "MAX_SL_USD", "MAX_POSITIONS", "DAILY_PROFIT_LIMIT"),
             "ZONES ET ANTI-DOUBLON" to listOf("TOLERANCE_ZN", "TOLERANCE_PU", "TOLERANCE_MP", "TEMPS_DE_FUSION", "TRADE_HORS_ZONE", "MAX_DISTANCE"),
-            "FILTRES" to listOf("MAX_SPREAD_POINTS", "CONFLIT_FILTER_ENABLED"),
             "FILTRES" to listOf("MAX_SPREAD_POINTS", "CONFLIT_FILTER_ENABLED"),
             "FILTRE HORAIRE" to listOf("TIME_FILTER_ENABLED", "TRADING_HOURS"),
             "FILTRES NEWS / TV" to listOf("NEWS_FILTER_ENABLED", "NEWS_MIN_IMPACT", "NEWS_WINDOW_BEFORE_BLOCK", "NEWS_WINDOW_BEFORE_CLOSE", "NEWS_WINDOW_AFTER", "TV_FILTER_ENABLED", "TV_FILTER_SYMBOL", "TV_FILTER_SCREENER", "TV_FILTER_EXCHANGE", "TV_FILTER_TIMEFRAME", "TV_FILTER_CACHE_TTL", "TV_STRONG_BUY", "TV_BUY", "TV_STRONG_SELL", "TV_SELL", "TV_NEUTRAL_ALLOW"),
@@ -932,8 +943,9 @@ class MainActivity : AppCompatActivity() {
 
             // Champs du groupe
             for (field in group.fields) {
-                // Skip old START/END HOUR fields — replaced by24h grid
-                if (field.key == "TRADING_START_HOUR" || field.key == "TRADING_END_HOUR") continue
+                // Skip old START/END/TRADING_HOURS fields — replaced by the 24h grid
+                if (field.key == "TRADING_START_HOUR" || field.key == "TRADING_END_HOUR" ||
+                    field.key == "TRADING_HOURS") continue
                 val fieldView = ConfigFieldView.create(this, field)
                 cardContent.addView(fieldView)
             }
@@ -1083,28 +1095,11 @@ class MainActivity : AppCompatActivity() {
         val count = tradingHours.count { it }
         tvTradingHoursCount.text = "${count}h active"
 
-        // Build ranges
-        val ranges = mutableListOf<Pair<Int, Int>>()
-        var start = -1
-        for (i in 0 until 24) {
-            if (tradingHours[i] && start == -1) start = i
-            if (!tradingHours[i] && start != -1) {
-                ranges.add(start to (i - 1))
-                start = -1
-            }
-        }
-        if (start != -1) ranges.add(start to 23)
-
-        val rangeText = when {
-            count == 0 -> "No hours selected"
-            count ==24 -> "24h/24 — bot trades all day"
-            else -> ranges.joinToString(", ") { (s, e) ->
-                if (s == e) "${s}h" else "${s}h-${e}h"
-            }
-        }
-        tvTradingHoursRange.text = rangeText
-
-        // Hour tags (2 rows, styled like prototype)
+        // Hour tags (2 rows: 00-11 puis 12-23, styled like prototype)
+        // Ne reconstruit que si l'etat a change (le refresh 5s ne doit pas recreer les vues)
+        val signature = tradingHours.joinToString("") { if (it) "1" else "0" }
+        if (signature == lastHoursSignature && chipGroupHours.childCount > 0) return
+        lastHoursSignature = signature
         chipGroupHours.removeAllViews()
         val row1 = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -1154,8 +1149,9 @@ class MainActivity : AppCompatActivity() {
         // Parcourir tous les groupes et lire les valeurs des widgets
         for (group in configGroups) {
             for (field in group.fields) {
-                // Skip old START/END HOUR fields — replaced by24h grid
-                if (field.key == "TRADING_START_HOUR" || field.key == "TRADING_END_HOUR") continue
+                // Skip old START/END/TRADING_HOURS fields — TRADING_HOURS is rebuilt from the 24h grid below
+                if (field.key == "TRADING_START_HOUR" || field.key == "TRADING_END_HOUR" ||
+                    field.key == "TRADING_HOURS") continue
                 if (field.isMergedChannel) {
                     // §6 — Récupérer la liste des canaux
                     val channels = ConfigFieldView.getChannelList(configContainer, field)
