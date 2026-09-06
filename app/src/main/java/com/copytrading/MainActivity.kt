@@ -151,7 +151,7 @@ class MainActivity : AppCompatActivity() {
     private var configGroups: List<ConfigParser.Group> = emptyList()
 
     // Trading Hours state (24 booleans, true = active)
-    private var tradingHours = BooleanArray(24) { i in 5..20 } // default: 5h-21h
+    private var tradingHours = BooleanArray(24) { it in 5..20 } // default: 5h-21h
 
     // Logs
     private lateinit var tvLogs: TextView
