@@ -511,6 +511,68 @@
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
+                    <!-- ACTIVE TRADING HOURS CARD -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardTradingHours"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="10dp"
+                        app:cardBackgroundColor="@color/card_background"
+                        app:cornerRadius="16dp"
+                        app:cardElevation="0dp"
+                        app:strokeWidth="2dp"
+                        app:strokeColor="@color/divider">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="18dp">
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:layout_marginBottom="12dp">
+
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="Active Trading Windows"
+                                    android:textColor="@color/text_secondary"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold"/>
+
+                                <TextView
+                                    android:id="@+id/tvTradingHoursCount"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="17h active"
+                                    android:textColor="@color/primary_light"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"/>
+                            </LinearLayout>
+
+                            <TextView
+                                android:id="@+id/tvTradingHoursRange"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="5h-21h"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13sp"
+                                android:layout_marginBottom="8dp"/>
+
+                            <com.google.android.material.chip.ChipGroup
+                                android:id="@+id/chipGroupHours"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                app:singleLine="true"/>
+
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
                     <!-- START/STOP BUTTON -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnStartStop"

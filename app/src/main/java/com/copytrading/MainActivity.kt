@@ -17,6 +17,7 @@ import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.*
+import android.widget.GridLayout
 import androidx.drawerlayout.widget.DrawerLayout
 import android.app.DatePickerDialog
 import java.io.File
@@ -93,6 +94,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvPositionsTitle: TextView
     private lateinit var positionAdapter: PositionAdapter
 
+    // Trading Hours
+    private lateinit var tvTradingHoursCount: TextView
+    private lateinit var tvTradingHoursRange: TextView
+    private lateinit var chipGroupHours: com.google.android.material.chip.ChipGroup
+
     // Tabs
     private lateinit var tabDashboard: LinearLayout
     private lateinit var tabPositions: LinearLayout
@@ -143,6 +149,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var configContainer: LinearLayout
     private lateinit var btnSaveConfig: MaterialButton
     private var configGroups: List<ConfigParser.Group> = emptyList()
+
+    // Trading Hours state (24 booleans, true = active)
+    private var tradingHours = BooleanArray(24) { i in 5..20 } // default: 5h-21h
 
     // Logs
     private lateinit var tvLogs: TextView
@@ -234,6 +243,11 @@ class MainActivity : AppCompatActivity() {
         panelConfig = findViewById(R.id.panelConfig)
         panelLogs = findViewById(R.id.panelLogs)
         pillIndicator = findViewById(R.id.pillIndicator)
+
+        // Trading Hours
+        tvTradingHoursCount = findViewById(R.id.tvTradingHoursCount)
+        tvTradingHoursRange = findViewById(R.id.tvTradingHoursRange)
+        chipGroupHours = findViewById(R.id.chipGroupHours)
 
         configContainer = findViewById(R.id.configContainer)
         btnSaveConfig = findViewById(R.id.btnSaveConfig)
@@ -781,6 +795,9 @@ class MainActivity : AppCompatActivity() {
         tvPositionsTitle.text = "Positions Ouvertes (${dash.open_positions.size})"
         tvNoPositions.visibility = if (dash.open_positions.isEmpty()) View.VISIBLE else View.GONE
         rvPositions.visibility = if (dash.open_positions.isEmpty()) View.GONE else View.VISIBLE
+
+        // Update trading hours dashboard
+        updateTradingHoursDashboard()
     }
 
     private fun refreshPositions() {
@@ -807,6 +824,8 @@ class MainActivity : AppCompatActivity() {
                     configGroups = ConfigParser.parse(envText)
                     // Rendre les groupes dynamiquement
                     renderConfigGroups(configGroups)
+                    // Init trading hours from config
+                    initTradingHoursFromConfig(cfg)
                 } else {
                     configContainer.removeAllViews()
                     val tv = TextView(this@MainActivity).apply {
@@ -840,7 +859,9 @@ class MainActivity : AppCompatActivity() {
             "GESTION DES TRADES" to listOf("TP_FIXED_GAIN_USD", "TP_MULTIPE1", "TP_MULTIPE2", "MAX_SL_USD", "MAX_POSITIONS", "DAILY_PROFIT_LIMIT"),
             "ZONES ET ANTI-DOUBLON" to listOf("TOLERANCE_ZN", "TOLERANCE_PU", "TOLERANCE_MP", "TEMPS_DE_FUSION", "TRADE_HORS_ZONE", "MAX_DISTANCE"),
             "FILTRES" to listOf("MAX_SPREAD_POINTS", "CONFLIT_FILTER_ENABLED"),
-            "FILTRES HORAIRE / NEWS / TV" to listOf("TIME_FILTER_ENABLED", "TRADING_START_HOUR", "TRADING_END_HOUR", "NEWS_FILTER_ENABLED", "NEWS_MIN_IMPACT", "NEWS_WINDOW_BEFORE_BLOCK", "NEWS_WINDOW_BEFORE_CLOSE", "NEWS_WINDOW_AFTER", "TV_FILTER_ENABLED", "TV_FILTER_SYMBOL", "TV_FILTER_SCREENER", "TV_FILTER_EXCHANGE", "TV_FILTER_TIMEFRAME", "TV_FILTER_CACHE_TTL", "TV_STRONG_BUY", "TV_BUY", "TV_STRONG_SELL", "TV_SELL", "TV_NEUTRAL_ALLOW"),
+            "FILTRES" to listOf("MAX_SPREAD_POINTS", "CONFLIT_FILTER_ENABLED"),
+            "FILTRE HORAIRE" to listOf("TIME_FILTER_ENABLED", "TRADING_HOURS"),
+            "FILTRES NEWS / TV" to listOf("NEWS_FILTER_ENABLED", "NEWS_MIN_IMPACT", "NEWS_WINDOW_BEFORE_BLOCK", "NEWS_WINDOW_BEFORE_CLOSE", "NEWS_WINDOW_AFTER", "TV_FILTER_ENABLED", "TV_FILTER_SYMBOL", "TV_FILTER_SCREENER", "TV_FILTER_EXCHANGE", "TV_FILTER_TIMEFRAME", "TV_FILTER_CACHE_TTL", "TV_STRONG_BUY", "TV_BUY", "TV_STRONG_SELL", "TV_SELL", "TV_NEUTRAL_ALLOW"),
             "ALERTES ET LOGS" to listOf("LOG_TRADE_MANAGEMENT", "ALERT_TRADE_MANAGEMENT", "ALERT_DAILY_PERFORMANCE"),
             "DIVERS" to listOf("DEMO_MODE", "RUNTIME_MINUTES", "POLL_INTERVAL_SEC")
         )
@@ -910,12 +931,179 @@ class MainActivity : AppCompatActivity() {
 
             // Champs du groupe
             for (field in group.fields) {
+                // Skip old START/END HOUR fields — replaced by24h grid
+                if (field.key == "TRADING_START_HOUR" || field.key == "TRADING_END_HOUR") continue
                 val fieldView = ConfigFieldView.create(this, field)
                 cardContent.addView(fieldView)
             }
 
+            // Add24h grid for "FILTRE HORAIRE" section
+            if (group.title.uppercase().contains("HORAIRE")) {
+                cardContent.addView(createTradingHoursGrid())
+            }
+
             card.addView(cardContent)
             configContainer.addView(card)
+        }
+    }
+
+    /**
+     * Creates the24h checkbox grid for trading hours config
+     */
+    private fun createTradingHoursGrid(): View {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(8), 0, 0)
+        }
+
+        // Label
+        container.addView(TextView(this).apply {
+            text = "Trading Hours (UTC)"
+            setTextColor(getColor(R.color.text_secondary))
+            textSize = 13f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            letterSpacing = 0.03f
+            setPadding(0, 0, 0, dp(8))
+        })
+
+        // Presets row
+        val presetsRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, dp(8))
+        }
+        val presets = listOf("London 7-16h" to intArrayOf(7,15), "New York 12-21h" to intArrayOf(12,20), "London+NY 7-21h" to intArrayOf(7,20), "24h/24" to intArrayOf(0,23))
+        for ((label, range) in presets) {
+            presetsRow.addView(MaterialButton(this).apply {
+                text = label
+                textSize = 10f
+                setTextColor(getColor(R.color.text_muted))
+                setBackgroundColor(Color.TRANSPARENT)
+                strokeWidth = dp(1)
+                strokeColor = android.content.res.ColorStateList.valueOf(getColor(R.color.divider))
+                cornerRadius = dp(8)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginEnd = dp(4)
+                }
+                setOnClickListener {
+                    tradingHours.fill(false)
+                    for (i in range[0]..range[1]) tradingHours[i] = true
+                    syncHoursCheckboxes(container)
+                }
+            })
+        }
+        container.addView(presetsRow)
+
+        // Grid (6 columns x4 rows)
+        val gridLayout = GridLayout(this).apply {
+            columnCount = 6
+            rowCount = 4
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(8) }
+        }
+
+        for (i in 0 until24) {
+            val cb = CheckBox(this).apply {
+                id = View.generateViewId()
+                text = String.format("%02d", i)
+                textSize = 14f
+                isChecked = tradingHours[i]
+                setTextColor(getColor(R.color.text_primary))
+                buttonTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.primary))
+                tag = i // store hour index
+                layoutParams = GridLayout.LayoutParams().apply {
+                    width = 0
+                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                    setMargins(dp(2), dp(2), dp(2), dp(2))
+                }
+                setOnCheckedChangeListener { _, checked ->
+                    val hour = tag as Int
+                    tradingHours[hour] = checked
+                    updateTradingHoursDashboard()
+                }
+            }
+            gridLayout.addView(cb)
+        }
+        container.addView(gridLayout)
+
+        // Store reference for sync
+        container.tag = gridLayout
+
+        return container
+    }
+
+    private fun syncHoursCheckboxes(container: View) {
+        val grid = container.tag as? GridLayout ?: return
+        for (i in 0 until grid.childCount) {
+            val cb = grid.getChildAt(i) as? CheckBox ?: continue
+            cb.isChecked = tradingHours[cb.tag as Int]
+        }
+        updateTradingHoursDashboard()
+    }
+
+    private fun initTradingHoursFromConfig(cfg: Map<String, String>) {
+        val enabled = cfg["TIME_FILTER_ENABLED"]?.lowercase() == "true"
+        if (!enabled) {
+            tradingHours.fill(false)
+            updateTradingHoursDashboard()
+            return
+        }
+        // Try TRADING_HOURS first (new format)
+        val hoursStr = cfg["TRADING_HOURS"]
+        if (hoursStr != null && hoursStr.isNotBlank()) {
+            tradingHours.fill(false)
+            hoursStr.split(",").forEach {
+                val h = it.trim().toIntOrNull()
+                if (h != null && h in 0..23) tradingHours[h] = true
+            }
+        } else {
+            // Fallback to START/END_HOUR (old format)
+            val start = cfg["TRADING_START_HOUR"]?.toIntOrNull() ?: 5
+            val end = cfg["TRADING_END_HOUR"]?.toIntOrNull() ?: 21
+            tradingHours.fill(false)
+            for (i in start..end) tradingHours[i] = true
+        }
+        updateTradingHoursDashboard()
+    }
+
+    private fun updateTradingHoursDashboard() {
+        val count = tradingHours.count { it }
+        tvTradingHoursCount.text = "${count}h active"
+
+        // Build ranges
+        val ranges = mutableListOf<Pair<Int, Int>>()
+        var start = -1
+        for (i in 0 until24) {
+            if (tradingHours[i] && start == -1) start = i
+            if (!tradingHours[i] && start != -1) {
+                ranges.add(start to (i - 1))
+                start = -1
+            }
+        }
+        if (start != -1) ranges.add(start to23)
+
+        val rangeText = when {
+            count == 0 -> "No hours selected"
+            count ==24 -> "24h/24 — bot trades all day"
+            else -> ranges.joinToString(", ") { (s, e) ->
+                if (s == e) "${s}h" else "${s}h-${e}h"
+            }
+        }
+        tvTradingHoursRange.text = rangeText
+
+        // Chips
+        chipGroupHours.removeAllViews()
+        for (i in 0 until24) {
+            if (tradingHours[i]) {
+                chipGroupHours.addView(com.google.android.material.chip.Chip(this).apply {
+                    text = String.format("%02d", i)
+                    textSize = 10f
+                    setChipBackgroundColorResource(R.color.primary)
+                    setTextColor(Color.WHITE)
+                    isClickable = false
+                })
+            }
         }
     }
 
@@ -926,6 +1114,8 @@ class MainActivity : AppCompatActivity() {
         // Parcourir tous les groupes et lire les valeurs des widgets
         for (group in configGroups) {
             for (field in group.fields) {
+                // Skip old START/END HOUR fields — replaced by24h grid
+                if (field.key == "TRADING_START_HOUR" || field.key == "TRADING_END_HOUR") continue
                 if (field.isMergedChannel) {
                     // §6 — Récupérer la liste des canaux
                     val channels = ConfigFieldView.getChannelList(configContainer, field)
@@ -947,6 +1137,13 @@ class MainActivity : AppCompatActivity() {
 
         btnSaveConfig.isEnabled = false
         btnSaveConfig.text = "SAUVEGARDE..."
+
+        // Add TRADING_HOURS from24h grid
+        val activeHours = (0 until24).filter { tradingHours[it] }
+        values["TRADING_HOURS"] = activeHours.joinToString(",")
+        // Remove old format keys
+        values.remove("TRADING_START_HOUR")
+        values.remove("TRADING_END_HOUR")
 
         lifecycleScope.launch {
             try {
