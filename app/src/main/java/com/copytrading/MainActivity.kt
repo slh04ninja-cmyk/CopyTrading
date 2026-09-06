@@ -1081,10 +1081,11 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             // Fallback to START/END_HOUR (old format)
+            // END_HOUR is exclusive (17 means up to16h inclusive)
             val start = cfg["TRADING_START_HOUR"]?.toIntOrNull() ?: 5
             val end = cfg["TRADING_END_HOUR"]?.toIntOrNull() ?: 21
             tradingHours.fill(false)
-            for (i in start..end) tradingHours[i] = true
+            for (i in start until end) tradingHours[i] = true
         }
         updateTradingHoursDashboard()
     }
@@ -1172,12 +1173,13 @@ class MainActivity : AppCompatActivity() {
         btnSaveConfig.isEnabled = false
         btnSaveConfig.text = "SAUVEGARDE..."
 
-        // Add TRADING_HOURS from24h grid
+        // Add TRADING_HOURS from24h grid → convert to START/END_HOUR for server
         val activeHours = (0 until 24).filter { tradingHours[it] }
-        values["TRADING_HOURS"] = activeHours.joinToString(",")
-        // Remove old format keys
-        values.remove("TRADING_START_HOUR")
-        values.remove("TRADING_END_HOUR")
+        if (activeHours.isNotEmpty()) {
+            values["TRADING_START_HOUR"] = activeHours.first().toString()
+            values["TRADING_END_HOUR"] = (activeHours.last() + 1).toString()
+        }
+        values["TIME_FILTER_ENABLED"] = if (activeHours.isNotEmpty()) "true" else "false"
 
         lifecycleScope.launch {
             try {
