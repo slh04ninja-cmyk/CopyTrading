@@ -1071,7 +1071,7 @@ class MainActivity : AppCompatActivity() {
             updateTradingHoursDashboard()
             return
         }
-        // Try TRADING_HOURS first (new format)
+        // Try TRADING_HOURS first (comma-separated list)
         val hoursStr = cfg["TRADING_HOURS"]
         if (hoursStr != null && hoursStr.isNotBlank()) {
             tradingHours.fill(false)
@@ -1080,8 +1080,7 @@ class MainActivity : AppCompatActivity() {
                 if (h != null && h in 0..23) tradingHours[h] = true
             }
         } else {
-            // Fallback to START/END_HOUR (old format)
-            // END_HOUR is exclusive (17 means up to16h inclusive)
+            // Fallback to START/END_HOUR (old format, END exclusive)
             val start = cfg["TRADING_START_HOUR"]?.toIntOrNull() ?: 5
             val end = cfg["TRADING_END_HOUR"]?.toIntOrNull() ?: 21
             tradingHours.fill(false)
@@ -1115,8 +1114,22 @@ class MainActivity : AppCompatActivity() {
         }
         tvTradingHoursRange.text = rangeText
 
-        // Hour tags (styled like prototype)
+        // Hour tags (2 rows, styled like prototype)
         chipGroupHours.removeAllViews()
+        val row1 = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(4) }
+        }
+        val row2 = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
         for (i in 0 until 24) {
             val tv = TextView(this).apply {
                 text = String.format("%02d", i)
@@ -1133,13 +1146,15 @@ class MainActivity : AppCompatActivity() {
                 }
                 background = bg
                 setTextColor(if (tradingHours[i]) Color.WHITE else getColor(R.color.text_muted))
-                layoutParams = android.view.ViewGroup.MarginLayoutParams(
-                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply { marginEnd = dp(3); bottomMargin = dp(3) }
             }
-            chipGroupHours.addView(tv)
+            if (i < 12) row1.addView(tv) else row2.addView(tv)
         }
+        chipGroupHours.addView(row1)
+        chipGroupHours.addView(row2)
     }
 
     private fun saveConfig() {
@@ -1173,12 +1188,9 @@ class MainActivity : AppCompatActivity() {
         btnSaveConfig.isEnabled = false
         btnSaveConfig.text = "SAUVEGARDE..."
 
-        // Add TRADING_HOURS from24h grid → convert to START/END_HOUR for server
+        // Add TRADING_HOURS from24h grid
         val activeHours = (0 until 24).filter { tradingHours[it] }
-        if (activeHours.isNotEmpty()) {
-            values["TRADING_START_HOUR"] = activeHours.first().toString()
-            values["TRADING_END_HOUR"] = (activeHours.last() + 1).toString()
-        }
+        values["TRADING_HOURS"] = activeHours.joinToString(",")
         values["TIME_FILTER_ENABLED"] = if (activeHours.isNotEmpty()) "true" else "false"
 
         lifecycleScope.launch {
