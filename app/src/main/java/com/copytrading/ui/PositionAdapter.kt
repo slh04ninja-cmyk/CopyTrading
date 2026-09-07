@@ -44,6 +44,7 @@ class PositionAdapter : RecyclerView.Adapter<PositionAdapter.ViewHolder>() {
         private val badgeChannel: TextView = itemView.findViewById(R.id.badgeChannel)
         private val badgeSignal: TextView = itemView.findViewById(R.id.badgeSignal)
         private val badgeOrder: TextView = itemView.findViewById(R.id.badgeOrder)
+        private val tvOpenTime: TextView = itemView.findViewById(R.id.tvOpenTime)
 
 
         fun bind(pos: Position) {
@@ -83,6 +84,15 @@ class PositionAdapter : RecyclerView.Adapter<PositionAdapter.ViewHolder>() {
                 badgeChannel.visibility = View.VISIBLE
                 badgeSignal.visibility = View.GONE
                 badgeOrder.visibility = View.GONE
+            }
+
+            // Temps d'ouverture (UTC) a droite : pos.time = ISO "2026-09-07T12:36:45+00:00"
+            val openTime = if (pos.time.length >= 16) pos.time.substring(11, 16) else ""
+            if (openTime.isNotEmpty()) {
+                tvOpenTime.text = openTime
+                tvOpenTime.visibility = View.VISIBLE
+            } else {
+                tvOpenTime.visibility = View.GONE
             }
 
 

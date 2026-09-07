@@ -180,6 +180,21 @@
                 android:paddingVertical="2dp"
                 android:background="#26FFB74D"
                 android:layout_marginStart="4dp"/>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"/>
+
+            <TextView
+                android:id="@+id/tvOpenTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="12:36"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:visibility="gone"/>
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
