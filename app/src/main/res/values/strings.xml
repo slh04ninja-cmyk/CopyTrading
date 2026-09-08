@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">CopyTrading</string>
+    <string name="app_name">تدبير الموارد البشرية</string>
+    <string name="tab_dashboard">الرئيسية</string>
+    <string name="tab_schools">المؤسسات</string>
+    <string name="tab_entry">إدخال</string>
+    <string name="tab_table">الجدول</string>
+    <string name="generate_pdf">توليد PDF</string>
+    <string name="save">حفظ</string>
+    <string name="cancel">إلغاء</string>
+    <string name="delete">حذف</string>
+    <string name="edit">تعديل</string>
+    <string name="add">إضافة</string>
+    <string name="school_name">اسم المؤسسة</string>
+    <string name="total">المجموع</string>
+    <string name="confirm_delete">هل تريد الحذف؟</string>
+    <string name="pdf_generated">تم توليد PDF بنجاح</string>
+    <string name="data_saved">تم حفظ البيانات</string>
 </resources>

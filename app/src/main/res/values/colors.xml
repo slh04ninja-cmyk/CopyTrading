@@ -4,27 +4,22 @@
     <color name="primary_dark">#5A52E0</color>
     <color name="primary_light">#8B83FF</color>
     <color name="accent">#6C63FF</color>
-    <color name="accent_light">#8B83FF</color>
-
     <color name="background">#0F0F1A</color>
     <color name="bg_secondary">#1A1A2E</color>
     <color name="card_background">#16213E</color>
     <color name="card_background_alt">#1A2744</color>
-    <color name="card_background_hover">#1A2744</color>
     <color name="bg_input">#0F0F1A</color>
-
     <color name="text_primary">#E8E8F0</color>
     <color name="text_secondary">#8888AA</color>
     <color name="text_muted">#555577</color>
-
     <color name="profit">#00E676</color>
     <color name="loss">#FF5252</color>
     <color name="warning">#FFB74D</color>
     <color name="success">#00E676</color>
-    <color name="success_dim">#00C853</color>
     <color name="danger">#FF5252</color>
-    <color name="danger_dim">#D32F2F</color>
-
     <color name="border">#2A2A4A</color>
     <color name="divider">#2A2A4A</color>
+    <color name="white">#FFFFFF</color>
+    <color name="header_blue">#1F3864</color>
+    <color name="total_bg">#D9E2F3</color>
 </resources>
