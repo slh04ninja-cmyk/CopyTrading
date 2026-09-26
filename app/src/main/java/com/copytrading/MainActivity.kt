@@ -469,7 +469,9 @@ class MainActivity : AppCompatActivity() {
      *  Retourne null si illisible (=> pas de filtre, affichage complet). */
     private suspend fun loadActiveChannels(): Set<String>? {
         return try {
-            val file = client.getServerFile("C:\\TradingBot\\Channels.txt") ?: return null
+            // ★ 26/09 : nom de fichier SANS dossier -> l'API le resout dans SON dossier.
+            // Avant : "C:\TradingBot\Channels.txt" en dur => 403 sur l'API de bot 2 => aucun filtre.
+            val file = client.getServerFile("Channels.txt") ?: return null
             Regex("""Canal_(\d+)\s*:""")
                 .findAll(file.content)
                 .map { "CH${it.groupValues[1]}" }
