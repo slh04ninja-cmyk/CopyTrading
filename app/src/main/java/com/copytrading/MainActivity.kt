@@ -1701,8 +1701,7 @@ class MainActivity : AppCompatActivity() {
             Triple("Moy. ", String.format("%.2f", -avgLoss) + " $", getColor(R.color.danger))
         ))
 
-        // --- par ordre (MK, L1, L2, L3, L4) : nombre : P&L ---
-        val ordre = listOf("MK", "L1", "L2", "L3", "L4")
+        // --- par ordre : ligne 1 = MK / L1 / L2, ligne 2 = L3 / L4 (uniquement s'ils existent) ---
         val parOrdre = LinkedHashMap<String, Pair<Int, Double>>()
         trades.forEach { t ->
             val p = t.comment.split("-")
@@ -1710,11 +1709,14 @@ class MainActivity : AppCompatActivity() {
             val cur = parOrdre[role] ?: Pair(0, 0.0)
             parOrdre[role] = Pair(cur.first + 1, cur.second + t.profit)
         }
-        val ordreParts = ordre.filter { parOrdre.containsKey(it) }.map {
+        fun ordreParts(roles: List<String>) = roles.filter { parOrdre.containsKey(it) }.map {
             val v = parOrdre[it]!!
             Triple("$it : ", "${v.first} : ${String.format("%.2f", v.second)} $", null)
         }
-        if (ordreParts.isNotEmpty()) addDetailLine(content, ordreParts)
+        val partsZones = ordreParts(listOf("MK", "L1", "L2"))
+        if (partsZones.isNotEmpty()) addDetailLine(content, partsZones)
+        val partsHorsZone = ordreParts(listOf("L3", "L4"))
+        if (partsHorsZone.isNotEmpty()) addDetailLine(content, partsHorsZone)
 
         // --- par type de signal : nb signaux / nb trades ---
         val parType = LinkedHashMap<String, Pair<Int, Int>>()
@@ -1735,12 +1737,13 @@ class MainActivity : AppCompatActivity() {
 
         sigs.reversed().forEach { g ->
             val net = g.legs.sumOf { it.pnl }
-            // carte orange si une position a ete fermee autrement que par TP (5) ou SL (4)
+            // cloture autre que TP (5) / SL (4) : plus de bordure orange (26/09),
+            // simple fond un peu plus clair pour repere discret
             val autre = g.legs.any { it.reason != null && it.reason != 4 && it.reason != 5 }
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                background = roundedBg(Color.parseColor("#1A1A2E"),
-                    getColor(if (autre) R.color.warning else R.color.border), 13)
+                background = roundedBg(Color.parseColor(if (autre) "#221E34" else "#1A1A2E"),
+                    getColor(R.color.border), 13)
             }
             val head = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
