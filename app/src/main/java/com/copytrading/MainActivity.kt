@@ -476,7 +476,10 @@ class MainActivity : AppCompatActivity() {
             // Avant : "C:\TradingBot\Channels.txt" en dur => 403 sur l'API de bot 2 => aucun filtre.
             val file = client.getServerFile("Channels.txt") ?: return null
             val map = LinkedHashMap<String, String>()
-            Regex("""Canal_(\d+)\s*:\s*\S+\s*#\s*(.*)$""").findAll(file.content).forEach {
+            // ★ 26/09 : RegexOption.MULTILINE OBLIGATOIRE. En Java/Android, "$" sans MULTILINE
+            // ne matche que la TOUTE DERNIERE ligne du fichier -> un seul canal lu (CH109)
+            // -> l'Historique n'affichait que ce canal, quelque soit la periode.
+            Regex("""Canal_(\d+)\s*:\s*\S+\s*#\s*(.*)$""", RegexOption.MULTILINE).findAll(file.content).forEach {
                 map["CH${it.groupValues[1]}"] = it.groupValues[2].trim()
             }
             if (map.isEmpty()) null else map
