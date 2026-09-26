@@ -522,6 +522,15 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // ★ 26/09 : item "Deconnecter du serveur" du tiroir -> on quitte le serveur courant
+        // et on revient a l'ecran de connexion (formulaire pre-rempli, sans reconnexion
+        // automatique) pour changer de port / de serveur.
+        findViewById<TextView>(R.id.drawerLogout).setOnClickListener {
+            drawerLayout.closeDrawer(Gravity.START)
+            startActivity(Intent(this, SetupActivity::class.java).putExtra("edit_server", true))
+            finish()
+        }
+
         btnStartStop.setOnClickListener {
             lifecycleScope.launch {
                 if (isRunning) {

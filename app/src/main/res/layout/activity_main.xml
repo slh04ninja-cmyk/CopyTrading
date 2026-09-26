@@ -1130,6 +1130,27 @@
             android:drawablePadding="12dp"
             android:paddingHorizontal="12dp"
             android:background="?attr/selectableItemBackground"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/border"
+            android:layout_marginVertical="12dp"/>
+
+        <!-- ★ 26/09 : action differente (quitter le serveur) -> style distinct en rouge -->
+        <TextView
+            android:id="@+id/drawerLogout"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:text="Deconnecter du serveur"
+            android:textColor="@color/danger"
+            android:textSize="15sp"
+            android:drawableStart="@android:drawable/ic_menu_close_clear_cancel"
+            android:drawableTint="@color/danger"
+            android:drawablePadding="12dp"
+            android:paddingHorizontal="12dp"
+            android:background="?attr/selectableItemBackground"/>
     </LinearLayout>
 
     <!-- CONFIRM DIALOG -->

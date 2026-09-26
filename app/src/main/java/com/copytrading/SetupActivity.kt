@@ -36,7 +36,14 @@ class SetupActivity : AppCompatActivity() {
         etPort.setText(prefs.getString("server_port", "8000"))
         etToken.setText(prefs.getString("api_token", ""))
 
-        if (prefs.getString("server_host", "")?.isNotEmpty() == true) {
+        // ★ 26/09 : ouverture en mode modification (item "Deconnecter du serveur" du tiroir)
+        // -> on AFFICHE le formulaire pre-rempli au lieu de se reconnecter automatiquement.
+        val editMode = intent.getBooleanExtra("edit_server", false)
+        if (editMode) {
+            tvStatus.visibility = View.VISIBLE
+            tvStatus.text = "Deconnecte du serveur - verifie le port puis appuie sur CONNEXION"
+            tvStatus.setTextColor(getColor(R.color.text_secondary))
+        } else if (prefs.getString("server_host", "")?.isNotEmpty() == true) {
             testAndNavigate()
         }
 
