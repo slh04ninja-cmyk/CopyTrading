@@ -18,6 +18,17 @@ android {
     }
 
     signingConfigs {
+        // ★ 26/09 : signature FIXE du build debug - la cle est fournie par le workflow GitHub
+        // (secret CT_KEYSTORE_B64). But : les nouvelles versions s'installent PAR-DESSUS,
+        // sans desinstallation. Absente (build local) => cle de debug par defaut, comme avant.
+        if (System.getenv("CT_KEYSTORE") != null) {
+            ctfixe {
+                storeFile file(System.getenv("CT_KEYSTORE"))
+                storePassword System.getenv("CT_KEYSTORE_PASS")
+                keyAlias "copytrading"
+                keyPassword System.getenv("CT_KEY_PASS")
+            }
+        }
         release {
             def props = new Properties()
             def localPropsFile = rootProject.file("local.properties")
@@ -41,6 +52,10 @@ android {
         }
         debug {
             minifyEnabled false
+            // ★ 26/09 : signature fixe quand la cle est fournie par le workflow (sinon debug par defaut)
+            if (System.getenv("CT_KEYSTORE") != null) {
+                signingConfig signingConfigs.ctfixe
+            }
         }
     }
 

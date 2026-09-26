@@ -27,7 +27,22 @@ jobs:
       run: |
         echo "sdk.dir=${{ runner.tool_cache }}/android-sdk" > local.properties
 
+    - name: Prepare fixed signing key
+      env:
+        KEYSTORE_B64: ${{ secrets.CT_KEYSTORE_B64 }}
+      run: |
+        if [ -n "$KEYSTORE_B64" ]; then
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/copytrading.keystore"
+          echo "CT_KEYSTORE=$RUNNER_TEMP/copytrading.keystore" >> "$GITHUB_ENV"
+          echo "Cle de signature fixe preparee."
+        else
+          echo "Secret absent : cle de debug par defaut."
+        fi
+
     - name: Build Debug APK
+      env:
+        CT_KEYSTORE_PASS: ${{ secrets.CT_KEYSTORE_PASS }}
+        CT_KEY_PASS: ${{ secrets.CT_KEY_PASS }}
       run: gradle assembleDebug
 
     - name: Upload Debug APK
