@@ -134,8 +134,10 @@ class MainActivity : AppCompatActivity() {
     private var lastChannelMkCount: Map<String, Int> = emptyMap()
     private var lastSignalData: List<Pair<String, PerfData>> = emptyList()
     private var lastSessionData: List<Pair<String, PerfData>> = emptyList()
-    private val expandedChannels = mutableSetOf<String>()
     private var lastChannelTrades: Map<String, List<Double>> = emptyMap()
+    /** ★ 26/09 : trades complets par canal (popup de detail) + noms des canaux (Channels.txt). */
+    private var lastChannelTradesList: Map<String, List<Trade>> = emptyMap()
+    private var channelNames: Map<String, String> = emptyMap()
 
     // Panels
     private lateinit var panelDashboard: NestedScrollView
@@ -452,12 +454,13 @@ class MainActivity : AppCompatActivity() {
                 val activeDeferred = async { loadActiveChannels() }
                 val tradesDeferred = async { client.getTrades(fromDate = fromDate, toDate = toDate) }
                 val activeChannels = activeDeferred.await()
+                channelNames = activeChannels ?: emptyMap()
                 val trades = tradesDeferred.await()
                 if (trades != null) {
                     val filtered = if (activeChannels == null) trades.trades
                     else trades.trades.filter { t ->
                         val ch = t.comment.substringBefore("-")
-                        ch in activeChannels || !ch.startsWith("CH")
+                        activeChannels.containsKey(ch) || !ch.startsWith("CH")
                     }
                     updatePerformance(filtered)
                 }
@@ -465,18 +468,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Lit Channels.txt sur le serveur et renvoie l'ensemble des canaux actifs ("CH5", "CH70"...).
+    /** Lit Channels.txt sur le serveur : canaux actifs ("CH5") -> nom du canal.
      *  Retourne null si illisible (=> pas de filtre, affichage complet). */
-    private suspend fun loadActiveChannels(): Set<String>? {
+    private suspend fun loadActiveChannels(): Map<String, String>? {
         return try {
             // ★ 26/09 : nom de fichier SANS dossier -> l'API le resout dans SON dossier.
             // Avant : "C:\TradingBot\Channels.txt" en dur => 403 sur l'API de bot 2 => aucun filtre.
             val file = client.getServerFile("Channels.txt") ?: return null
-            Regex("""Canal_(\d+)\s*:""")
-                .findAll(file.content)
-                .map { "CH${it.groupValues[1]}" }
-                .toSet()
-                .also { if (it.isEmpty()) return null }
+            val map = LinkedHashMap<String, String>()
+            Regex("""Canal_(\d+)\s*:\s*\S+\s*#\s*(.*)$""").findAll(file.content).forEach {
+                map["CH${it.groupValues[1]}"] = it.groupValues[2].trim()
+            }
+            if (map.isEmpty()) null else map
         } catch (_: Exception) { null }
     }
 
@@ -1320,6 +1323,14 @@ class MainActivity : AppCompatActivity() {
         }
         lastChannelTrades = channelTrades
 
+        // ★ 26/09 : garder aussi les trades complets par canal (pour le popup de detail)
+        val channelTradeList = mutableMapOf<String, MutableList<Trade>>()
+        for (t in trades) {
+            val parts = t.comment.split("-")
+            if (parts.size >= 2) channelTradeList.getOrPut(parts[0]) { mutableListOf() }.add(t)
+        }
+        lastChannelTradesList = channelTradeList
+
         // Group by hour (UTC 01h-24h)
         val sessionData = mutableMapOf<String, PerfData>()
         val sessionChannels = mutableMapOf<String, MutableSet<String>>()
@@ -1509,49 +1520,274 @@ class MainActivity : AppCompatActivity() {
         val wr = d.winrate()
         cell("$wr", 0.6f, getColor(if (wr >= 50) R.color.success else R.color.danger))
 
-        // Expandable detail
-        val isExpanded = expandedChannels.contains(label)
-        val detail = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(6), dp(12), dp(6))
-            setBackgroundColor(Color.parseColor("#12122A")); visibility = if (isExpanded) View.VISIBLE else View.GONE
-        }
-        // Compute from raw trades
-        val profits = lastChannelTrades[label] ?: emptyList()
-        val totalGain = profits.filter { it > 0 }.sum()
-        val totalLoss = kotlin.math.abs(profits.filter { it < 0 }.sum())
-        val pf = if (totalLoss > 0) totalGain / totalLoss else if (totalGain > 0) 99.0 else 0.0
-        val avgWin = profits.filter { it > 0 }.let { if (it.isNotEmpty()) it.average() else 0.0 }
-        val avgLoss = profits.filter { it < 0 }.let { if (it.isNotEmpty()) kotlin.math.abs(it.average()) else 0.0 }
-        val rr = if (avgLoss > 0) avgWin / avgLoss else if (avgWin > 0) 99.0 else 0.0
-        var peak = 0.0; var equity = 0.0; var md = 0.0
-        for (p in profits) { equity += p; if (equity > peak) peak = equity; val dd = peak - equity; if (dd > md) md = dd }
-        val pfStr = if (pf >= 99) "99" else String.format("%.2f", pf)
-        val rrStr = if (rr >= 99) "99" else String.format("%.2f", rr)
-        val mdStr = if (md <= 0) "00" else String.format("%.2f", md)
-        val pfColor = getColor(if (pf >= 1.5) R.color.success else if (pf >= 1.0) R.color.warning else R.color.danger)
-        val rrColor = getColor(if (rr >= 1.5) R.color.success else if (rr >= 1.0) R.color.warning else R.color.danger)
-        val mdColor = getColor(R.color.danger)
-        val line = TextView(this).apply {
-            textSize = 12f; gravity = Gravity.CENTER; setPadding(0, dp(6), 0, dp(6))
-            text = android.text.SpannableString("PF = $pfStr | RR = $rrStr | MD = $mdStr").apply {
-                val pfStart = indexOf(pfStr); setSpan(android.text.style.ForegroundColorSpan(pfColor), pfStart, pfStart + pfStr.length, 0)
-                val rrStart = indexOf(rrStr, pfStart + pfStr.length); setSpan(android.text.style.ForegroundColorSpan(rrColor), rrStart, rrStart + rrStr.length, 0)
-                val mdStart = indexOf(mdStr, rrStart + rrStr.length); setSpan(android.text.style.ForegroundColorSpan(mdColor), mdStart, mdStart + mdStr.length, 0)
-            }
-        }
-        detail.addView(line)
-
+        // ★ 26/09 : plus de depliant "PF | RR | MD" -> un appui ouvre le popup de detail du canal
         if (!isTotal) {
-            row.setOnClickListener {
-                if (expandedChannels.contains(label)) expandedChannels.remove(label) else expandedChannels.add(label)
-                detail.visibility = if (detail.visibility == View.GONE) View.VISIBLE else View.GONE
-            }
+            row.setOnClickListener { showChannelDetail(label) }
             row.isClickable = true
         }
 
         container.addView(row)
-        container.addView(detail)
         if (!isTotal) { container.addView(View(this).apply { setBackgroundColor(Color.parseColor("#2A2A4A")) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)) }
+    }
+
+    // ================= POPUP DETAIL CANAL (26/09) =================
+
+    private data class DetailLeg(val role: String, val open: Double, val close: Double,
+                                 val pnl: Double, val reason: Int?)
+    private data class DetailSignal(val debut: String, val side: String, val type: String,
+                                    val legs: MutableList<DetailLeg> = mutableListOf(), var fin: String = "")
+
+    /** Regroupe les positions par signal : un MK (ou L3) ouvre un signal, ses L1/L2/L3/L4 le suivent. */
+    private fun groupSignals(trades: List<Trade>): List<DetailSignal> {
+        val out = mutableListOf<DetailSignal>()
+        trades.sortedBy { it.open_time }.forEach { t ->
+            val p = t.comment.split("-")
+            val role = if (p.size >= 3) p[2] else "?"
+            val type = if (p.size >= 2) p[1] else "?"
+            if (role == "MK" || role == "L3" || out.isEmpty()) {
+                out.add(DetailSignal(t.open_time, t.type, type, mutableListOf(), t.close_time))
+            }
+            val g = out.last()
+            g.legs.add(DetailLeg(role, t.open_price, t.close_price, t.profit, t.reason))
+            if (t.close_time > g.fin) g.fin = t.close_time
+        }
+        return out
+    }
+
+    private fun roundedBg(fill: Int, stroke: Int?, radius: Int = 12): android.graphics.drawable.GradientDrawable =
+        android.graphics.drawable.GradientDrawable().apply {
+            setColor(fill)
+            cornerRadius = dp(radius).toFloat()
+            if (stroke != null) setStroke(dp(1), stroke)
+        }
+
+    private fun detailTag(text: String, textColor: Int, bgColor: Int): TextView =
+        TextView(this).apply {
+            this.text = text
+            textSize = 9f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(textColor)
+            setBackground(roundedBg(bgColor, null, 6))
+            setPadding(dp(7), dp(3), dp(7), dp(3))
+        }
+
+    /** Ligne du popup : segments "label : valeur" separes par |, valeurs en gras (couleur optionnelle). */
+    private fun addDetailLine(parent: LinearLayout, parts: List<Triple<String, String, Int?>>) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(6), 0, dp(6))
+        }
+        parts.forEachIndexed { i, (lab, value, col) ->
+            if (i > 0) {
+                row.addView(TextView(this).apply {
+                    text = "|"; textSize = 11f; setTextColor(getColor(R.color.text_muted))
+                    setPadding(dp(7), 0, dp(7), 0)
+                })
+            }
+            val tv = TextView(this).apply { textSize = 11f; setTextColor(getColor(R.color.text_secondary)) }
+            val s = android.text.SpannableString(lab + value)
+            if (value.isNotEmpty()) {
+                s.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), lab.length, s.length, 0)
+                if (col != null) s.setSpan(android.text.style.ForegroundColorSpan(col), lab.length, s.length, 0)
+            }
+            tv.text = s
+            row.addView(tv)
+        }
+        parent.addView(row)
+    }
+
+    private fun detailBox(lab: String, value: String, col: Int?): LinearLayout {
+        val b = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+            background = roundedBg(Color.parseColor("#1A1A2E"), getColor(R.color.border), 12)
+            setPadding(dp(4), dp(8), dp(4), dp(8))
+        }
+        b.addView(TextView(this).apply {
+            text = lab; textSize = 8.5f; setTextColor(getColor(R.color.text_secondary)); gravity = Gravity.CENTER
+        })
+        b.addView(TextView(this).apply {
+            text = value; textSize = 13.5f; setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(col ?: getColor(R.color.text_primary)); gravity = Gravity.CENTER
+        })
+        return b
+    }
+
+    private fun hhmm(iso: String): String =
+        if (iso.length >= 16) iso.substring(8, 10) + "/" + iso.substring(5, 7) + " " + iso.substring(11, 16) else iso
+
+    private fun dureeMin(a: String, b: String): Int {
+        return try {
+            val f = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+            f.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            val d1 = f.parse(a.substring(0, 19)); val d2 = f.parse(b.substring(0, 19))
+            if (d1 != null && d2 != null) ((d2.time - d1.time) / 60000).toInt().coerceAtLeast(0) else 0
+        } catch (_: Exception) { 0 }
+    }
+
+    private fun dureeTexte(m: Int): String = if (m < 60) "$m min" else "${m / 60}h" + String.format("%02d", m % 60)
+
+    /** Ouvre le popup de detail des trades d'un canal (appui sur une ligne du tableau). */
+    private fun showChannelDetail(channel: String) {
+        val trades = lastChannelTradesList[channel] ?: return
+        if (trades.isEmpty()) return
+
+        val dlg = android.app.Dialog(this)
+        dlg.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+        val root = layoutInflater.inflate(R.layout.dialog_channel_detail, null)
+        dlg.setContentView(root)
+        dlg.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dlg.window?.setLayout((resources.displayMetrics.widthPixels * 0.94).toInt(),
+            (resources.displayMetrics.heightPixels * 0.88).toInt())
+
+        val nom = channelNames[channel].orEmpty()
+        root.findViewById<TextView>(R.id.detailTitle).text = if (nom.isEmpty()) channel else "$channel · $nom"
+        root.findViewById<TextView>(R.id.detailSub).text = "Période $dateFrom → $dateTo"
+        root.findViewById<View>(R.id.detailClose).setOnClickListener { dlg.dismiss() }
+        root.findViewById<View>(R.id.btnDetailFermer).setOnClickListener { dlg.dismiss() }
+        val content = root.findViewById<LinearLayout>(R.id.detailContent)
+
+        val profits = trades.map { it.profit }
+        val wins = profits.count { it >= 0 }
+        val losses = profits.count { it < 0 }
+        val pnl = profits.sum()
+        val gain = profits.filter { it > 0 }.sum()
+        val perte = profits.filter { it < 0 }.sum()
+        val wr = wins * 100.0 / trades.size
+        val sigs = groupSignals(trades)
+
+        // PF / RR / MD : mêmes formules que la ligne dépliante précédente
+        val totL = kotlin.math.abs(perte)
+        val pf = if (totL > 0) gain / totL else if (gain > 0) 99.0 else 0.0
+        val winsP = profits.filter { it > 0 }
+        val lossP = profits.filter { it < 0 }
+        val avgWin = if (winsP.isNotEmpty()) winsP.average() else 0.0
+        val avgLoss = if (lossP.isNotEmpty()) kotlin.math.abs(lossP.average()) else 0.0
+        val rr = if (avgLoss > 0) avgWin / avgLoss else if (avgWin > 0) 99.0 else 0.0
+        var peak = 0.0; var equity = 0.0; var md = 0.0
+        for (p in profits) { equity += p; if (equity > peak) peak = equity; val dd = peak - equity; if (dd > md) md = dd }
+
+        // --- 4 cartes du haut ---
+        val boxes = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        fun addBox(v: LinearLayout) {
+            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            lp.setMargins(dp(3), 0, dp(3), 0)
+            boxes.addView(v, lp)
+        }
+        addBox(detailBox("P&L", String.format("%+.2f", pnl), getColor(if (pnl >= 0) R.color.success else R.color.danger)))
+        addBox(detailBox("S / T", "${sigs.size} / ${trades.size}", null))
+        addBox(detailBox("G / P", "$wins / $losses", null))
+        addBox(detailBox("WINRATE", String.format("%.1f", wr) + " %",
+            getColor(if (wr >= 50) R.color.success else if (wr >= 40) R.color.warning else R.color.danger)))
+        content.addView(boxes, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(0, dp(12), 0, 0) })
+
+        val colPF = getColor(if (pf >= 1.5) R.color.success else if (pf >= 1.0) R.color.warning else R.color.danger)
+        val colRR = getColor(if (rr >= 1.5) R.color.success else if (rr >= 1.0) R.color.warning else R.color.danger)
+        addDetailLine(content, listOf(
+            Triple("PF = ", if (pf >= 99) "99" else String.format("%.2f", pf), colPF),
+            Triple("RR = ", if (rr >= 99) "99" else String.format("%.2f", rr), colRR),
+            Triple("MD = ", if (md <= 0) "00" else String.format("%.2f", md), getColor(R.color.danger))
+        ))
+        addDetailLine(content, listOf(
+            Triple("Gains : ", String.format("%.2f", gain) + " $", getColor(R.color.success)),
+            Triple("Meilleur trade : ", String.format("%.2f", profits.maxOrNull() ?: 0.0) + " $", getColor(R.color.success)),
+            Triple("Moy. ", String.format("%.2f", avgWin) + " $", getColor(R.color.success))
+        ))
+        addDetailLine(content, listOf(
+            Triple("Pertes : ", String.format("%.2f", perte) + " $", getColor(R.color.danger)),
+            Triple("Pire trade : ", String.format("%.2f", profits.minOrNull() ?: 0.0) + " $", getColor(R.color.danger)),
+            Triple("Moy. ", String.format("%.2f", -avgLoss) + " $", getColor(R.color.danger))
+        ))
+
+        // --- par ordre (MK, L1, L2, L3, L4) : nombre : P&L ---
+        val ordre = listOf("MK", "L1", "L2", "L3", "L4")
+        val parOrdre = LinkedHashMap<String, Pair<Int, Double>>()
+        trades.forEach { t ->
+            val p = t.comment.split("-")
+            val role = if (p.size >= 3) p[2] else "?"
+            val cur = parOrdre[role] ?: Pair(0, 0.0)
+            parOrdre[role] = Pair(cur.first + 1, cur.second + t.profit)
+        }
+        val ordreParts = ordre.filter { parOrdre.containsKey(it) }.map {
+            val v = parOrdre[it]!!
+            Triple("$it : ", "${v.first} : ${String.format("%.2f", v.second)} $", null)
+        }
+        if (ordreParts.isNotEmpty()) addDetailLine(content, ordreParts)
+
+        // --- par type de signal : nb signaux / nb trades ---
+        val parType = LinkedHashMap<String, Pair<Int, Int>>()
+        sigs.forEach { g ->
+            val cur = parType[g.type] ?: Pair(0, 0)
+            parType[g.type] = Pair(cur.first + 1, cur.second + g.legs.size)
+        }
+        addDetailLine(content, parType.map { (type, v) -> Triple("$type : ", "${v.first} / ${v.second}", null) })
+
+        // --- détail des signaux (le plus récent en premier) ---
+        content.addView(TextView(this).apply {
+            text = "DÉTAIL DES SIGNAUX (${sigs.size})"
+            textSize = 9.5f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(getColor(R.color.text_secondary))
+            setPadding(0, dp(14), 0, dp(7))
+        })
+
+        sigs.reversed().forEach { g ->
+            val net = g.legs.sumOf { it.pnl }
+            // carte orange si une position a ete fermee autrement que par TP (5) ou SL (4)
+            val autre = g.legs.any { it.reason != null && it.reason != 4 && it.reason != 5 }
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = roundedBg(Color.parseColor("#1A1A2E"),
+                    getColor(if (autre) R.color.warning else R.color.border), 13)
+            }
+            val head = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(11), dp(9), dp(11), dp(9))
+            }
+            head.addView(TextView(this).apply {
+                text = hhmm(g.debut); textSize = 11f
+                setTextColor(getColor(R.color.text_secondary))
+                typeface = android.graphics.Typeface.MONOSPACE
+                setPadding(0, 0, dp(7), 0)
+            })
+            head.addView(detailTag(g.side, Color.parseColor("#9DB4FF"), Color.parseColor("#22304F")))
+            head.addView(detailTag(g.type, Color.parseColor("#C3A8FF"), Color.parseColor("#2B2340")))
+            head.addView(TextView(this).apply {
+                text = dureeTexte(dureeMin(g.debut, g.fin)); textSize = 10f
+                setTextColor(getColor(R.color.text_muted)); setPadding(dp(6), 0, dp(6), 0)
+            })
+            head.addView(TextView(this).apply {
+                text = String.format("%+.2f $", net); textSize = 11.5f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(getColor(if (net >= 0) R.color.success else R.color.danger))
+                gravity = Gravity.END
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            card.addView(head)
+            g.legs.forEach { leg ->
+                val lr = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(11), dp(6), dp(11), dp(6))
+                }
+                lr.addView(TextView(this).apply {
+                    text = leg.role; textSize = 10.5f
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                    setTextColor(getColor(R.color.text_primary))
+                }, LinearLayout.LayoutParams(dp(28), LinearLayout.LayoutParams.WRAP_CONTENT))
+                lr.addView(TextView(this).apply {
+                    text = String.format("%.2f", leg.open) + " → " + String.format("%.2f", leg.close)
+                    textSize = 10.5f; setTextColor(getColor(R.color.text_secondary))
+                }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                lr.addView(TextView(this).apply {
+                    text = String.format("%+.2f $", leg.pnl); textSize = 10.5f
+                    setTextColor(getColor(if (leg.pnl >= 0) R.color.success else R.color.danger))
+                    gravity = Gravity.END
+                })
+                card.addView(lr)
+            }
+            content.addView(card, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(0, 0, 0, dp(9)) })
+        }
+
+        dlg.show()
     }
 
     private fun addPerfSignalRow(container: LinearLayout, label: String, d: PerfData, isTotal: Boolean = false) {

@@ -78,7 +78,9 @@ data class Trade(
     val swap: Double = 0.0,
     val comment: String = "",
     val open_time: String = "",
-    val close_time: String = ""
+    val close_time: String = "",
+    /** ★ 26/09 : raison de cloture cote MT5 (4 = SL, 5 = TP, autre = fermeture bot/news/manuelle). */
+    val reason: Int? = null
 )
 
 data class TradesResponse(
