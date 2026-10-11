@@ -44,6 +44,7 @@ class PositionAdapter : RecyclerView.Adapter<PositionAdapter.ViewHolder>() {
         private val badgeChannel: TextView = itemView.findViewById(R.id.badgeChannel)
         private val badgeSignal: TextView = itemView.findViewById(R.id.badgeSignal)
         private val badgeOrder: TextView = itemView.findViewById(R.id.badgeOrder)
+        private val badgeReason: TextView = itemView.findViewById(R.id.badgeReason)
         private val tvOpenTime: TextView = itemView.findViewById(R.id.tvOpenTime)
 
 
@@ -86,9 +87,41 @@ class PositionAdapter : RecyclerView.Adapter<PositionAdapter.ViewHolder>() {
                 badgeOrder.visibility = View.GONE
             }
 
-            // Temps d'ouverture (UTC) a droite : pos.time = ISO "2026-09-07T12:36:45+00:00"
+            // BLOC 3 (11/10/2026) : BADGE JAUNE = raison de fermeture ecrite par le bot
+            // (NWS news, CF conflit, DB doublon, NS nouveau signal, DD perte journaliere,
+            //  DTG objectif atteint, DEL signal supprime, MAN manuel, EOD fin de journee)
+            val codesRaison = listOf("NWS", "CF", "DB", "NS", "DD", "DTG", "DEL", "MAN", "EOD")
+            val commentUp = pos.comment.uppercase()
+            val raison = codesRaison.firstOrNull { c ->
+                commentUp == c || commentUp.endsWith("-$c") || commentUp.endsWith(":$c") ||
+                    commentUp.contains("-$c-") || commentUp.startsWith("$c-")
+            }
+            if (raison != null) {
+                badgeReason.text = raison
+                badgeReason.visibility = View.VISIBLE
+            } else {
+                badgeReason.visibility = View.GONE
+            }
+
+            // BLOC 4 (11/10/2026) : DUREE PROPRE A CHAQUE POSITION (+ sa lettre MK/L1/L2/L3/L4)
+            // But : comparer MK vs L1 vs L2 (ou L3 vs L4) en regardant leurs durees respectives.
+            // Remplace l'ancienne "duree du signal" affichee a droite des badges.
+            val lettrePos = if (parts.size >= 3 && parts[0].startsWith("CH")) parts[2] else ""
+            val dureePos = try {
+                val t0 = java.time.OffsetDateTime.parse(pos.time)
+                val mins = java.time.Duration.between(
+                    t0, java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
+                ).toMinutes()
+                if (mins < 60) "${mins}m" else String.format("%dh%02d", mins / 60, mins % 60)
+            } catch (e: Exception) {
+                ""
+            }
+            // Temps d'ouverture (UTC) : pos.time = ISO "2026-09-07T12:36:45+00:00"
             val openTime = if (pos.time.length >= 16) pos.time.substring(11, 16) else ""
-            if (openTime.isNotEmpty()) {
+            if (lettrePos.isNotEmpty() && dureePos.isNotEmpty()) {
+                tvOpenTime.text = "$lettrePos $dureePos"
+                tvOpenTime.visibility = View.VISIBLE
+            } else if (openTime.isNotEmpty()) {
                 tvOpenTime.text = openTime
                 tvOpenTime.visibility = View.VISIBLE
             } else {

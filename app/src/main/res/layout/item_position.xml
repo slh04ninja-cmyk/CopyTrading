@@ -181,6 +181,21 @@
                 android:background="#26FFB74D"
                 android:layout_marginStart="4dp"/>
 
+            <!-- BLOC 3 (11/10/2026) : badge JAUNE = raison de fermeture (NWS/CF/DB/NS/DD/DTG/DEL/MAN/EOD) -->
+            <TextView
+                android:id="@+id/badgeReason"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="NWS"
+                android:textColor="#FFEB3B"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2dp"
+                android:background="#33FFEB3B"
+                android:layout_marginStart="4dp"
+                android:visibility="gone"/>
+
             <View
                 android:layout_width="0dp"
                 android:layout_height="1dp"

@@ -168,6 +168,16 @@ object ConfigParser {
         if (key.contains("PASSWORD") || key.contains("API_HASH")) return FieldType.PASSWORD
 
         // 6. Entier signé 1-4 chiffres
+        // 11/10/2026 : cles decimales connues -> TOUJOURS FLOAT_INLINE.
+        // Sinon le clavier depend de la VALEUR actuelle : TP_MULTIPE1=2 (entier) => clavier entier
+        // sans touche point => impossible de saisir 2.5. Le type ne doit pas dependre de la valeur.
+        val decimalKeys = setOf(
+            "TP_FIXED_GAIN_USD", "TP_MULTIPE1", "TP_MULTIPE2", "MAX_SL_USD",
+            "MAX_DISTANCE", "TOLERANCE_ZN", "TOLERANCE_PU", "TOLERANCE_MP",
+            "LIMIT_OFFSET_1", "LIMIT_OFFSET_2", "MAX_DAILY_DRAWDOWN", "DAILY_PROFIT_LIMIT",
+            "MONEY_FACTOR", "SLIPPAGE", "POLL_INTERVAL_SEC", "CLOSE_DELAY_SECONDS"
+        )
+        if (key in decimalKeys) return FieldType.FLOAT_INLINE
         if (Regex("^-?\\d{1,4}$").matches(value)) return FieldType.NUMBER_INLINE
 
         // 7. Décimal signé ≤ 6 caractères

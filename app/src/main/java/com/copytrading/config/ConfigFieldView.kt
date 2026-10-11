@@ -146,7 +146,7 @@ object ConfigFieldView {
             setTextColor(Color.parseColor("#E8E8F0"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             typeface = Typeface.MONOSPACE
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_SIGNED
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_SIGNED or InputType.TYPE_NUMBER_FLAG_DECIMAL
             gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor("#0F0F1A"))
             setPadding(dp(context, 10), dp(context, 9), dp(context, 10), dp(context, 9))
