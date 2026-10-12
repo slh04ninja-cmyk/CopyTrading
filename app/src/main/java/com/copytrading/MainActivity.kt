@@ -1536,6 +1536,7 @@ class MainActivity : AppCompatActivity() {
     // ================= POPUP DETAIL CANAL (26/09) =================
 
     private data class DetailLeg(val role: String, val open: Double, val close: Double,
+                                val openT: String = "", val closeT: String = "", val cmt: String = "",
                                  val pnl: Double, val reason: Int?)
     private data class DetailSignal(val debut: String, val side: String, val type: String,
                                     val legs: MutableList<DetailLeg> = mutableListOf(), var fin: String = "")
@@ -1551,7 +1552,7 @@ class MainActivity : AppCompatActivity() {
                 out.add(DetailSignal(t.open_time, t.type, type, mutableListOf(), t.close_time))
             }
             val g = out.last()
-            g.legs.add(DetailLeg(role, t.open_price, t.close_price, t.profit, t.reason))
+            g.legs.add(DetailLeg(role, t.open_price, t.close_price, t.open_time, t.close_time, t.comment, t.profit, t.reason))
             if (t.close_time > g.fin) g.fin = t.close_time
         }
         return out
@@ -1757,10 +1758,19 @@ class MainActivity : AppCompatActivity() {
             })
             head.addView(detailTag(g.side, Color.parseColor("#9DB4FF"), Color.parseColor("#22304F")))
             head.addView(detailTag(g.type, Color.parseColor("#C3A8FF"), Color.parseColor("#2B2340")))
-            head.addView(TextView(this).apply {
-                text = dureeTexte(dureeMin(g.debut, g.fin)); textSize = 10f
-                setTextColor(getColor(R.color.text_muted)); setPadding(dp(6), 0, dp(6), 0)
-            })
+            // BLOC 3 (11/10/2026) : badge JAUNE = raison de fermeture (code ecrit par le bot)
+            val codesRaison = listOf("NWS", "CF", "DB", "NS", "DD", "DTG", "DEL", "MAN", "EOD")
+            val codeRaison = g.legs.mapNotNull { lg ->
+                val u = lg.cmt.uppercase()
+                codesRaison.firstOrNull { c ->
+                    u == c || u.endsWith("-$c") || u.endsWith(":$c") || u.contains("-$c-") || u.startsWith("$c-")
+                }
+            }.firstOrNull()
+            if (codeRaison != null) {
+                head.addView(detailTag(codeRaison, Color.parseColor("#FFEB3B"), Color.parseColor("#33FFEB3B")))
+            }
+            // BLOC 4 (11/10/2026) : la duree du SIGNAL est retiree ici ; elle est remplacee
+            // par la duree PROPRE A CHAQUE POSITION, affichee sur la ligne de chaque position.
             head.addView(TextView(this).apply {
                 text = String.format("%+.2f $", net); textSize = 11.5f
                 setTypeface(null, android.graphics.Typeface.BOLD)
@@ -1782,6 +1792,11 @@ class MainActivity : AppCompatActivity() {
                     text = String.format("%.2f", leg.open) + " → " + String.format("%.2f", leg.close)
                     textSize = 10.5f; setTextColor(getColor(R.color.text_secondary))
                 }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                // BLOC 4 : duree PROPRE a cette position (comparer MK/L1/L2 ou L3/L4)
+                lr.addView(TextView(this).apply {
+                    text = dureeTexte(dureeMin(leg.openT, leg.closeT)); textSize = 10f
+                    setTextColor(getColor(R.color.text_muted)); setPadding(dp(6), 0, 0, 0)
+                })
                 lr.addView(TextView(this).apply {
                     text = String.format("%+.2f $", leg.pnl); textSize = 10.5f
                     setTextColor(getColor(if (leg.pnl >= 0) R.color.success else R.color.danger))
