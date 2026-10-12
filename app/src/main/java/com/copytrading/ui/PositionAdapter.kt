@@ -89,8 +89,8 @@ class PositionAdapter : RecyclerView.Adapter<PositionAdapter.ViewHolder>() {
 
             // BLOC 3 (11/10/2026) : BADGE JAUNE = raison de fermeture ecrite par le bot
             // (NWS news, CF conflit, DB doublon, NS nouveau signal, DD perte journaliere,
-            //  DTG objectif atteint, DEL signal supprime, MAN manuel, EOD fin de journee)
-            val codesRaison = listOf("NWS", "CF", "DB", "NS", "DD", "DTG", "DEL", "MAN", "EOD")
+            //  DTG objectif atteint, TMO duree max atteinte, DEL signal supprime, MAN manuel, EOD fin de journee)
+            val codesRaison = listOf("NWS", "CF", "DB", "NS", "DD", "DTG", "TMO", "DEL", "MAN", "EOD")
             val commentUp = pos.comment.uppercase()
             val raison = codesRaison.firstOrNull { c ->
                 commentUp == c || commentUp.endsWith("-$c") || commentUp.endsWith(":$c") ||

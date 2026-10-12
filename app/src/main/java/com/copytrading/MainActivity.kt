@@ -1759,7 +1759,7 @@ class MainActivity : AppCompatActivity() {
             head.addView(detailTag(g.side, Color.parseColor("#9DB4FF"), Color.parseColor("#22304F")))
             head.addView(detailTag(g.type, Color.parseColor("#C3A8FF"), Color.parseColor("#2B2340")))
             // BLOC 3 (11/10/2026) : badge JAUNE = raison de fermeture (code ecrit par le bot)
-            val codesRaison = listOf("NWS", "CF", "DB", "NS", "DD", "DTG", "DEL", "MAN", "EOD")
+            val codesRaison = listOf("NWS", "CF", "DB", "NS", "DD", "DTG", "TMO", "DEL", "MAN", "EOD")
             val codeRaison = g.legs.mapNotNull { lg ->
                 val u = lg.cmt.uppercase()
                 codesRaison.firstOrNull { c ->
