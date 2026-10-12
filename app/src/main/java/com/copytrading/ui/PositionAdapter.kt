@@ -119,7 +119,7 @@ class PositionAdapter : RecyclerView.Adapter<PositionAdapter.ViewHolder>() {
             // Temps d'ouverture (UTC) : pos.time = ISO "2026-09-07T12:36:45+00:00"
             val openTime = if (pos.time.length >= 16) pos.time.substring(11, 16) else ""
             if (lettrePos.isNotEmpty() && dureePos.isNotEmpty()) {
-                tvOpenTime.text = "$lettrePos $dureePos"
+                tvOpenTime.text = dureePos   // la lettre MK/L1/L2 est deja dans le badge Order a gauche
                 tvOpenTime.visibility = View.VISIBLE
             } else if (openTime.isNotEmpty()) {
                 tvOpenTime.text = openTime

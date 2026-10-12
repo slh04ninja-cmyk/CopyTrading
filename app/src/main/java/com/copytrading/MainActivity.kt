@@ -1791,12 +1791,16 @@ class MainActivity : AppCompatActivity() {
                 lr.addView(TextView(this).apply {
                     text = String.format("%.2f", leg.open) + " → " + String.format("%.2f", leg.close)
                     textSize = 10.5f; setTextColor(getColor(R.color.text_secondary))
-                }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-                // BLOC 4 : duree PROPRE a cette position (comparer MK/L1/L2 ou L3/L4)
+                }, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+                // BLOC 4 : duree PROPRE a cette position, JUSTE APRES le prix de fermeture
                 lr.addView(TextView(this).apply {
                     text = dureeTexte(dureeMin(leg.openT, leg.closeT)); textSize = 10f
-                    setTextColor(getColor(R.color.text_muted)); setPadding(dp(6), 0, 0, 0)
+                    setTextColor(getColor(R.color.text_muted)); setPadding(dp(8), 0, dp(8), 0)
                 })
+                // ressort : repousse le P&L a droite (la duree n'est plus collee au P&L)
+                lr.addView(android.view.View(this),
+                    LinearLayout.LayoutParams(0, 1, 1f))
                 lr.addView(TextView(this).apply {
                     text = String.format("%+.2f $", leg.pnl); textSize = 10.5f
                     setTextColor(getColor(if (leg.pnl >= 0) R.color.success else R.color.danger))
