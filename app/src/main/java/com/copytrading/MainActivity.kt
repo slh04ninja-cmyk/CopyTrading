@@ -39,6 +39,7 @@ import com.copytrading.ui.PositionAdapter
 
 import com.copytrading.ui.DateRangePickerDialog
 import com.copytrading.config.ConfigParser
+import com.copytrading.config.MotifCodes
 import com.copytrading.config.ConfigFieldView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
@@ -194,6 +195,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 val cfg = client.getConfig()?.config ?: return@launch
                 initTradingHoursFromConfig(cfg)
+                MotifCodes.setFromConfig(cfg)
             } catch (_: Exception) {}
         }
     }
@@ -866,6 +868,8 @@ class MainActivity : AppCompatActivity() {
                     configGroups = ConfigParser.parse(envText)
                     // Init trading hours AVANT le rendu (la grille 24h lit tradingHours[] à la création)
                     initTradingHoursFromConfig(cfg)
+                    // Codes de fermeture (badge jaune) : lus sur le serveur (reglage MOTIF_CODES)
+                    MotifCodes.setFromConfig(cfg)
                     // Rendre les groupes dynamiquement
                     renderConfigGroups(configGroups)
                 } else {
@@ -898,7 +902,7 @@ class MainActivity : AppCompatActivity() {
             "CANAUX TELEGRAM" to listOf("TG_FOLDER", "TG_ALERT_CHANNEL") +
                     cfg.keys.filter { it.startsWith("TG_CHANNEL") && it != "TG_CHANNEL_MERGED" }.sorted(),
             "LOTS ET ORDRES" to listOf("LOT_TOTAL", "LOT_MARKET", "LOT_LIMIT1", "LOT_LIMIT2", "LIMIT_ENABLED", "LIMIT_COUNT", "LIMIT_OFFSET_1", "LIMIT_OFFSET_2", "LIMIT_EXPIRY_MIN", "ORDER_EXPIRY_MINUTES", "SLIPPAGE"),
-            "GESTION DES TRADES" to listOf("TP_FIXED_GAIN_USD", "TP_MULTIPE1", "TP_MULTIPE2", "MAX_SL_USD", "MAX_POSITIONS", "DAILY_PROFIT_LIMIT", "MAX_DAILY_DRAWDOWN"),
+            "GESTION DES TRADES" to listOf("TP_FIXED_GAIN_USD", "TP_MULTIPE1", "TP_MULTIPE2", "MAX_SL_USD", "MAX_POSITIONS", "DAILY_PROFIT_LIMIT", "MAX_DAILY_DRAWDOWN", "MOTIF_CODES"),
             "ZONES ET ANTI-DOUBLON" to listOf("TOLERANCE_ZN", "TOLERANCE_PU", "TOLERANCE_MP", "TEMPS_DE_FUSION", "TRADE_HORS_ZONE", "MAX_DISTANCE"),
             "FILTRES" to listOf("MAX_SPREAD_POINTS", "CONFLIT_FILTER_ENABLED", "MOVE_FILTER_ENABLED", "MOVE_FILTER_MIN", "MOVE_FILTER_USD", "KER_FILTER_ENABLED", "KER_SHORT", "KER_LONG", "KER_STRONG", "KER_ACCEL", "LAB_MODE"),
             "FILTRE HORAIRE" to listOf("TIME_FILTER_ENABLED", "TRADING_HOURS"),
@@ -1759,7 +1763,7 @@ class MainActivity : AppCompatActivity() {
             head.addView(detailTag(g.side, Color.parseColor("#9DB4FF"), Color.parseColor("#22304F")))
             head.addView(detailTag(g.type, Color.parseColor("#C3A8FF"), Color.parseColor("#2B2340")))
             // BLOC 3 (11/10/2026) : badge JAUNE = raison de fermeture (code ecrit par le bot)
-            val codesRaison = listOf("NWS", "CF", "DB", "NS", "DD", "DTG", "TMO", "DEL", "MAN", "EOD")
+            val codesRaison = MotifCodes.codes
             val codeRaison = g.legs.mapNotNull { lg ->
                 val u = lg.cmt.uppercase()
                 codesRaison.firstOrNull { c ->

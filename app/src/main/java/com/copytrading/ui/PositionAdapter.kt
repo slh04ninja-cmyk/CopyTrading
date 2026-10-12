@@ -8,6 +8,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.copytrading.R
 import com.copytrading.model.Position
+import com.copytrading.config.MotifCodes
 
 class PositionAdapter : RecyclerView.Adapter<PositionAdapter.ViewHolder>() {
 
@@ -88,9 +89,9 @@ class PositionAdapter : RecyclerView.Adapter<PositionAdapter.ViewHolder>() {
             }
 
             // BLOC 3 (11/10/2026) : BADGE JAUNE = raison de fermeture ecrite par le bot
-            // (NWS news, CF conflit, DB doublon, NS nouveau signal, DD perte journaliere,
-            //  DTG objectif atteint, TMO duree max atteinte, DEL signal supprime, MAN manuel, EOD fin de journee)
-            val codesRaison = listOf("NWS", "CF", "DB", "NS", "DD", "DTG", "TMO", "DEL", "MAN", "EOD")
+            // Liste lue sur le SERVEUR (reglage MOTIF_CODES du .env) : ajouter un nouveau
+            // motif ne demande plus de reconstruire l'APK. Voir MotifCodes.kt.
+            val codesRaison = MotifCodes.codes
             val commentUp = pos.comment.uppercase()
             val raison = codesRaison.firstOrNull { c ->
                 commentUp == c || commentUp.endsWith("-$c") || commentUp.endsWith(":$c") ||
