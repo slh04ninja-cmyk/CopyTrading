@@ -146,7 +146,7 @@ class MainActivity : AppCompatActivity() {
     private var histTradesRaw: List<Trade> = emptyList()
     private val fSignals = linkedSetOf("MP", "PU", "QA", "ZN")
     private val fSens = linkedSetOf("ACHAT", "VENTE")
-    private val fExits = linkedSetOf("TP", "SL", "BOT")
+    private val fExits = linkedSetOf("TP", "SL", "NWS", "BOT")
     private val fHours = linkedSetOf<Int>().apply { (0..23).forEach { add(it) } }
     private val fExcluded = mutableSetOf<String>()   // canaux exclus (CHxxx) - applique apres 3 s
     private var lastExcludedData: List<Pair<String, PerfData>> = emptyList()
@@ -411,7 +411,7 @@ class MainActivity : AppCompatActivity() {
         historyFilters.removeAllViews()
         addFilterLine("Type de signal", listOf("MP", "PU", "QA", "ZN"), fSignals)
         addFilterLine("Sens", listOf("ACHAT", "VENTE"), fSens)
-        addFilterLine("Sortie", listOf("TP", "SL", "BOT"), fExits)
+        addFilterLine("Sortie", listOf("TP", "SL", "NWS", "BOT"), fExits)
         addFilterLabel("Heures de trading (UTC)")
         val grid = android.widget.GridLayout(this).apply {
             columnCount = 6
@@ -495,7 +495,7 @@ class MainActivity : AppCompatActivity() {
     private fun resetHistoryFilters() {
         fSignals.clear(); fSignals.addAll(listOf("MP", "PU", "QA", "ZN"))
         fSens.clear(); fSens.addAll(listOf("ACHAT", "VENTE"))
-        fExits.clear(); fExits.addAll(listOf("TP", "SL", "BOT"))
+        fExits.clear(); fExits.addAll(listOf("TP", "SL", "NWS", "BOT"))
         fHours.clear(); (0..23).forEach { fHours.add(it) }
         fExcluded.clear()
         buildHistoryFilters()
@@ -506,10 +506,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun typeOf(t: Trade): String = t.comment.split("-").getOrNull(1) ?: ""
 
-    private fun exitOf(t: Trade): String = when (t.reason) {
-        5 -> "TP"
-        4 -> "SL"
-        else -> "BOT"
+    /** Sortie du signal : TP et SL viennent du code MT5 (5 / 4), le reste est une fermeture du bot.
+     *  NWS (arret news) est isole des autres fermetures : le motif est ecrit en fin de commentaire. */
+    private fun exitOf(t: Trade): String {
+        return when (t.reason) {
+            5 -> "TP"
+            4 -> "SL"
+            else -> {
+                val c = t.comment.uppercase()
+                if (c == "NWS" || c.endsWith("-NWS") || c.endsWith(":NWS")) "NWS" else "BOT"
+            }
+        }
     }
 
     private fun openHourUtc(t: Trade): Int = try {
