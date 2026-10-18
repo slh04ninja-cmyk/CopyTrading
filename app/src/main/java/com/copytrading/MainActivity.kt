@@ -1586,25 +1586,19 @@ class MainActivity : AppCompatActivity() {
         }
         lastChannelTradesList = channelTradeList
 
-        // Group by hour (UTC 01h-24h)
+        // Par heure d'OUVERTURE (UTC) : MEME convention que le filtre horaire, sinon le tableau
+        // "par session" affichait une heure de fermeture et les chiffres ne collaient pas au filtre.
         val sessionData = mutableMapOf<String, PerfData>()
         val sessionChannels = mutableMapOf<String, MutableSet<String>>()
-        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
-        sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
         for (t in trades) {
             val parts = t.comment.split("-")
             val ch = if (parts.size >= 2) parts[0] else ""
-            try {
-                val date = sdf.parse(t.close_time)
-                if (date != null) {
-                    val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
-                    cal.time = date
-                    val hour = cal.get(java.util.Calendar.HOUR_OF_DAY)
-                    val label = String.format("%02dh", hour)
-                    sessionData.getOrPut(label) { PerfData() }.add(t)
-                    if (ch.isNotEmpty()) sessionChannels.getOrPut(label) { mutableSetOf() }.add(ch)
-                }
-            } catch (_: Exception) {}
+            val heure = openHourUtc(t)
+            if (heure >= 0) {
+                val label = String.format(java.util.Locale.US, "%02dh", heure)
+                sessionData.getOrPut(label) { PerfData() }.add(t)
+                if (ch.isNotEmpty()) sessionChannels.getOrPut(label) { mutableSetOf() }.add(ch)
+            }
         }
         for ((label, d) in sessionData) {
             d.channelCount = sessionChannels[label]?.size ?: 0
@@ -1656,7 +1650,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderSessionTable() {
         perfSessionTable.removeAllViews()
-        val headers = arrayOf("Heure", "P&L", "CN", "TR", "WN", "LS", "WR")
+        val headers = arrayOf("Heure ouv.", "P&L", "CN", "TR", "WN", "LS", "WR")
         val weights = floatArrayOf(0.8f, 1f, 0.6f, 0.6f, 0.6f, 0.6f, 0.6f)
         addPerfHeader(perfSessionTable, headers, weights, sessionSortCol, sessionSortAsc) { col ->
             if (sessionSortCol == col) sessionSortAsc = !sessionSortAsc else { sessionSortCol = col; sessionSortAsc = col == 0 }
