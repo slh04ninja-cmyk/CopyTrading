@@ -147,8 +147,11 @@ class MainActivity : AppCompatActivity() {
     private var histTradesRaw: List<Trade> = emptyList()
     private val fSignals = linkedSetOf("MP", "PU", "QA", "ZN")
     private val fSens = linkedSetOf("ACHAT", "VENTE")
-    private val fExits = linkedSetOf("TP", "SL", "NWS", "BOT")
+    private val fExits = linkedSetOf("TP", "SL", "NWS", "NS", "TMO", "DTG", "DD", "BOT")
     private val fHours = linkedSetOf<Int>().apply { (0..23).forEach { add(it) } }
+    /** Motifs de fermeture ecrits par le bot (fin du commentaire MT5). "BOT" ramasse tout le reste :
+     *  un nouveau code ajoute au bot n'est jamais perdu, il tombe simplement dans BOT. */
+    private val MOTIFS_FIXES = listOf("NWS", "NS", "TMO", "DTG", "DD")
     private val fExcluded = mutableSetOf<String>()   // canaux exclus (CHxxx) - applique apres 3 s
     private var lastExcludedData: List<Pair<String, PerfData>> = emptyList()
     private var totalSignaux = 0                     // signaux de la periode (denominateur du bandeau)
@@ -414,7 +417,7 @@ class MainActivity : AppCompatActivity() {
         historyFilters.removeAllViews()
         addFilterLine("Type de signal", listOf("MP", "PU", "QA", "ZN"), fSignals)
         addFilterLine("Sens", listOf("ACHAT", "VENTE"), fSens)
-        addFilterLine("Sortie", listOf("TP", "SL", "NWS", "BOT"), fExits)
+        addFilterGrid("Sortie", listOf("TP", "SL") + MOTIFS_FIXES + "BOT", fExits)
         addFilterLabel("Heures de trading (UTC)")
         val grid = android.widget.GridLayout(this).apply {
             columnCount = 6
@@ -470,6 +473,34 @@ class MainActivity : AppCompatActivity() {
         historyFilters.addView(row)
     }
 
+    /** Meme chose mais en grille de 4 colonnes : necessaire quand il y a beaucoup de cases (motifs de sortie). */
+    private fun addFilterGrid(label: String, keys: List<String>, set: MutableSet<String>) {
+        addFilterLabel(label)
+        val grid = android.widget.GridLayout(this).apply {
+            columnCount = 4
+            rowCount = (keys.size + 3) / 4
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        }
+        keys.forEach { k ->
+            val tv = filterChip(k)
+            tv.layoutParams = android.widget.GridLayout.LayoutParams().apply {
+                width = 0
+                height = dp(34)
+                columnSpec = android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f)
+                setMargins(dp(2), dp(2), dp(2), dp(2))
+            }
+            styleChip(tv, set.contains(k))
+            tv.setOnClickListener {
+                if (set.contains(k)) set.remove(k) else set.add(k)
+                styleChip(tv, set.contains(k))
+                requestFilterApply(tv)
+            }
+            grid.addView(tv)
+        }
+        historyFilters.addView(grid)
+    }
+
     private fun filterChip(txt: String): TextView = TextView(this).apply {
         text = txt
         textSize = 12f
@@ -498,7 +529,7 @@ class MainActivity : AppCompatActivity() {
     private fun resetHistoryFilters() {
         fSignals.clear(); fSignals.addAll(listOf("MP", "PU", "QA", "ZN"))
         fSens.clear(); fSens.addAll(listOf("ACHAT", "VENTE"))
-        fExits.clear(); fExits.addAll(listOf("TP", "SL", "NWS", "BOT"))
+        fExits.clear(); fExits.addAll(listOf("TP", "SL", "NWS", "NS", "TMO", "DTG", "DD", "BOT"))
         fHours.clear(); (0..23).forEach { fHours.add(it) }
         fExcluded.clear()
         buildHistoryFilters()
@@ -509,15 +540,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun typeOf(t: Trade): String = t.comment.split("-").getOrNull(1) ?: ""
 
-    /** Sortie du signal : TP et SL viennent du code MT5 (5 / 4), le reste est une fermeture du bot.
-     *  NWS (arret news) est isole des autres fermetures : le motif est ecrit en fin de commentaire. */
+    /** Sortie du signal : TP et SL viennent du code MT5 (5 / 4). Les fermetures du bot portent leur
+     *  motif en fin de commentaire (CH144-MP-L1-TMO) : on le renvoie tel quel, "BOT" si inconnu. */
     private fun exitOf(t: Trade): String {
         return when (t.reason) {
             5 -> "TP"
             4 -> "SL"
             else -> {
-                val c = t.comment.uppercase()
-                if (c == "NWS" || c.endsWith("-NWS") || c.endsWith(":NWS")) "NWS" else "BOT"
+                val c = t.comment.uppercase().trim()
+                val code = c.substringAfterLast("-", "").substringAfterLast(":", "")
+                if (code in MOTIFS_FIXES) code else "BOT"
             }
         }
     }
