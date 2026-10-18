@@ -417,7 +417,8 @@ class MainActivity : AppCompatActivity() {
         historyFilters.removeAllViews()
         addFilterLine("Type de signal", listOf("MP", "PU", "QA", "ZN"), fSignals)
         addFilterLine("Sens", listOf("ACHAT", "VENTE"), fSens)
-        addFilterGrid("Sortie", listOf("TP", "SL") + MOTIFS_FIXES + "BOT", fExits)
+        // Motifs de fermeture ecrits par le bot depuis le 12/10/2026 (NWS ajoute le 14/10).
+        addFilterGrid("Sortie  \u00b7  depuis 12/10", listOf("TP", "SL") + MOTIFS_FIXES + "BOT", fExits)
         addFilterLabel("Heures de trading (UTC)")
         val grid = android.widget.GridLayout(this).apply {
             columnCount = 6
