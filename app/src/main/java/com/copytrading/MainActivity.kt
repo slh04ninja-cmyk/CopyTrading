@@ -10,6 +10,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -732,7 +733,7 @@ class MainActivity : AppCompatActivity() {
             }.show()
         }
 
-        // Bouton rapport PDF : genere le rapport pour la periode choisie et l'ouvre
+        // Bouton rapport PDF : imprime les tableaux AFFICHES (filtres compris), sans appel serveur
         btnPdfReport.setOnClickListener {
             if (dateFrom.isEmpty() || dateTo.isEmpty()) {
                 Snackbar.make(btnPdfReport, "Choisis une periode avec le calendrier", Snackbar.LENGTH_SHORT).show()
@@ -740,28 +741,225 @@ class MainActivity : AppCompatActivity() {
             }
             btnPdfReport.isEnabled = false
             btnPdfReport.alpha = 0.5f
-            lifecycleScope.launch {
-                try {
-                    val dir = File(getExternalFilesDir(null), "rapports").apply { mkdirs() }
-                    val pdfFile = File(dir, "rapport_$dateFrom-$dateTo.pdf")
-                    val ok = client.downloadReport(dateFrom, dateTo, pdfFile)
-                    if (ok && pdfFile.exists() && pdfFile.length() > 0) {
-                        openPdf(pdfFile)
-                    } else {
-                        val err = client.lastErrorMessage.ifEmpty { "HTTP ${client.lastErrorCode}" }
-                        Snackbar.make(btnPdfReport, "Erreur generation PDF: $err", Snackbar.LENGTH_LONG).show()
-                    }
-                } catch (e: Exception) {
-                    Snackbar.make(btnPdfReport, "Erreur: ${e.message}", Snackbar.LENGTH_LONG).show()
-                } finally {
-                    btnPdfReport.isEnabled = true
-                    btnPdfReport.alpha = 1f
-                }
+            try {
+                val pdfFile = genererPdfFiltre()
+                if (pdfFile != null) openPdf(pdfFile)
+                else Snackbar.make(btnPdfReport, "Rien a exporter sur cette periode", Snackbar.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Snackbar.make(btnPdfReport, "Erreur PDF: ${e.message}", Snackbar.LENGTH_LONG).show()
+            } finally {
+                btnPdfReport.isEnabled = true
+                btnPdfReport.alpha = 1f
             }
         }
     }
 
     /** Ouvre le PDF genere via le FileProvider (intent viewer PDF). */
+    // ================= PDF GENERE DEPUIS LES TABLEAUX AFFICHES =================
+    // Aucun recalcul : on imprime lastChannelData / lastSignalData / lastSessionData + le total,
+    // donc le PDF est TOUJOURS identique a ce que l'utilisateur voit apres ses filtres.
+
+    private fun descFiltres(): String {
+        val p = mutableListOf<String>()
+        if (fSens.size < 2) p.add(if (fSens.contains("ACHAT")) "achats seulement" else "ventes seulement")
+        if (fSignals.size < 4) p.add("types " + fSignals.sorted().joinToString(","))
+        if (fExits.size < 8) p.add("sorties " + fExits.sorted().joinToString(","))
+        if (fHours.size < 24) {
+            val excl = (0..23).filter { !fHours.contains(it) }
+            p.add("heures exclues " + excl.joinToString(",") { String.format(Locale.US, "%02dh", it) })
+        }
+        if (fExcluded.isNotEmpty()) p.add("canaux exclus " + fExcluded.map { it.removePrefix("CH") }.sorted().joinToString(","))
+        return if (p.isEmpty()) "aucun filtre" else p.joinToString("  |  ")
+    }
+
+    private fun genererPdfFiltre(): File? {
+        val NOIR = Color.rgb(20, 20, 30)
+        val GRIS = Color.rgb(115, 115, 125)
+        val VERT = Color.rgb(0, 140, 60)
+        val ROUGE = Color.rgb(195, 40, 40)
+        val doc = android.graphics.pdf.PdfDocument()
+        val paint = Paint().apply { isAntiAlias = true; typeface = Typeface.SANS_SERIF }
+        val W = 595
+        val H = 842
+        val M = 24f
+        var pageNo = 1
+        var page = doc.startPage(android.graphics.pdf.PdfDocument.PageInfo.Builder(W, H, pageNo).create())
+        var cv = page.canvas
+        var y = M + 8f
+
+        fun txt(s: String, x: Float, yy: Float, taille: Float, gras: Boolean, couleur: Int,
+                align: Paint.Align = Paint.Align.LEFT) {
+            paint.textSize = taille
+            paint.isFakeBoldText = gras
+            paint.color = couleur
+            paint.textAlign = align
+            cv.drawText(s, x, yy, paint)
+        }
+
+        fun ligne(yp: Float) {
+            paint.color = Color.rgb(205, 205, 215)
+            paint.strokeWidth = 0.5f
+            paint.textAlign = Paint.Align.LEFT
+            cv.drawLine(M, yp, W - M, yp, paint)
+        }
+
+        fun nouvellePage() {
+            doc.finishPage(page)
+            pageNo++
+            page = doc.startPage(android.graphics.pdf.PdfDocument.PageInfo.Builder(W, H, pageNo).create())
+            cv = page.canvas
+            y = M + 8f
+            txt("Rapport $dateFrom -> $dateTo (suite) - filtres : ${descFiltres()}", M, y, 7f, false, GRIS)
+            y += 16f
+        }
+
+        fun besoin(hauteur: Float) {
+            if (y + hauteur > H - M) nouvellePage()
+        }
+
+        fun texteWrappe(s: String, taille: Float, couleur: Int, gras: Boolean = false) {
+            paint.textSize = taille
+            paint.isFakeBoldText = gras
+            paint.color = couleur
+            paint.textAlign = Paint.Align.LEFT
+            val maxL = W - 2 * M
+            var cur = ""
+            for (mot in s.split(" ")) {
+                val essai = if (cur.isEmpty()) mot else "$cur $mot"
+                if (paint.measureText(essai) > maxL && cur.isNotEmpty()) {
+                    besoin(taille + 6f)
+                    cv.drawText(cur, M, y, paint)
+                    y += taille + 3f
+                    cur = mot
+                } else cur = essai
+            }
+            if (cur.isNotEmpty()) {
+                besoin(taille + 6f)
+                cv.drawText(cur, M, y, paint)
+                y += taille + 3f
+            }
+        }
+
+        fun tableSection(titre: String, cols: List<Pair<String, Float>>, rows: List<List<String>>, total: List<String>?) {
+            besoin(46f)
+            paint.color = Color.rgb(0, 0, 0)
+            cv.drawRect(M, y, W - M, y + 15f, paint)
+            txt("  $titre", M + 3f, y + 11f, 9.5f, true, Color.WHITE)
+            y += 15f
+            paint.color = Color.rgb(38, 38, 50)
+            cv.drawRect(M, y, W - M, y + 13f, paint)
+            var x = M
+            cols.forEach { (nom, larg) ->
+                txt(nom, x + 3f, y + 9.5f, 7.5f, true, Color.WHITE)
+                x += larg
+            }
+            y += 13f
+            for (r in rows) {
+                besoin(13f)
+                var xr = M
+                r.forEachIndexed { i, v ->
+                    val c = if (i == 1 && (v.startsWith("-") || v.startsWith("+"))) (if (v.startsWith("-")) ROUGE else VERT) else NOIR
+                    txt(v, xr + 3f, y + 9f, 7.5f, i == 0, c)
+                    xr += cols[i].second
+                }
+                y += 11.5f
+                ligne(y - 2f)
+            }
+            if (total != null) {
+                besoin(15f)
+                paint.color = Color.rgb(236, 236, 242)
+                cv.drawRect(M, y, W - M, y + 13f, paint)
+                var xt = M
+                total.forEachIndexed { i, v ->
+                    txt(v, xt + 3f, y + 9.5f, 7.5f, true, NOIR)
+                    xt += cols[i].second
+                }
+                y += 17f
+            } else y += 6f
+        }
+
+        fun fmt(v: Double) = String.format(Locale.US, "%+.2f", v)
+
+        // ---- en-tete
+        txt("RAPPORT DE PERFORMANCE", W / 2f, y + 4f, 15f, true, NOIR, Paint.Align.CENTER)
+        y += 21f
+        txt("Periode $dateFrom -> $dateTo", W / 2f, y, 9f, false, GRIS, Paint.Align.CENTER)
+        y += 16f
+        texteWrappe("Filtres appliques : ${descFiltres()}", 8f, NOIR, true)
+        texteWrappe("1 signal = 1 trade : le P&L est celui du signal complet (MK + ses jambes L1/L2/L4).", 7.5f, GRIS)
+        y += 6f
+
+        // ---- KPI
+        val tot = lastChannelData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
+        val nbSignaux = tot.trades
+        paint.color = Color.rgb(245, 245, 250)
+        cv.drawRect(M, y, W - M, y + 40f, paint)
+        val kpis = listOf(
+            "P&L" to fmt(tot.pnl),
+            "SIGNAUX" to nbSignaux.toString(),
+            "GAGNANTS" to tot.wins.toString(),
+            "PERDANTS" to tot.losses.toString(),
+            "REUSSITE" to "${tot.winrate()} %"
+        )
+        var xk = M + 12f
+        val largK = (W - 2 * M - 24f) / kpis.size
+        kpis.forEach { (lab, v) ->
+            paint.textAlign = Paint.Align.CENTER
+            txt(lab, xk + largK / 2f, y + 13f, 7f, false, GRIS, Paint.Align.CENTER)
+            txt(v, xk + largK / 2f, y + 31f, 12f, true,
+                if (lab == "P&L") (if (tot.pnl >= 0) VERT else ROUGE) else NOIR, Paint.Align.CENTER)
+            xk += largK
+        }
+        y += 50f
+
+        // ---- tableau par canal (les exclus restent listes, marques)
+        val colsC = listOf("CANAL" to 95f, "P&L" to 85f, "SN" to 55f, "TR" to 55f, "WN" to 50f, "LS" to 50f, "WR" to 52f)
+        val rowsC = mutableListOf<List<String>>()
+        for ((ch, d) in sortPerfData(lastChannelData, channelSortCol, channelSortAsc)) {
+            rowsC.add(listOf(ch.removePrefix("CH"), fmt(d.pnl), (lastChannelMkCount[ch] ?: 0).toString(),
+                d.trades.toString(), d.wins.toString(), d.losses.toString(), d.winrate().toString()))
+        }
+        for ((ch, d) in lastExcludedData) {
+            rowsC.add(listOf(ch.removePrefix("CH") + " (exclu)", fmt(d.pnl), d.trades.toString(),
+                d.trades.toString(), d.wins.toString(), d.losses.toString(), d.winrate().toString()))
+        }
+        tableSection("PERFORMANCE PAR CANAL", colsC, rowsC,
+            listOf("TOTAL", fmt(tot.pnl), lastChannelMkCount.values.sum().toString(), tot.trades.toString(),
+                tot.wins.toString(), tot.losses.toString(), tot.winrate().toString()))
+
+        // ---- tableau par signal
+        val totS = lastSignalData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
+        val colsS = listOf("SIGNAL" to 95f, "P&L" to 85f, "CN" to 55f, "TR" to 55f, "WN" to 50f, "LS" to 50f, "WR" to 52f)
+        val rowsS = sortPerfData(lastSignalData, signalSortCol, signalSortAsc, isSignal = true).map { (sig, d) ->
+            listOf(sig, fmt(d.pnl), d.channelCount.toString(), d.trades.toString(),
+                d.wins.toString(), d.losses.toString(), d.winrate().toString())
+        }
+        tableSection("PERFORMANCE PAR SIGNAL", colsS, rowsS,
+            listOf("TOTAL", fmt(totS.pnl), totS.channelCount.toString(), totS.trades.toString(),
+                totS.wins.toString(), totS.losses.toString(), totS.winrate().toString()))
+
+        // ---- tableau par heure d'ouverture
+        val totH = lastSessionData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
+        val colsH = listOf("HEURE OUV." to 95f, "P&L" to 85f, "CN" to 55f, "TR" to 55f, "WN" to 50f, "LS" to 50f, "WR" to 52f)
+        val rowsH = lastSessionData.sortedBy { it.first }.map { (hh, d) ->
+            listOf(hh, fmt(d.pnl), d.channelCount.toString(), d.trades.toString(),
+                d.wins.toString(), d.losses.toString(), d.winrate().toString())
+        }
+        tableSection("PERFORMANCE PAR HEURE D'OUVERTURE (UTC)", colsH, rowsH,
+            listOf("TOTAL", fmt(totH.pnl), totH.channelCount.toString(), totH.trades.toString(),
+                totH.wins.toString(), totH.losses.toString(), totH.winrate().toString()))
+
+        besoin(20f)
+        txt("Genere dans l'appli le " + java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.US).format(java.util.Date()) +
+            " a partir des tableaux affiches (aucun recalcul).", M, y + 8f, 7f, false, GRIS)
+        doc.finishPage(page)
+        val dir = File(getExternalFilesDir(null), "rapports").apply { mkdirs() }
+        val f = File(dir, "rapport_filtre_${dateFrom}_$dateTo.pdf")
+        java.io.FileOutputStream(f).use { doc.writeTo(it) }
+        doc.close()
+        return if (f.exists() && f.length() > 0) f else null
+    }
+
     private fun openPdf(file: File) {
         try {
             val uri = androidx.core.content.FileProvider.getUriForFile(
