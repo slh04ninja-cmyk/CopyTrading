@@ -144,7 +144,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var historyFilters: LinearLayout
     private lateinit var tvFilterCount: TextView
     private var histTradesRaw: List<Trade> = emptyList()
-    private val fRoles = linkedSetOf("MK", "L1", "L2", "L3", "L4")
     private val fSignals = linkedSetOf("MP", "PU", "QA", "ZN")
     private val fExits = linkedSetOf("TP", "SL", "BOT")
     private val fHours = linkedSetOf<Int>().apply { (0..23).forEach { add(it) } }
@@ -405,7 +404,6 @@ class MainActivity : AppCompatActivity() {
     private fun buildHistoryFilters() {
         if (!::historyFilters.isInitialized) return
         historyFilters.removeAllViews()
-        addFilterLine("Type d'ordre", listOf("MK", "L1", "L2", "L3", "L4"), fRoles)
         addFilterLine("Type de signal", listOf("MP", "PU", "QA", "ZN"), fSignals)
         addFilterLine("Sortie", listOf("TP", "SL", "BOT"), fExits)
         addFilterLabel("Heure d'ouverture (UTC)")
@@ -486,7 +484,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resetHistoryFilters() {
-        fRoles.clear(); fRoles.addAll(listOf("MK", "L1", "L2", "L3", "L4"))
         fSignals.clear(); fSignals.addAll(listOf("MP", "PU", "QA", "ZN"))
         fExits.clear(); fExits.addAll(listOf("TP", "SL", "BOT"))
         fHours.clear(); (0..23).forEach { fHours.add(it) }
@@ -534,33 +531,20 @@ class MainActivity : AppCompatActivity() {
         return groups
     }
 
+    /** On travaille TOUJOURS par signal : les filtres sont juges sur la jambe d'ENTREE (MK/L3) et le
+     *  signal est garde en entier -> le P&L affiche est celui du signal complet (+12 $ au TP / -19 $ au SL). */
     private fun filterTrades(all: List<Trade>): List<Trade> {
         if (all.isEmpty()) return all
-        val entrySelected = fRoles.contains("MK") || fRoles.contains("L3")
-        if (entrySelected) {
-            // Mode "tout le signal" : les filtres sont juges sur la jambe d'ENTREE (MK/L3), et le signal
-            // est garde en entier (ses L1/L2/L4 comprises) -> P&L du signal complet (+12 $ / -19 $).
-            val keep = HashSet<Long>()
-            signalGroups(all).forEach { g ->
-                val head = g.first()
-                val entry = roleOf(head)
-                if (entry != "MK" && entry != "L3") return@forEach
-                if (!fRoles.contains(entry)) return@forEach
-                if (!fSignals.contains(typeOf(head))) return@forEach
-                if (!fExits.contains(exitOf(head))) return@forEach
-                val h = openHourUtc(head)
-                if (h >= 0 && !fHours.contains(h)) return@forEach
-                g.forEach { keep.add(it.ticket) }
-            }
-            return all.filter { keep.contains(it.ticket) }
+        val keep = HashSet<Long>()
+        signalGroups(all).forEach { g ->
+            val head = g.first()
+            if (!fSignals.contains(typeOf(head))) return@forEach
+            if (!fExits.contains(exitOf(head))) return@forEach
+            val h = openHourUtc(head)
+            if (h >= 0 && !fHours.contains(h)) return@forEach
+            g.forEach { keep.add(it.ticket) }
         }
-        // Mode "jambes seules" (ni MK ni L3 coche) : chaque jambe est jugee pour elle-meme.
-        return all.filter { t ->
-            fRoles.contains(roleOf(t)) &&
-                fSignals.contains(typeOf(t)) &&
-                fExits.contains(exitOf(t)) &&
-                openHourUtc(t).let { it < 0 || fHours.contains(it) }
-        }
+        return all.filter { keep.contains(it.ticket) }
     }
 
     /** Agrege chaque signal en UNE unite de comptage : P&L = somme de ses jambes (ex. MK +3.50 et L1 +8.50
@@ -582,14 +566,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun applyHistoryFilters() {
         val visible = filterTrades(histTradesRaw)
-        val parSignal = fRoles.contains("MK") || fRoles.contains("L3")
+        val signaux = signalAggregates(visible)
         if (::tvFilterCount.isInitialized) {
-            val unites = if (parSignal) signalAggregates(visible).size else visible.size
-            tvFilterCount.text = String.format(Locale.US, "%d / %d trades", unites, histTradesRaw.size)
+            tvFilterCount.text = String.format(Locale.US, "%d / %d signaux", signaux.size,
+                signalAggregates(histTradesRaw).size)
         }
-        // Mode "tout le signal" : on compte 1 signal = 1 trade (le popup garde le detail des jambes).
-        if (parSignal) updatePerformance(signalAggregates(visible), visible)
-        else updatePerformance(visible)
+        // Toujours 1 signal = 1 trade ; le popup de detail garde les jambes une par une.
+        updatePerformance(signaux, visible)
     }
 
     private fun setupDatePicker() {
