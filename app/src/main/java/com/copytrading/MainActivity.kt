@@ -537,29 +537,59 @@ class MainActivity : AppCompatActivity() {
     private fun filterTrades(all: List<Trade>): List<Trade> {
         if (all.isEmpty()) return all
         val entrySelected = fRoles.contains("MK") || fRoles.contains("L3")
-        val keepSignal = HashSet<Long>()
         if (entrySelected) {
+            // Mode "tout le signal" : les filtres sont juges sur la jambe d'ENTREE (MK/L3), et le signal
+            // est garde en entier (ses L1/L2/L4 comprises) -> P&L du signal complet (+12 $ / -19 $).
+            val keep = HashSet<Long>()
             signalGroups(all).forEach { g ->
-                val entry = roleOf(g.first())
-                if ((entry == "MK" || entry == "L3") && fRoles.contains(entry)) g.forEach { keepSignal.add(it.ticket) }
+                val head = g.first()
+                val entry = roleOf(head)
+                if (entry != "MK" && entry != "L3") return@forEach
+                if (!fRoles.contains(entry)) return@forEach
+                if (!fSignals.contains(typeOf(head))) return@forEach
+                if (!fExits.contains(exitOf(head))) return@forEach
+                val h = openHourUtc(head)
+                if (h >= 0 && !fHours.contains(h)) return@forEach
+                g.forEach { keep.add(it.ticket) }
             }
+            return all.filter { keep.contains(it.ticket) }
         }
+        // Mode "jambes seules" (ni MK ni L3 coche) : chaque jambe est jugee pour elle-meme.
         return all.filter { t ->
-            val okRole = if (entrySelected) keepSignal.contains(t.ticket) else fRoles.contains(roleOf(t))
-            if (!okRole) return@filter false
-            if (!fSignals.contains(typeOf(t))) return@filter false
-            if (!fExits.contains(exitOf(t))) return@filter false
-            val h = openHourUtc(t)
-            h < 0 || fHours.contains(h)
+            fRoles.contains(roleOf(t)) &&
+                fSignals.contains(typeOf(t)) &&
+                fExits.contains(exitOf(t)) &&
+                openHourUtc(t).let { it < 0 || fHours.contains(it) }
         }
+    }
+
+    /** Agrege chaque signal en UNE unite de comptage : P&L = somme de ses jambes (ex. MK +3.50 et L1 +8.50
+     *  ferment au meme prix -> +12 $ ; au SL -> -19 $). Une seule ligne par signal, comme le voit le compte. */
+    private fun signalAggregates(visible: List<Trade>): List<Trade> {
+        val out = mutableListOf<Trade>()
+        signalGroups(visible).forEach { g ->
+            if (g.isEmpty()) return@forEach
+            val head = g.first()
+            out.add(head.copy(
+                profit = g.sumOf { it.profit },
+                ticket = head.ticket,
+                close_time = g.maxOf { it.close_time },
+                reason = head.reason
+            ))
+        }
+        return out
     }
 
     private fun applyHistoryFilters() {
         val visible = filterTrades(histTradesRaw)
+        val parSignal = fRoles.contains("MK") || fRoles.contains("L3")
         if (::tvFilterCount.isInitialized) {
-            tvFilterCount.text = String.format(Locale.US, "%d / %d trades", visible.size, histTradesRaw.size)
+            val unites = if (parSignal) signalAggregates(visible).size else visible.size
+            tvFilterCount.text = String.format(Locale.US, "%d / %d trades", unites, histTradesRaw.size)
         }
-        updatePerformance(visible)
+        // Mode "tout le signal" : on compte 1 signal = 1 trade (le popup garde le detail des jambes).
+        if (parSignal) updatePerformance(signalAggregates(visible), visible)
+        else updatePerformance(visible)
     }
 
     private fun setupDatePicker() {
@@ -1456,7 +1486,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updatePerformance(trades: List<Trade>) {
+    /** @param trades unites de comptage (positions, ou signaux agreges si le mode "tout le signal" est actif)
+     *  @param rawForDetail positions reelles, pour le popup de detail (les jambes une par une). */
+    private fun updatePerformance(trades: List<Trade>, rawForDetail: List<Trade> = trades) {
         val channelData = mutableMapOf<String, PerfData>()
         val signalData = mutableMapOf<String, PerfData>()
 
@@ -1512,7 +1544,7 @@ class MainActivity : AppCompatActivity() {
 
         // ★ 26/09 : garder aussi les trades complets par canal (pour le popup de detail)
         val channelTradeList = mutableMapOf<String, MutableList<Trade>>()
-        for (t in trades) {
+        for (t in rawForDetail) {
             val parts = t.comment.split("-")
             if (parts.size >= 2) channelTradeList.getOrPut(parts[0]) { mutableListOf() }.add(t)
         }
