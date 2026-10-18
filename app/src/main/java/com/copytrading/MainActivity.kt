@@ -844,6 +844,10 @@ class MainActivity : AppCompatActivity() {
             y += 12f
         }
 
+        fun besoin(hauteur: Float) {
+            if (y + hauteur > BAS) nouvellePage()
+        }
+
         fun bandeau(titre: String) {
             besoin(9 * MM + 14 * MM)
             paint.color = FILL_SECTION
