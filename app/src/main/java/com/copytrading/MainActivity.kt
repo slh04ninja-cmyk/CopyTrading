@@ -773,19 +773,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun genererPdfFiltre(): File? {
-        val NOIR = Color.rgb(20, 20, 30)
-        val GRIS = Color.rgb(115, 115, 125)
-        val VERT = Color.rgb(0, 140, 60)
-        val ROUGE = Color.rgb(195, 40, 40)
+        // ---- style repris a l'identique du rapport du serveur (_report_dyn.py) :
+        //      A4 portrait, marges 10 mm, Helvetica, en-tetes de tableaux GRIS CLAIR (200,200,215),
+        //      titres de section (225,225,238), KPI en 5 boites, lignes alternees (248,248,252).
+        val NOIR = Color.rgb(0, 0, 0)
+        val GRIS = Color.rgb(90, 90, 90)
+        val GRIS_KPI = Color.rgb(80, 80, 110)
+        val VERT = Color.rgb(0, 130, 0)
+        val ROUGE = Color.rgb(190, 30, 30)
+        val VERT_KPI = Color.rgb(0, 150, 60)
+        val ROUGE_KPI = Color.rgb(200, 40, 40)
+        val FILL_KPI = Color.rgb(243, 243, 248)
+        val FILL_SECTION = Color.rgb(225, 225, 238)
+        val FILL_HEAD = Color.rgb(200, 200, 215)
+        val FILL_ALT = Color.rgb(248, 248, 252)
+        val BORD = Color.rgb(120, 120, 130)
+        val MM = 2.83465f
         val doc = android.graphics.pdf.PdfDocument()
         val paint = Paint().apply { isAntiAlias = true; typeface = Typeface.SANS_SERIF }
         val W = 595
         val H = 842
-        val M = 24f
+        val M = 10 * MM
+        val BAS = H - 18 * MM
         var pageNo = 1
         var page = doc.startPage(android.graphics.pdf.PdfDocument.PageInfo.Builder(W, H, pageNo).create())
         var cv = page.canvas
-        var y = M + 8f
+        var y = 10 * MM
+
+        fun frDate(s: String): String = try {
+            s.substring(8, 10) + "/" + s.substring(5, 7) + "/" + s.substring(0, 4)
+        } catch (e: Exception) {
+            s
+        }
+        val dFr = frDate(dateFrom)
+        val dTo = frDate(dateTo)
+        val rappel = "Rapport $dFr -> $dTo"
 
         fun txt(s: String, x: Float, yy: Float, taille: Float, gras: Boolean, couleur: Int,
                 align: Paint.Align = Paint.Align.LEFT) {
@@ -796,11 +818,17 @@ class MainActivity : AppCompatActivity() {
             cv.drawText(s, x, yy, paint)
         }
 
-        fun ligne(yp: Float) {
-            paint.color = Color.rgb(205, 205, 215)
-            paint.strokeWidth = 0.5f
-            paint.textAlign = Paint.Align.LEFT
-            cv.drawLine(M, yp, W - M, yp, paint)
+        fun cadre(x: Float, yy: Float, w: Float, h: Float, remplissage: Int?) {
+            if (remplissage != null) {
+                paint.color = remplissage
+                paint.style = Paint.Style.FILL
+                cv.drawRect(x, yy, x + w, yy + h, paint)
+            }
+            paint.color = BORD
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 0.4f
+            cv.drawRect(x, yy, x + w, yy + h, paint)
+            paint.style = Paint.Style.FILL
         }
 
         fun nouvellePage() {
@@ -808,150 +836,174 @@ class MainActivity : AppCompatActivity() {
             pageNo++
             page = doc.startPage(android.graphics.pdf.PdfDocument.PageInfo.Builder(W, H, pageNo).create())
             cv = page.canvas
-            y = M + 8f
-            txt("Rapport $dateFrom -> $dateTo (suite) - filtres : ${descFiltres()}", M, y, 7f, false, GRIS)
-            y += 16f
+            y = 10 * MM
+            txt("$rappel (page $pageNo)", W - M, y + 6f, 7f, false, Color.rgb(150, 150, 150), Paint.Align.RIGHT)
+            y += 12f
         }
 
         fun besoin(hauteur: Float) {
-            if (y + hauteur > H - M) nouvellePage()
+            if (y + hauteur > BAS) nouvellePage()
         }
 
-        fun texteWrappe(s: String, taille: Float, couleur: Int, gras: Boolean = false) {
-            paint.textSize = taille
-            paint.isFakeBoldText = gras
-            paint.color = couleur
-            paint.textAlign = Paint.Align.LEFT
-            val maxL = W - 2 * M
-            var cur = ""
-            for (mot in s.split(" ")) {
-                val essai = if (cur.isEmpty()) mot else "$cur $mot"
-                if (paint.measureText(essai) > maxL && cur.isNotEmpty()) {
-                    besoin(taille + 6f)
-                    cv.drawText(cur, M, y, paint)
-                    y += taille + 3f
-                    cur = mot
-                } else cur = essai
-            }
-            if (cur.isNotEmpty()) {
-                besoin(taille + 6f)
-                cv.drawText(cur, M, y, paint)
-                y += taille + 3f
-            }
-        }
-
-        fun tableSection(titre: String, cols: List<Pair<String, Float>>, rows: List<List<String>>, total: List<String>?) {
-            besoin(46f)
-            paint.color = Color.rgb(0, 0, 0)
-            cv.drawRect(M, y, W - M, y + 15f, paint)
-            txt("  $titre", M + 3f, y + 11f, 9.5f, true, Color.WHITE)
-            y += 15f
-            paint.color = Color.rgb(38, 38, 50)
-            cv.drawRect(M, y, W - M, y + 13f, paint)
-            var x = M
-            cols.forEach { (nom, larg) ->
-                txt(nom, x + 3f, y + 9.5f, 7.5f, true, Color.WHITE)
-                x += larg
-            }
-            y += 13f
-            for (r in rows) {
-                besoin(13f)
-                var xr = M
-                r.forEachIndexed { i, v ->
-                    val c = if (i == 1 && (v.startsWith("-") || v.startsWith("+"))) (if (v.startsWith("-")) ROUGE else VERT) else NOIR
-                    txt(v, xr + 3f, y + 9f, 7.5f, i == 0, c)
-                    xr += cols[i].second
-                }
-                y += 11.5f
-                ligne(y - 2f)
-            }
-            if (total != null) {
-                besoin(15f)
-                paint.color = Color.rgb(236, 236, 242)
-                cv.drawRect(M, y, W - M, y + 13f, paint)
-                var xt = M
-                total.forEachIndexed { i, v ->
-                    txt(v, xt + 3f, y + 9.5f, 7.5f, true, NOIR)
-                    xt += cols[i].second
-                }
-                y += 17f
-            } else y += 6f
-        }
-
-        fun fmt(v: Double) = String.format(Locale.US, "%+.2f", v)
+        fun fmtPnl(v: Double): String =
+            (if (v >= 0) "+" else "-") + String.format(Locale.US, "%.2f $", Math.abs(v))
 
         // ---- en-tete
-        txt("RAPPORT DE PERFORMANCE", W / 2f, y + 4f, 15f, true, NOIR, Paint.Align.CENTER)
-        y += 21f
-        txt("Periode $dateFrom -> $dateTo", W / 2f, y, 9f, false, GRIS, Paint.Align.CENTER)
-        y += 16f
-        texteWrappe("Filtres appliques : ${descFiltres()}", 8f, NOIR, true)
-        texteWrappe("1 signal = 1 trade : le P&L est celui du signal complet (MK + ses jambes L1/L2/L4).", 7.5f, GRIS)
-        y += 6f
+        txt("RAPPORT DE PERFORMANCE", W / 2f, y + 20f, 17f, true, NOIR, Paint.Align.CENTER)
+        y += 9 * MM
+        txt("Periode du $dFr au $dTo - ${lastChannelData.size} canaux affiches" +
+            (if (fExcluded.isNotEmpty()) " (${fExcluded.size} exclus)" else ""),
+            W / 2f, y + 12f, 12f, false, GRIS, Paint.Align.CENTER)
+        y += 7 * MM
+        txt("Filtres : ${descFiltres()}", W / 2f, y + 10f, 8f, false, NOIR, Paint.Align.CENTER)
+        y += 6 * MM
 
-        // ---- KPI
+        // ---- KPI : 5 boites de 36 x 18 mm (meme disposition que le serveur)
         val tot = lastChannelData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
-        val nbSignaux = tot.trades
-        paint.color = Color.rgb(245, 245, 250)
-        cv.drawRect(M, y, W - M, y + 40f, paint)
         val kpis = listOf(
-            "P&L" to fmt(tot.pnl),
-            "SIGNAUX" to nbSignaux.toString(),
-            "GAGNANTS" to tot.wins.toString(),
-            "PERDANTS" to tot.losses.toString(),
-            "REUSSITE" to "${tot.winrate()} %"
+            Triple("P&L TOTAL", fmtPnl(tot.pnl), if (tot.pnl >= 0) VERT_KPI else ROUGE_KPI),
+            Triple("TRADES", tot.trades.toString(), GRIS_KPI),
+            Triple("SIGNAUX", tot.trades.toString(), GRIS_KPI),
+            Triple("WINS / LOSSES", "${tot.wins} / ${tot.losses}", GRIS_KPI),
+            Triple("WINRATE", "${tot.winrate()} %", GRIS_KPI)
         )
-        var xk = M + 12f
-        val largK = (W - 2 * M - 24f) / kpis.size
-        kpis.forEach { (lab, v) ->
-            paint.textAlign = Paint.Align.CENTER
-            txt(lab, xk + largK / 2f, y + 13f, 7f, false, GRIS, Paint.Align.CENTER)
-            txt(v, xk + largK / 2f, y + 31f, 12f, true,
-                if (lab == "P&L") (if (tot.pnl >= 0) VERT else ROUGE) else NOIR, Paint.Align.CENTER)
-            xk += largK
+        val cwK = 36 * MM
+        val gapK = 4 * MM
+        val x0K = (W - (5 * cwK + 4 * gapK)) / 2f
+        val y0K = y
+        kpis.forEachIndexed { i, k ->
+            val x = x0K + i * (cwK + gapK)
+            cadre(x, y0K, cwK, 18 * MM, FILL_KPI)
+            txt(k.first, x + cwK / 2f, y0K + 7f, 6.5f, false, Color.rgb(90, 90, 100), Paint.Align.CENTER)
+            txt(k.second, x + cwK / 2f, y0K + 15 * MM, 11f, true, k.third, Paint.Align.CENTER)
         }
-        y += 50f
+        y = y0K + 18 * MM + 5 * MM
 
-        // ---- tableau par canal (les exclus restent listes, marques)
-        val colsC = listOf("CANAL" to 95f, "P&L" to 85f, "SN" to 55f, "TR" to 55f, "WN" to 50f, "LS" to 50f, "WR" to 52f)
-        val rowsC = mutableListOf<List<String>>()
-        for ((ch, d) in sortPerfData(lastChannelData, channelSortCol, channelSortAsc)) {
-            rowsC.add(listOf(ch.removePrefix("CH"), fmt(d.pnl), (lastChannelMkCount[ch] ?: 0).toString(),
-                d.trades.toString(), d.wins.toString(), d.losses.toString(), d.winrate().toString()))
+        fun enteteTableau(cols: List<Triple<String, Float, Paint.Align>>) {
+            var xh = M
+            cols.forEach { c ->
+                val w = c.second * MM
+                cadre(xh, y, w, 6 * MM, FILL_HEAD)
+                txt(c.first, if (c.third == Paint.Align.LEFT) xh + 3f else xh + w / 2f,
+                    y + 4.2f * MM, 8f, true, NOIR, c.third)
+                xh += w
+            }
+            y += 6 * MM
         }
-        for ((ch, d) in lastExcludedData) {
-            rowsC.add(listOf(ch.removePrefix("CH") + " (exclu)", fmt(d.pnl), d.trades.toString(),
-                d.trades.toString(), d.wins.toString(), d.losses.toString(), d.winrate().toString()))
-        }
-        tableSection("PERFORMANCE PAR CANAL", colsC, rowsC,
-            listOf("TOTAL", fmt(tot.pnl), lastChannelMkCount.values.sum().toString(), tot.trades.toString(),
-                tot.wins.toString(), tot.losses.toString(), tot.winrate().toString()))
 
-        // ---- tableau par signal
-        val totS = lastSignalData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
-        val colsS = listOf("SIGNAL" to 95f, "P&L" to 85f, "CN" to 55f, "TR" to 55f, "WN" to 50f, "LS" to 50f, "WR" to 52f)
-        val rowsS = sortPerfData(lastSignalData, signalSortCol, signalSortAsc, isSignal = true).map { (sig, d) ->
-            listOf(sig, fmt(d.pnl), d.channelCount.toString(), d.trades.toString(),
-                d.wins.toString(), d.losses.toString(), d.winrate().toString())
+        fun tableSection(titre: String, cols: List<Triple<String, Float, Paint.Align>>,
+                         rows: List<List<String>>, totalRow: List<String>?, hLigne: Float) {
+            besoin(8 * MM + 6 * MM + hLigne * 2)
+            paint.color = FILL_SECTION
+            paint.style = Paint.Style.FILL
+            cv.drawRect(M, y, W - M, y + 8 * MM, paint)
+            txt("  $titre", M + 3f, y + 6 * MM, 11f, true, NOIR)
+            y += 9 * MM
+            enteteTableau(cols)
+            var alt = false
+            for (r in rows) {
+                if (y + hLigne > BAS) {
+                    nouvellePage()
+                    enteteTableau(cols)
+                }
+                var xr = M
+                r.forEachIndexed { i, v ->
+                    val w = cols[i].second * MM
+                    cadre(xr, y, w, hLigne, if (alt) FILL_ALT else null)
+                    val col = when {
+                        i == 1 && v.startsWith("-") -> ROUGE
+                        i == 1 && v.startsWith("+") -> VERT
+                        else -> NOIR
+                    }
+                    val al = cols[i].third
+                    txt(v, if (al == Paint.Align.LEFT) xr + 3f else xr + w / 2f,
+                        y + hLigne - 3.5f, 8f, false, col, al)
+                    xr += w
+                }
+                y += hLigne
+                alt = !alt
+            }
+            if (totalRow != null) {
+                if (y + hLigne > BAS) {
+                    nouvellePage()
+                    enteteTableau(cols)
+                }
+                var xt = M
+                totalRow.forEachIndexed { i, v ->
+                    val w = cols[i].second * MM
+                    cadre(xt, y, w, hLigne, FILL_SECTION)
+                    val col = when {
+                        i == 1 && v.startsWith("-") -> ROUGE
+                        i == 1 && v.startsWith("+") -> VERT
+                        else -> NOIR
+                    }
+                    val al = cols[i].third
+                    txt(v, if (al == Paint.Align.LEFT) xt + 3f else xt + w / 2f,
+                        y + hLigne - 3.5f, 8f, true, col, al)
+                    xt += w
+                }
+                y += hLigne
+            }
+            y += 3 * MM
         }
+
+        // 1) par signal (meme ordre et memes colonnes que le rapport serveur)
+        val colsS = listOf(
+            Triple("SIGNAL", 26f, Paint.Align.LEFT), Triple("P&L ($)", 22f, Paint.Align.CENTER),
+            Triple("CN", 12f, Paint.Align.CENTER), Triple("TR", 14f, Paint.Align.CENTER),
+            Triple("WN", 14f, Paint.Align.CENTER), Triple("LS", 14f, Paint.Align.CENTER),
+            Triple("WR %", 16f, Paint.Align.CENTER))
+        val rowsS = sortPerfData(lastSignalData, signalSortCol, signalSortAsc, isSignal = true).map { p ->
+            listOf(p.first, fmtPnl(p.second.pnl), p.second.channelCount.toString(), p.second.trades.toString(),
+                p.second.wins.toString(), p.second.losses.toString(), p.second.winrate().toString())
+        }
+        val totS = lastSignalData.fold(PerfData()) { acc, p -> acc.merge(p.second) }
         tableSection("PERFORMANCE PAR SIGNAL", colsS, rowsS,
-            listOf("TOTAL", fmt(totS.pnl), totS.channelCount.toString(), totS.trades.toString(),
-                totS.wins.toString(), totS.losses.toString(), totS.winrate().toString()))
+            listOf("TOTAL", fmtPnl(totS.pnl), "", totS.trades.toString(), totS.wins.toString(),
+                totS.losses.toString(), totS.winrate().toString()), 6 * MM)
 
-        // ---- tableau par heure d'ouverture
-        val totH = lastSessionData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
-        val colsH = listOf("HEURE OUV." to 95f, "P&L" to 85f, "CN" to 55f, "TR" to 55f, "WN" to 50f, "LS" to 50f, "WR" to 52f)
-        val rowsH = lastSessionData.sortedBy { it.first }.map { (hh, d) ->
-            listOf(hh, fmt(d.pnl), d.channelCount.toString(), d.trades.toString(),
-                d.wins.toString(), d.losses.toString(), d.winrate().toString())
+        // 2) par canal (tri P&L decroissant, comme le serveur ; canaux exclus marques)
+        val colsC = listOf(
+            Triple("CH", 9f, Paint.Align.CENTER), Triple("CANAL", 69f, Paint.Align.LEFT),
+            Triple("P&L ($)", 22f, Paint.Align.CENTER), Triple("SIG", 12f, Paint.Align.CENTER),
+            Triple("TRADES", 15f, Paint.Align.CENTER), Triple("W", 12f, Paint.Align.CENTER),
+            Triple("L", 12f, Paint.Align.CENTER), Triple("WR %", 14f, Paint.Align.CENTER))
+        val rowsC = mutableListOf<List<String>>()
+        for (p in lastChannelData.sortedByDescending { it.second.pnl }) {
+            val d = p.second
+            rowsC.add(listOf(p.first.removePrefix("CH"), channelNames[p.first] ?: "-", fmtPnl(d.pnl),
+                (lastChannelMkCount[p.first] ?: 0).toString(), d.trades.toString(),
+                d.wins.toString(), d.losses.toString(), d.winrate().toString()))
         }
-        tableSection("PERFORMANCE PAR HEURE D'OUVERTURE (UTC)", colsH, rowsH,
-            listOf("TOTAL", fmt(totH.pnl), totH.channelCount.toString(), totH.trades.toString(),
-                totH.wins.toString(), totH.losses.toString(), totH.winrate().toString()))
+        for (p in lastExcludedData) {
+            val d = p.second
+            rowsC.add(listOf(p.first.removePrefix("CH"), (channelNames[p.first] ?: "-") + " (exclu)", fmtPnl(d.pnl),
+                d.trades.toString(), d.trades.toString(), d.wins.toString(), d.losses.toString(),
+                d.winrate().toString()))
+        }
+        tableSection("PERFORMANCE PAR CANAL (tri P&L decroissant)", colsC, rowsC,
+            listOf("", "TOTAL", fmtPnl(tot.pnl), lastChannelMkCount.values.sum().toString(),
+                tot.trades.toString(), tot.wins.toString(), tot.losses.toString(),
+                tot.winrate().toString()), 5.5f * MM)
 
-        besoin(20f)
-        txt("Genere dans l'appli le " + java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.US).format(java.util.Date()) +
-            " a partir des tableaux affiches (aucun recalcul).", M, y + 8f, 7f, false, GRIS)
+        // 3) par heure d'ouverture
+        val colsH = listOf(
+            Triple("HEURE OUV.", 26f, Paint.Align.LEFT), Triple("P&L ($)", 22f, Paint.Align.CENTER),
+            Triple("CN", 12f, Paint.Align.CENTER), Triple("TR", 14f, Paint.Align.CENTER),
+            Triple("WN", 14f, Paint.Align.CENTER), Triple("LS", 14f, Paint.Align.CENTER),
+            Triple("WR %", 16f, Paint.Align.CENTER))
+        val rowsH = lastSessionData.sortedBy { it.first }.map { p ->
+            listOf(p.first, fmtPnl(p.second.pnl), p.second.channelCount.toString(), p.second.trades.toString(),
+                p.second.wins.toString(), p.second.losses.toString(), p.second.winrate().toString())
+        }
+        val totH = lastSessionData.fold(PerfData()) { acc, p -> acc.merge(p.second) }
+        tableSection("PERFORMANCE PAR HEURE D'OUVERTURE (UTC)", colsH, rowsH,
+            listOf("TOTAL", fmtPnl(totH.pnl), "", totH.trades.toString(), totH.wins.toString(),
+                totH.losses.toString(), totH.winrate().toString()), 6 * MM)
+
+        txt("1 signal = 1 trade (P&L du signal complet, jambes L1/L2/L4 comprises) - genere dans l'appli le " +
+            java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.US).format(java.util.Date()),
+            M, y + 6f, 7f, false, Color.rgb(150, 150, 150))
         doc.finishPage(page)
         val dir = File(getExternalFilesDir(null), "rapports").apply { mkdirs() }
         val f = File(dir, "rapport_filtre_${dateFrom}_$dateTo.pdf")
