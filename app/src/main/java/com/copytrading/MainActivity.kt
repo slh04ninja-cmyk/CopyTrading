@@ -417,8 +417,35 @@ class MainActivity : AppCompatActivity() {
     private fun buildHistoryFilters() {
         if (!::historyFilters.isInitialized) return
         historyFilters.removeAllViews()
-        addFilterLine("Type de signal", listOf("MP", "PU", "QA", "ZN"), fSignals)
-        addFilterLine("Sens", listOf("ACHAT", "VENTE"), fSens)
+        // Sens + type de signal sur 2 lignes, sans titre, pleine largeur (comme le filtre Sortie) :
+        //   ACHAT  MP  QA
+        //   VENTE  PU  ZN
+        listOf(
+            listOf("ACHAT" to fSens, "MP" to fSignals, "QA" to fSignals),
+            listOf("VENTE" to fSens, "PU" to fSignals, "ZN" to fSignals)
+        ).forEach { ligne ->
+            val r = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            }
+            ligne.forEach { (k, set) ->
+                val tv = filterChip(k)
+                tv.layoutParams = LinearLayout.LayoutParams(0, dp(34), 1f).apply {
+                    marginEnd = dp(4)
+                    topMargin = dp(4)
+                }
+                styleChip(tv, set.contains(k))
+                chipRefs[k] = tv
+                tv.setOnClickListener {
+                    if (set.contains(k)) set.remove(k) else set.add(k)
+                    styleChip(tv, set.contains(k))
+                    requestFilterApply(tv)
+                }
+                r.addView(tv)
+            }
+            historyFilters.addView(r)
+        }
         // Motifs de fermeture ecrits par le bot depuis le 12/10/2026 (NWS ajoute le 14/10).
         addFilterGrid("Sortie  \u00b7  depuis 12/10", listOf("TP", "SL") + MOTIFS_FIXES + "BOT", fExits)
         addFilterLabel("Heures de trading (UTC)")
@@ -436,7 +463,6 @@ class MainActivity : AppCompatActivity() {
                     topMargin = dp(4)
                 }
                 styleChip(tv, fHours.contains(h))
-                chipRefs[String.format(Locale.US, "%02d", h)] = tv
                 tv.setOnClickListener {
                     if (fHours.contains(h)) fHours.remove(h) else fHours.add(h)
                     styleChip(tv, fHours.contains(h))
@@ -457,26 +483,6 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun addFilterLine(label: String, keys: List<String>, set: MutableSet<String>) {
-        addFilterLabel(label)
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        }
-        keys.forEach { k ->
-            val tv = filterChip(k)
-            styleChip(tv, set.contains(k))
-            chipRefs[k] = tv
-            tv.setOnClickListener {
-                if (set.contains(k)) set.remove(k) else set.add(k)
-                styleChip(tv, set.contains(k))
-                requestFilterApply(tv)
-            }
-            row.addView(tv)
-        }
-        historyFilters.addView(row)
-    }
 
     /** Meme chose mais par rangees de 4 cases a largeur egale (motifs de sortie, 8 cases). */
     private fun addFilterGrid(label: String, keys: List<String>, set: MutableSet<String>) {
@@ -642,14 +648,12 @@ class MainActivity : AppCompatActivity() {
         val parType = HashMap<String, Int>()
         val parSens = HashMap<String, Int>()
         val parExit = HashMap<String, Int>()
-        val parHeure = HashMap<String, Int>()
         signalGroups(histTradesRaw).forEach { g ->
             val head = g.first()
             val type = typeOf(head)
             val sens = if (head.type.uppercase() == "BUY") "ACHAT" else "VENTE"
             val ex = exitOf(head)
             val h = openHourUtc(head)
-            val hk = if (h >= 0) String.format(Locale.US, "%02d", h) else ""
             val okCh = !fExcluded.contains(head.comment.substringBefore("-"))
             val okType = fSignals.contains(type)
             val okSens = fSens.contains(sens)
@@ -658,14 +662,12 @@ class MainActivity : AppCompatActivity() {
             if (okCh && okSens && okExit && okHour) parType[type] = (parType[type] ?: 0) + 1
             if (okCh && okType && okExit && okHour) parSens[sens] = (parSens[sens] ?: 0) + 1
             if (okCh && okType && okSens && okHour) parExit[ex] = (parExit[ex] ?: 0) + 1
-            if (okCh && okType && okSens && okExit && hk.isNotEmpty()) parHeure[hk] = (parHeure[hk] ?: 0) + 1
         }
         chipRefs.forEach { (k, tv) ->
             val n = when (k) {
                 "MP", "PU", "QA", "ZN" -> parType[k]
                 "ACHAT", "VENTE" -> parSens[k]
-                "TP", "SL", "NWS", "NS", "TMO", "DTG", "DD", "BOT" -> parExit[k]
-                else -> parHeure[k]
+                else -> parExit[k]
             } ?: 0
             tv.text = if (n > 0) "$k $n" else k
             tv.alpha = if (n > 0) 1f else 0.45f
