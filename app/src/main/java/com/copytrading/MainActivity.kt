@@ -157,6 +157,7 @@ class MainActivity : AppCompatActivity() {
     private val chipRefs = mutableMapOf<String, TextView>()
     private val fExcluded = mutableSetOf<String>()   // canaux exclus (CHxxx) - applique apres 3 s
     private var lastExcludedData: List<Pair<String, PerfData>> = emptyList()
+    private var lastTradesComptes: List<Trade> = emptyList()   // jambes reellement comptees (pour le P&L par jour du PDF)
     private var totalSignaux = 0                     // signaux de la periode (denominateur du bandeau)
     private val filterHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var pendingFilterApply: Runnable? = null
@@ -681,6 +682,7 @@ class MainActivity : AppCompatActivity() {
         val visibles = filterTrades(histTradesRaw, excl = false)
         // Calculs (totaux, tableaux signal et heure) : canaux exclus retires.
         val gardes = visibles.filter { !fExcluded.contains(it.comment.substringBefore("-")) }
+        lastTradesComptes = gardes
         val signaux = signalAggregates(gardes)
         lastExcludedData = visibles.groupBy { it.comment.substringBefore("-") }
             .filterKeys { fExcluded.contains(it) }
@@ -774,7 +776,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun genererPdfFiltre(): File? {
         // ---- style repris a l'identique du rapport du serveur (_report_dyn.py) :
-        //      A4 portrait, marges 10 mm, Helvetica, en-tetes de tableaux GRIS CLAIR (200,200,215),
+        //      A4 portrait, marges 10 mm, Helvetica, en-tetes GRIS CLAIR (200,200,215),
         //      titres de section (225,225,238), KPI en 5 boites, lignes alternees (248,248,252).
         val NOIR = Color.rgb(0, 0, 0)
         val GRIS = Color.rgb(90, 90, 90)
@@ -786,6 +788,7 @@ class MainActivity : AppCompatActivity() {
         val FILL_KPI = Color.rgb(243, 243, 248)
         val FILL_SECTION = Color.rgb(225, 225, 238)
         val FILL_HEAD = Color.rgb(200, 200, 215)
+        val FILL_JOURS = Color.rgb(240, 240, 245)
         val FILL_ALT = Color.rgb(248, 248, 252)
         val BORD = Color.rgb(120, 120, 130)
         val MM = 2.83465f
@@ -841,8 +844,13 @@ class MainActivity : AppCompatActivity() {
             y += 12f
         }
 
-        fun besoin(hauteur: Float) {
-            if (y + hauteur > BAS) nouvellePage()
+        fun bandeau(titre: String) {
+            besoin(9 * MM + 14 * MM)
+            paint.color = FILL_SECTION
+            paint.style = Paint.Style.FILL
+            cv.drawRect(M, y, W - M, y + 8 * MM, paint)
+            txt("  $titre", M + 3f, y + 6 * MM, 11f, true, NOIR)
+            y += 9 * MM
         }
 
         fun fmtPnl(v: Double): String =
@@ -858,8 +866,8 @@ class MainActivity : AppCompatActivity() {
         txt("Filtres : ${descFiltres()}", W / 2f, y + 10f, 8f, false, NOIR, Paint.Align.CENTER)
         y += 6 * MM
 
-        // ---- KPI : 5 boites de 36 x 18 mm (meme disposition que le serveur)
-        val tot = lastChannelData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
+        // ---- KPI : 5 boites de 36 x 18 mm
+        val tot = lastChannelData.fold(PerfData()) { acc, p -> acc.merge(p.second) }
         val kpis = listOf(
             Triple("P&L TOTAL", fmtPnl(tot.pnl), if (tot.pnl >= 0) VERT_KPI else ROUGE_KPI),
             Triple("TRADES", tot.trades.toString(), GRIS_KPI),
@@ -892,13 +900,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         fun tableSection(titre: String, cols: List<Triple<String, Float, Paint.Align>>,
-                         rows: List<List<String>>, totalRow: List<String>?, hLigne: Float) {
-            besoin(8 * MM + 6 * MM + hLigne * 2)
-            paint.color = FILL_SECTION
-            paint.style = Paint.Style.FILL
-            cv.drawRect(M, y, W - M, y + 8 * MM, paint)
-            txt("  $titre", M + 3f, y + 6 * MM, 11f, true, NOIR)
-            y += 9 * MM
+                         rows: List<List<String>>, totalRow: List<String>?, hLigne: Float, colPnl: Int) {
+            bandeau(titre)
             enteteTableau(cols)
             var alt = false
             for (r in rows) {
@@ -911,8 +914,8 @@ class MainActivity : AppCompatActivity() {
                     val w = cols[i].second * MM
                     cadre(xr, y, w, hLigne, if (alt) FILL_ALT else null)
                     val col = when {
-                        i == 1 && v.startsWith("-") -> ROUGE
-                        i == 1 && v.startsWith("+") -> VERT
+                        i == colPnl && v.startsWith("-") -> ROUGE
+                        i == colPnl && v.startsWith("+") -> VERT
                         else -> NOIR
                     }
                     val al = cols[i].third
@@ -933,8 +936,8 @@ class MainActivity : AppCompatActivity() {
                     val w = cols[i].second * MM
                     cadre(xt, y, w, hLigne, FILL_SECTION)
                     val col = when {
-                        i == 1 && v.startsWith("-") -> ROUGE
-                        i == 1 && v.startsWith("+") -> VERT
+                        i == colPnl && v.startsWith("-") -> ROUGE
+                        i == colPnl && v.startsWith("+") -> VERT
                         else -> NOIR
                     }
                     val al = cols[i].third
@@ -947,7 +950,7 @@ class MainActivity : AppCompatActivity() {
             y += 3 * MM
         }
 
-        // 1) par signal (meme ordre et memes colonnes que le rapport serveur)
+        // 1) PERFORMANCE PAR SIGNAL
         val colsS = listOf(
             Triple("SIGNAL", 26f, Paint.Align.LEFT), Triple("P&L ($)", 22f, Paint.Align.CENTER),
             Triple("CN", 12f, Paint.Align.CENTER), Triple("TR", 14f, Paint.Align.CENTER),
@@ -960,9 +963,46 @@ class MainActivity : AppCompatActivity() {
         val totS = lastSignalData.fold(PerfData()) { acc, p -> acc.merge(p.second) }
         tableSection("PERFORMANCE PAR SIGNAL", colsS, rowsS,
             listOf("TOTAL", fmtPnl(totS.pnl), "", totS.trades.toString(), totS.wins.toString(),
-                totS.losses.toString(), totS.winrate().toString()), 6 * MM)
+                totS.losses.toString(), totS.winrate().toString()), 6 * MM, 1)
 
-        // 2) par canal (tri P&L decroissant, comme le serveur ; canaux exclus marques)
+        // 2) P&L PAR JOUR (jour de fermeture, comme le rapport du serveur) : grille de 4 colonnes
+        val jours = LinkedHashMap<String, Double>()
+        for (t in lastTradesComptes) {
+            val ct = t.close_time
+            if (ct.length < 10) continue
+            val d = ct.substring(8, 10) + "/" + ct.substring(5, 7)
+            jours[d] = (jours[d] ?: 0.0) + t.profit
+        }
+        val ordreJours = jours.keys.sortedWith(
+            compareBy({ it.substring(3, 5).toIntOrNull() ?: 0 }, { it.substring(0, 2).toIntOrNull() ?: 0 })
+        )
+        bandeau("P&L PAR JOUR")
+        val cwJ = 190f / 4f * MM
+        var ij = 0
+        while (ij < ordreJours.size) {
+            val chunk = ordreJours.subList(ij, minOf(ij + 4, ordreJours.size))
+            besoin(12 * MM)
+            var xj = M
+            for (d in chunk) {
+                cadre(xj, y, cwJ, 6 * MM, FILL_JOURS)
+                txt(d, xj + cwJ / 2f, y + 4.2f * MM, 8f, true, NOIR, Paint.Align.CENTER)
+                xj += cwJ
+            }
+            y += 6 * MM
+            xj = M
+            for (d in chunk) {
+                val v = jours[d] ?: 0.0
+                cadre(xj, y, cwJ, 6 * MM, null)
+                txt(fmtPnl(v), xj + cwJ / 2f, y + 4.2f * MM, 8f, false,
+                    if (v >= 0) VERT else ROUGE, Paint.Align.CENTER)
+                xj += cwJ
+            }
+            y += 6 * MM
+            ij += 4
+        }
+        y += 3 * MM
+
+        // 3) PERFORMANCE PAR CANAL (tri P&L decroissant ; P&L en 3e colonne -> colPnl = 2)
         val colsC = listOf(
             Triple("CH", 9f, Paint.Align.CENTER), Triple("CANAL", 69f, Paint.Align.LEFT),
             Triple("P&L ($)", 22f, Paint.Align.CENTER), Triple("SIG", 12f, Paint.Align.CENTER),
@@ -984,9 +1024,9 @@ class MainActivity : AppCompatActivity() {
         tableSection("PERFORMANCE PAR CANAL (tri P&L decroissant)", colsC, rowsC,
             listOf("", "TOTAL", fmtPnl(tot.pnl), lastChannelMkCount.values.sum().toString(),
                 tot.trades.toString(), tot.wins.toString(), tot.losses.toString(),
-                tot.winrate().toString()), 5.5f * MM)
+                tot.winrate().toString()), 5.5f * MM, 2)
 
-        // 3) par heure d'ouverture
+        // 4) PERFORMANCE PAR HEURE D'OUVERTURE
         val colsH = listOf(
             Triple("HEURE OUV.", 26f, Paint.Align.LEFT), Triple("P&L ($)", 22f, Paint.Align.CENTER),
             Triple("CN", 12f, Paint.Align.CENTER), Triple("TR", 14f, Paint.Align.CENTER),
@@ -999,8 +1039,9 @@ class MainActivity : AppCompatActivity() {
         val totH = lastSessionData.fold(PerfData()) { acc, p -> acc.merge(p.second) }
         tableSection("PERFORMANCE PAR HEURE D'OUVERTURE (UTC)", colsH, rowsH,
             listOf("TOTAL", fmtPnl(totH.pnl), "", totH.trades.toString(), totH.wins.toString(),
-                totH.losses.toString(), totH.winrate().toString()), 6 * MM)
+                totH.losses.toString(), totH.winrate().toString()), 6 * MM, 1)
 
+        besoin(10 * MM)
         txt("1 signal = 1 trade (P&L du signal complet, jambes L1/L2/L4 comprises) - genere dans l'appli le " +
             java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.US).format(java.util.Date()),
             M, y + 6f, 7f, false, Color.rgb(150, 150, 150))
