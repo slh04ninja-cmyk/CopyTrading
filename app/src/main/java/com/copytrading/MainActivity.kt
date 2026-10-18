@@ -145,8 +145,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvFilterCount: TextView
     private var histTradesRaw: List<Trade> = emptyList()
     private val fSignals = linkedSetOf("MP", "PU", "QA", "ZN")
+    private val fSens = linkedSetOf("ACHAT", "VENTE")
     private val fExits = linkedSetOf("TP", "SL", "BOT")
     private val fHours = linkedSetOf<Int>().apply { (0..23).forEach { add(it) } }
+    private val fExcluded = mutableSetOf<String>()   // canaux exclus (CHxxx) - applique apres 3 s
+    private var lastExcludedData: List<Pair<String, PerfData>> = emptyList()
+    private val filterHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var pendingFilterApply: Runnable? = null
 
     // Panels
     private lateinit var panelDashboard: NestedScrollView
@@ -405,28 +410,32 @@ class MainActivity : AppCompatActivity() {
         if (!::historyFilters.isInitialized) return
         historyFilters.removeAllViews()
         addFilterLine("Type de signal", listOf("MP", "PU", "QA", "ZN"), fSignals)
+        addFilterLine("Sens", listOf("ACHAT", "VENTE"), fSens)
         addFilterLine("Sortie", listOf("TP", "SL", "BOT"), fExits)
-        addFilterLabel("Heure d'ouverture (UTC)")
-        (0 until 24 step 3).chunked(4).forEach { row ->
-            val r = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-            }
-            row.forEach { h0 ->
-                val tv = filterChip(String.format("%02d-%02dh", h0, h0 + 2))
-                val isOn = { (h0 until h0 + 3).all { fHours.contains(it) } }
-                styleChip(tv, isOn())
-                tv.setOnClickListener {
-                    if (isOn()) (h0 until h0 + 3).forEach { fHours.remove(it) }
-                    else (h0 until h0 + 3).forEach { fHours.add(it) }
-                    styleChip(tv, isOn())
-                    applyHistoryFilters()
-                }
-                r.addView(tv)
-            }
-            historyFilters.addView(r)
+        addFilterLabel("Heures de trading (UTC)")
+        val grid = android.widget.GridLayout(this).apply {
+            columnCount = 6
+            rowCount = 4
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         }
+        for (h in 0 until 24) {
+            val tv = filterChip(String.format(Locale.US, "%02d", h))
+            tv.layoutParams = android.widget.GridLayout.LayoutParams().apply {
+                width = 0
+                height = dp(34)
+                columnSpec = android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f)
+                setMargins(dp(2), dp(2), dp(2), dp(2))
+            }
+            styleChip(tv, fHours.contains(h))
+            tv.setOnClickListener {
+                if (fHours.contains(h)) fHours.remove(h) else fHours.add(h)
+                styleChip(tv, fHours.contains(h))
+                applyHistoryFilters()
+            }
+            grid.addView(tv)
+        }
+        historyFilters.addView(grid)
     }
 
     private fun addFilterLabel(txt: String) {
@@ -485,8 +494,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun resetHistoryFilters() {
         fSignals.clear(); fSignals.addAll(listOf("MP", "PU", "QA", "ZN"))
+        fSens.clear(); fSens.addAll(listOf("ACHAT", "VENTE"))
         fExits.clear(); fExits.addAll(listOf("TP", "SL", "BOT"))
         fHours.clear(); (0..23).forEach { fHours.add(it) }
+        fExcluded.clear()
         buildHistoryFilters()
         applyHistoryFilters()
     }
@@ -533,18 +544,29 @@ class MainActivity : AppCompatActivity() {
 
     /** On travaille TOUJOURS par signal : les filtres sont juges sur la jambe d'ENTREE (MK/L3) et le
      *  signal est garde en entier -> le P&L affiche est celui du signal complet (+12 $ au TP / -19 $ au SL). */
-    private fun filterTrades(all: List<Trade>): List<Trade> {
+    private fun filterTrades(all: List<Trade>, excl: Boolean = true): List<Trade> {
         if (all.isEmpty()) return all
         val keep = HashSet<Long>()
         signalGroups(all).forEach { g ->
             val head = g.first()
+            if (excl && fExcluded.contains(head.comment.substringBefore("-"))) return@forEach
             if (!fSignals.contains(typeOf(head))) return@forEach
+            val sens = if (head.type.uppercase() == "BUY") "ACHAT" else "VENTE"
+            if (!fSens.contains(sens)) return@forEach
             if (!fExits.contains(exitOf(head))) return@forEach
             val h = openHourUtc(head)
             if (h >= 0 && !fHours.contains(h)) return@forEach
             g.forEach { keep.add(it.ticket) }
         }
         return all.filter { keep.contains(it.ticket) }
+    }
+
+    /** Recalcul differe de 3 s : on peut cocher plusieurs canaux a exclure d'affilee sans recalculer a chaque tap. */
+    private fun scheduleFilterApply() {
+        pendingFilterApply?.let { filterHandler.removeCallbacks(it) }
+        val r = Runnable { applyHistoryFilters() }
+        pendingFilterApply = r
+        filterHandler.postDelayed(r, 3000)
     }
 
     /** Agrege chaque signal en UNE unite de comptage : P&L = somme de ses jambes (ex. MK +3.50 et L1 +8.50
@@ -565,14 +587,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyHistoryFilters() {
-        val visible = filterTrades(histTradesRaw)
-        val signaux = signalAggregates(visible)
+        // Tableau par canal : tous les canaux (les exclus restent affiches, grises et decochables).
+        val visibles = filterTrades(histTradesRaw, excl = false)
+        // Calculs (totaux, tableaux signal et heure) : canaux exclus retires.
+        val gardes = visibles.filter { !fExcluded.contains(it.comment.substringBefore("-")) }
+        val signaux = signalAggregates(gardes)
+        lastExcludedData = visibles.groupBy { it.comment.substringBefore("-") }
+            .filterKeys { fExcluded.contains(it) }
+            .map { (ch, lst) -> ch to perfAgrege(lst) }
+            .sortedBy { it.first }
         if (::tvFilterCount.isInitialized) {
             tvFilterCount.text = String.format(Locale.US, "%d / %d signaux", signaux.size,
                 signalAggregates(histTradesRaw).size)
         }
         // Toujours 1 signal = 1 trade ; le popup de detail garde les jambes une par une.
-        updatePerformance(signaux, visible)
+        updatePerformance(signaux, gardes)
+    }
+
+    /** Statistiques d'un canal exclu (affiche grise, hors du total). */
+    private fun perfAgrege(lst: List<Trade>): PerfData {
+        val p = PerfData()
+        signalAggregates(lst).forEach { p.add(it, typeOf(it)) }
+        return p
     }
 
     private fun setupDatePicker() {
@@ -1567,14 +1603,18 @@ class MainActivity : AppCompatActivity() {
         perfChannelTable.removeAllViews()
         val headers = arrayOf("Canal", "P&L", "SN", "TR", "WN", "LS", "WR")
         val weights = floatArrayOf(1.2f, 1f, 0.6f, 0.6f, 0.6f, 0.6f, 0.6f)
-        addPerfHeader(perfChannelTable, headers, weights, channelSortCol, channelSortAsc) { col ->
+        addPerfHeader(perfChannelTable, headers, weights, channelSortCol, channelSortAsc, true) { col ->
             if (channelSortCol == col) channelSortAsc = !channelSortAsc else { channelSortCol = col; channelSortAsc = col == 0 }
             renderChannelTable()
         }
         val sorted = sortPerfData(lastChannelData, channelSortCol, channelSortAsc)
         for ((ch, d) in sorted) {
             val sn = lastChannelMkCount[ch] ?: 0
-            addPerfRow(perfChannelTable, ch, d, sn = sn)
+            addPerfRow(perfChannelTable, ch.removePrefix("CH"), d, sn = sn, chKey = ch)
+        }
+        // Canaux exclus : conserves dans le tableau (grise) pour pouvoir les decocher.
+        for ((ch, d) in lastExcludedData) {
+            addPerfRow(perfChannelTable, ch.removePrefix("CH"), d, sn = d.trades, chKey = ch)
         }
         val totalCh = lastChannelData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
         val totalSn = lastChannelMkCount.values.sum()
@@ -1689,8 +1729,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun addPerfHeader(container: LinearLayout, headers: Array<String>, weights: FloatArray, sortCol: Int, sortAsc: Boolean, onSort: (Int) -> Unit) {
+    private fun addPerfHeader(container: LinearLayout, headers: Array<String>, weights: FloatArray, sortCol: Int, sortAsc: Boolean, leading: Boolean = false, onSort: (Int) -> Unit) {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, dp(8)); setBackgroundColor(Color.parseColor("#1A1A2E")) }
+        if (leading) row.addView(View(this), LinearLayout.LayoutParams(dp(30), 1))
         headers.forEachIndexed { i, c ->
             val arrow = if (i == sortCol) if (sortAsc) " \u25B2" else " \u25BC" else ""
             val tv = TextView(this).apply {
@@ -1707,11 +1748,26 @@ class MainActivity : AppCompatActivity() {
         addPerfHeader(container, headers, weights, sortCol, sortAsc, onSort)
     }
 
-    private fun addPerfRow(container: LinearLayout, label: String, d: PerfData, sn: Int = 0, isTotal: Boolean = false) {
+    private fun addPerfRow(container: LinearLayout, label: String, d: PerfData, sn: Int = 0, isTotal: Boolean = false, chKey: String? = null) {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, dp(8)); if (isTotal) setBackgroundColor(Color.parseColor("#1A1A2E")) }
         fun cell(text: String, weight: Float, color: Int, bold: Boolean = false) {
             val tv = TextView(this).apply { this.text = text; setTextColor(color); textSize = 13f; if (bold) setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER }
             row.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weight))
+        }
+        // Case d'exclusion du canal : cochee = canal retire des calculs (ligne conservee, grisee).
+        if (chKey != null) {
+            val cb = androidx.appcompat.widget.AppCompatCheckBox(this).apply {
+                isChecked = fExcluded.contains(chKey)
+                buttonTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.primary_light))
+                minimumWidth = 0
+                minimumHeight = 0
+                setPadding(0, 0, 0, 0)
+                setOnCheckedChangeListener { _, checked ->
+                    if (checked) fExcluded.add(chKey) else fExcluded.remove(chKey)
+                    scheduleFilterApply()
+                }
+            }
+            row.addView(cb, LinearLayout.LayoutParams(dp(30), LinearLayout.LayoutParams.WRAP_CONTENT))
         }
         cell(label, 1.2f, getColor(R.color.primary_light), bold = true)
         cell(String.format("%+.2f", d.pnl), 1f, if (d.pnl >= 0) getColor(R.color.success) else getColor(R.color.danger), bold = true)
@@ -1724,8 +1780,9 @@ class MainActivity : AppCompatActivity() {
 
         // ★ 26/09 : plus de depliant "PF | RR | MD" -> un appui ouvre le popup de detail du canal
         if (!isTotal) {
-            row.setOnClickListener { showChannelDetail(label) }
+            row.setOnClickListener { showChannelDetail(chKey ?: label) }
             row.isClickable = true
+            if (chKey != null && fExcluded.contains(chKey)) row.alpha = 0.32f
         }
 
         container.addView(row)
