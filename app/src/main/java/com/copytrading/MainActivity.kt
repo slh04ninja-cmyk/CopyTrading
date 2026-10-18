@@ -420,29 +420,29 @@ class MainActivity : AppCompatActivity() {
         // Motifs de fermeture ecrits par le bot depuis le 12/10/2026 (NWS ajoute le 14/10).
         addFilterGrid("Sortie  \u00b7  depuis 12/10", listOf("TP", "SL") + MOTIFS_FIXES + "BOT", fExits)
         addFilterLabel("Heures de trading (UTC)")
-        val grid = android.widget.GridLayout(this).apply {
-            columnCount = 6
-            rowCount = 4
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        }
-        for (h in 0 until 24) {
-            val tv = filterChip(String.format(Locale.US, "%02d", h))
-            tv.layoutParams = android.widget.GridLayout.LayoutParams().apply {
-                width = 0
-                height = dp(34)
-                columnSpec = android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f)
-                setMargins(dp(2), dp(2), dp(2), dp(2))
+        // Rangees de 6 cases a largeur egale (GridLayout ne transmettait pas les taps de facon fiable).
+        for (row in (0 until 24).chunked(6)) {
+            val r = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             }
-            styleChip(tv, fHours.contains(h))
-            tv.setOnClickListener {
-                if (fHours.contains(h)) fHours.remove(h) else fHours.add(h)
+            row.forEach { h ->
+                val tv = filterChip(String.format(Locale.US, "%02d", h))
+                tv.layoutParams = LinearLayout.LayoutParams(0, dp(34), 1f).apply {
+                    marginEnd = dp(4)
+                    topMargin = dp(4)
+                }
                 styleChip(tv, fHours.contains(h))
-                requestFilterApply(tv)
+                tv.setOnClickListener {
+                    if (fHours.contains(h)) fHours.remove(h) else fHours.add(h)
+                    styleChip(tv, fHours.contains(h))
+                    requestFilterApply(tv)
+                }
+                r.addView(tv)
             }
-            grid.addView(tv)
+            historyFilters.addView(r)
         }
-        historyFilters.addView(grid)
     }
 
     private fun addFilterLabel(txt: String) {
@@ -474,32 +474,31 @@ class MainActivity : AppCompatActivity() {
         historyFilters.addView(row)
     }
 
-    /** Meme chose mais en grille de 4 colonnes : necessaire quand il y a beaucoup de cases (motifs de sortie). */
+    /** Meme chose mais par rangees de 4 cases a largeur egale (motifs de sortie, 8 cases). */
     private fun addFilterGrid(label: String, keys: List<String>, set: MutableSet<String>) {
         addFilterLabel(label)
-        val grid = android.widget.GridLayout(this).apply {
-            columnCount = 4
-            rowCount = (keys.size + 3) / 4
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        }
-        keys.forEach { k ->
-            val tv = filterChip(k)
-            tv.layoutParams = android.widget.GridLayout.LayoutParams().apply {
-                width = 0
-                height = dp(34)
-                columnSpec = android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f)
-                setMargins(dp(2), dp(2), dp(2), dp(2))
+        keys.chunked(4).forEach { row ->
+            val r = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             }
-            styleChip(tv, set.contains(k))
-            tv.setOnClickListener {
-                if (set.contains(k)) set.remove(k) else set.add(k)
+            row.forEach { k ->
+                val tv = filterChip(k)
+                tv.layoutParams = LinearLayout.LayoutParams(0, dp(34), 1f).apply {
+                    marginEnd = dp(4)
+                    topMargin = dp(4)
+                }
                 styleChip(tv, set.contains(k))
-                requestFilterApply(tv)
+                tv.setOnClickListener {
+                    if (set.contains(k)) set.remove(k) else set.add(k)
+                    styleChip(tv, set.contains(k))
+                    requestFilterApply(tv)
+                }
+                r.addView(tv)
             }
-            grid.addView(tv)
+            historyFilters.addView(r)
         }
-        historyFilters.addView(grid)
     }
 
     private fun filterChip(txt: String): TextView = TextView(this).apply {
