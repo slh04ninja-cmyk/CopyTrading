@@ -143,6 +143,7 @@ class MainActivity : AppCompatActivity() {
     // === FILTRES DE L'HISTORIQUE (choix multiple, heure d'ouverture UTC) ===
     private lateinit var historyFilters: LinearLayout
     private lateinit var tvFilterCount: TextView
+    private lateinit var perfTotaux: LinearLayout
     private var histTradesRaw: List<Trade> = emptyList()
     private val fSignals = linkedSetOf("MP", "PU", "QA", "ZN")
     private val fSens = linkedSetOf("ACHAT", "VENTE")
@@ -261,6 +262,7 @@ class MainActivity : AppCompatActivity() {
 
         historyFilters = findViewById(R.id.historyFilters)
         tvFilterCount = findViewById(R.id.tvFilterCount)
+        perfTotaux = findViewById(R.id.perfTotaux)
         findViewById<TextView>(R.id.btnFilterReset).setOnClickListener { resetHistoryFilters() }
         buildHistoryFilters()
 
@@ -1608,6 +1610,59 @@ class MainActivity : AppCompatActivity() {
         renderChannelTable()
         renderSignalTable()
         renderSessionTable()
+        renderTotaux()
+    }
+
+    /** Resume des totaux juste sous les filtres (meme chiffres que la ligne TOTAL du tableau par canal) :
+     *  evite de descendre au bas du premier tableau pour voir l'effet d'un filtre. */
+    private fun renderTotaux() {
+        if (!::perfTotaux.isInitialized) return
+        perfTotaux.removeAllViews()
+        val weights = floatArrayOf(1.2f, 1f, 0.6f, 0.6f, 0.6f, 0.6f, 0.6f)
+        val entetes = arrayOf("", "P&L", "SN", "TR", "WN", "LS", "WR")
+        val ligneH = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(4), 0, dp(6))
+        }
+        entetes.forEachIndexed { i, txt ->
+            val tv = TextView(this).apply {
+                text = txt
+                textSize = 10f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(getColor(R.color.accent))
+                gravity = Gravity.CENTER
+            }
+            ligneH.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weights[i]))
+        }
+        perfTotaux.addView(ligneH)
+
+        val totalCh = lastChannelData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
+        val totalSn = lastChannelMkCount.values.sum()
+        val wr = totalCh.winrate()
+        val ligneV = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(8), 0, dp(8))
+            setBackgroundColor(Color.parseColor("#1A1A2E"))
+        }
+        fun cellule(txt: String, w: Float, couleur: Int) {
+            val tv = TextView(this).apply {
+                text = txt
+                setTextColor(couleur)
+                textSize = 13f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                gravity = Gravity.CENTER
+            }
+            ligneV.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, w))
+        }
+        cellule("", 1.2f, getColor(R.color.text_muted))
+        cellule(String.format("%+.2f", totalCh.pnl), 1f,
+            getColor(if (totalCh.pnl >= 0) R.color.success else R.color.danger))
+        cellule(totalSn.toString(), 0.6f, getColor(R.color.text_primary))
+        cellule(totalCh.trades.toString(), 0.6f, getColor(R.color.text_primary))
+        cellule(totalCh.wins.toString(), 0.6f, getColor(R.color.success))
+        cellule(totalCh.losses.toString(), 0.6f, getColor(R.color.danger))
+        cellule("$wr", 0.6f, getColor(if (wr >= 50) R.color.success else R.color.danger))
+        perfTotaux.addView(ligneV)
     }
 
     private fun renderChannelTable() {
