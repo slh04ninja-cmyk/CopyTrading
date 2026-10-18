@@ -140,6 +140,15 @@ class MainActivity : AppCompatActivity() {
     private var lastChannelTradesList: Map<String, List<Trade>> = emptyMap()
     private var channelNames: Map<String, String> = emptyMap()
 
+    // === FILTRES DE L'HISTORIQUE (choix multiple, heure d'ouverture UTC) ===
+    private lateinit var historyFilters: LinearLayout
+    private lateinit var tvFilterCount: TextView
+    private var histTradesRaw: List<Trade> = emptyList()
+    private val fRoles = linkedSetOf("MK", "L1", "L2", "L3", "L4")
+    private val fSignals = linkedSetOf("MP", "PU", "QA", "ZN")
+    private val fExits = linkedSetOf("TP", "SL", "BOT")
+    private val fHours = linkedSetOf<Int>().apply { (0..23).forEach { add(it) } }
+
     // Panels
     private lateinit var panelDashboard: NestedScrollView
     private lateinit var panelPositions: FrameLayout
@@ -244,6 +253,11 @@ class MainActivity : AppCompatActivity() {
         tabPositionsIcon = findViewById(R.id.tabPositionsIcon)
         tabConfigIcon = findViewById(R.id.tabConfigIcon)
         tabLogsIcon = findViewById(R.id.tabLogsIcon)
+
+        historyFilters = findViewById(R.id.historyFilters)
+        tvFilterCount = findViewById(R.id.tvFilterCount)
+        findViewById<TextView>(R.id.btnFilterReset).setOnClickListener { resetHistoryFilters() }
+        buildHistoryFilters()
 
         btnOverview = findViewById(R.id.btnOverview)
         btnPerformance = findViewById(R.id.btnPerformance)
@@ -383,6 +397,171 @@ class MainActivity : AppCompatActivity() {
         selectTab(0)
     }
 
+    // ==================== FILTRES DE L'HISTORIQUE ====================
+    // 4 filtres a choix multiple (cases). Tout est recalcule dans l'appli, sans appel serveur.
+    // Heure = heure d'OUVERTURE de la position, en UTC.
+    // Regle speciale : cocher MK et/ou L3 ramene TOUT le signal (ses jambes L1/L2/L4 comprises).
+
+    private fun buildHistoryFilters() {
+        if (!::historyFilters.isInitialized) return
+        historyFilters.removeAllViews()
+        addFilterLine("Type d'ordre", listOf("MK", "L1", "L2", "L3", "L4"), fRoles)
+        addFilterLine("Type de signal", listOf("MP", "PU", "QA", "ZN"), fSignals)
+        addFilterLine("Sortie", listOf("TP", "SL", "BOT"), fExits)
+        addFilterLabel("Heure d'ouverture (UTC)")
+        (0 until 24 step 3).chunked(4).forEach { row ->
+            val r = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            }
+            row.forEach { h0 ->
+                val tv = filterChip(String.format("%02d-%02dh", h0, h0 + 2))
+                val isOn = { (h0 until h0 + 3).all { fHours.contains(it) } }
+                styleChip(tv, isOn())
+                tv.setOnClickListener {
+                    if (isOn()) (h0 until h0 + 3).forEach { fHours.remove(it) }
+                    else (h0 until h0 + 3).forEach { fHours.add(it) }
+                    styleChip(tv, isOn())
+                    applyHistoryFilters()
+                }
+                r.addView(tv)
+            }
+            historyFilters.addView(r)
+        }
+    }
+
+    private fun addFilterLabel(txt: String) {
+        historyFilters.addView(TextView(this).apply {
+            text = txt
+            textSize = 11f
+            setTextColor(getColor(R.color.text_muted))
+            setPadding(0, dp(8), 0, dp(4))
+        })
+    }
+
+    private fun addFilterLine(label: String, keys: List<String>, set: MutableSet<String>) {
+        addFilterLabel(label)
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        }
+        keys.forEach { k ->
+            val tv = filterChip(k)
+            styleChip(tv, set.contains(k))
+            tv.setOnClickListener {
+                if (set.contains(k)) set.remove(k) else set.add(k)
+                styleChip(tv, set.contains(k))
+                applyHistoryFilters()
+            }
+            row.addView(tv)
+        }
+        historyFilters.addView(row)
+    }
+
+    private fun filterChip(txt: String): TextView = TextView(this).apply {
+        text = txt
+        textSize = 12f
+        setTypeface(null, android.graphics.Typeface.BOLD)
+        gravity = android.view.Gravity.CENTER
+        setPadding(dp(12), 0, dp(12), 0)
+        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(34)).apply {
+            marginEnd = dp(6)
+        }
+    }
+
+    private fun styleChip(tv: TextView, active: Boolean) {
+        tv.background = android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = dp(10).toFloat()
+            if (active) {
+                setColor(getColor(R.color.primary))
+                setStroke(0, Color.TRANSPARENT)
+            } else {
+                setColor(Color.parseColor("#0F0F1A"))
+                setStroke(dp(2), getColor(R.color.divider))
+            }
+        }
+        tv.setTextColor(if (active) Color.WHITE else getColor(R.color.text_primary))
+    }
+
+    private fun resetHistoryFilters() {
+        fRoles.clear(); fRoles.addAll(listOf("MK", "L1", "L2", "L3", "L4"))
+        fSignals.clear(); fSignals.addAll(listOf("MP", "PU", "QA", "ZN"))
+        fExits.clear(); fExits.addAll(listOf("TP", "SL", "BOT"))
+        fHours.clear(); (0..23).forEach { fHours.add(it) }
+        buildHistoryFilters()
+        applyHistoryFilters()
+    }
+
+    private fun roleOf(t: Trade): String = t.comment.split("-").getOrNull(2) ?: ""
+
+    private fun typeOf(t: Trade): String = t.comment.split("-").getOrNull(1) ?: ""
+
+    private fun exitOf(t: Trade): String = when (t.reason) {
+        5 -> "TP"
+        4 -> "SL"
+        else -> "BOT"
+    }
+
+    private fun openHourUtc(t: Trade): Int = try {
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
+        sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        val d = sdf.parse(t.open_time)
+        if (d == null) -1 else {
+            val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+            cal.time = d
+            cal.get(java.util.Calendar.HOUR_OF_DAY)
+        }
+    } catch (_: Exception) {
+        -1
+    }
+
+    /** Regroupe les positions en signaux, canal par canal : un MK ou un L3 ouvre, ses jambes suivent. */
+    private fun signalGroups(all: List<Trade>): List<List<Trade>> {
+        val groups = mutableListOf<List<Trade>>()
+        all.groupBy { it.comment.substringBefore("-") }.values.forEach { lst ->
+            var cur: MutableList<Trade>? = null
+            lst.sortedBy { it.open_time }.forEach { t ->
+                val role = roleOf(t)
+                if (role == "MK" || role == "L3" || cur == null) {
+                    cur = mutableListOf()
+                    groups.add(cur!!)
+                }
+                cur!!.add(t)
+            }
+        }
+        return groups
+    }
+
+    private fun filterTrades(all: List<Trade>): List<Trade> {
+        if (all.isEmpty()) return all
+        val entrySelected = fRoles.contains("MK") || fRoles.contains("L3")
+        val keepSignal = HashSet<Long>()
+        if (entrySelected) {
+            signalGroups(all).forEach { g ->
+                val entry = roleOf(g.first())
+                if ((entry == "MK" || entry == "L3") && fRoles.contains(entry)) g.forEach { keepSignal.add(it.ticket) }
+            }
+        }
+        return all.filter { t ->
+            val okRole = if (entrySelected) keepSignal.contains(t.ticket) else fRoles.contains(roleOf(t))
+            if (!okRole) return@filter false
+            if (!fSignals.contains(typeOf(t))) return@filter false
+            if (!fExits.contains(exitOf(t))) return@filter false
+            val h = openHourUtc(t)
+            h < 0 || fHours.contains(h)
+        }
+    }
+
+    private fun applyHistoryFilters() {
+        val visible = filterTrades(histTradesRaw)
+        if (::tvFilterCount.isInitialized) {
+            tvFilterCount.text = String.format(Locale.US, "%d / %d trades", visible.size, histTradesRaw.size)
+        }
+        updatePerformance(visible)
+    }
+
     private fun setupDatePicker() {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val displayFmt = SimpleDateFormat("dd/MM", Locale.FRANCE)
@@ -464,7 +643,8 @@ class MainActivity : AppCompatActivity() {
                         val ch = t.comment.substringBefore("-")
                         activeChannels.containsKey(ch) || !ch.startsWith("CH")
                     }
-                    updatePerformance(filtered)
+                    histTradesRaw = filtered
+                    applyHistoryFilters()
                 }
             } catch (_: Exception) {}
         }
