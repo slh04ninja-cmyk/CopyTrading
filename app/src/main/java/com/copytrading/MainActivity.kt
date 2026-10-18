@@ -152,8 +152,8 @@ class MainActivity : AppCompatActivity() {
     /** Motifs de fermeture ecrits par le bot (fin du commentaire MT5). "BOT" ramasse tout le reste :
      *  un nouveau code ajoute au bot n'est jamais perdu, il tombe simplement dans BOT. */
     private val MOTIFS_FIXES = listOf("NWS", "NS", "TMO", "DTG", "DD")
-    /** Cases du filtre Sortie -> affiche le nombre de signaux de chaque motif (controle visuel). */
-    private val sortieChips = mutableMapOf<String, TextView>()
+    /** Toutes les cases de filtres -> pour afficher le nombre de signaux de chaque valeur. */
+    private val chipRefs = mutableMapOf<String, TextView>()
     private val fExcluded = mutableSetOf<String>()   // canaux exclus (CHxxx) - applique apres 3 s
     private var lastExcludedData: List<Pair<String, PerfData>> = emptyList()
     private var totalSignaux = 0                     // signaux de la periode (denominateur du bandeau)
@@ -436,6 +436,7 @@ class MainActivity : AppCompatActivity() {
                     topMargin = dp(4)
                 }
                 styleChip(tv, fHours.contains(h))
+                chipRefs[String.format(Locale.US, "%02d", h)] = tv
                 tv.setOnClickListener {
                     if (fHours.contains(h)) fHours.remove(h) else fHours.add(h)
                     styleChip(tv, fHours.contains(h))
@@ -466,6 +467,7 @@ class MainActivity : AppCompatActivity() {
         keys.forEach { k ->
             val tv = filterChip(k)
             styleChip(tv, set.contains(k))
+            chipRefs[k] = tv
             tv.setOnClickListener {
                 if (set.contains(k)) set.remove(k) else set.add(k)
                 styleChip(tv, set.contains(k))
@@ -492,7 +494,7 @@ class MainActivity : AppCompatActivity() {
                     topMargin = dp(4)
                 }
                 styleChip(tv, set.contains(k))
-                sortieChips[k] = tv
+                chipRefs[k] = tv
                 tv.setOnClickListener {
                     if (set.contains(k)) set.remove(k) else set.add(k)
                     styleChip(tv, set.contains(k))
@@ -543,18 +545,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun typeOf(t: Trade): String = t.comment.split("-").getOrNull(1) ?: ""
 
-    /** Sortie du signal : TP et SL viennent du code MT5 (5 / 4). Les fermetures du bot portent leur
-     *  motif en fin de commentaire (CH144-MP-L1-TMO) : on le renvoie tel quel, "BOT" si inconnu. */
+    /** Sortie du signal : TP et SL viennent du code MT5 (5 / 4). Pour les fermetures du bot, le motif
+     *  est ecrit dans le commentaire (CH144-MP-L1-TMO) mais le separateur peut varier -> on decoupe sur
+     *  tout ce qui n'est pas alphanumerique et on cherche un motif connu N'IMPORTE OU dans le commentaire
+     *  (l'ancienne version ne regardait que le dernier segment, ce qui renvoyait tout dans "BOT"). */
     private fun exitOf(t: Trade): String {
-        return when (t.reason) {
-            5 -> "TP"
-            4 -> "SL"
-            else -> {
-                val c = t.comment.uppercase().trim()
-                val code = c.substringAfterLast("-", "").substringAfterLast(":", "")
-                if (code in MOTIFS_FIXES) code else "BOT"
-            }
+        if (t.reason == 5) return "TP"
+        if (t.reason == 4) return "SL"
+        val jetons = t.comment.uppercase().split(java.util.regex.Regex("[^A-Z0-9]+"))
+        for (j in jetons) {
+            if (j in MOTIFS_FIXES) return j
         }
+        return "BOT"
     }
 
     /** Heure UTC d'ouverture, lue directement dans la chaine ISO ("2026-10-12T08:35:00" -> 8).
@@ -585,7 +587,7 @@ class MainActivity : AppCompatActivity() {
 
     /** On travaille TOUJOURS par signal : les filtres sont juges sur la jambe d'ENTREE (MK/L3) et le
      *  signal est garde en entier -> le P&L affiche est celui du signal complet (+12 $ au TP / -19 $ au SL). */
-    private fun filterTrades(all: List<Trade>, excl: Boolean = true, applyExits: Boolean = true): List<Trade> {
+    private fun filterTrades(all: List<Trade>, excl: Boolean = true): List<Trade> {
         if (all.isEmpty()) return all
         val keep = HashSet<Long>()
         signalGroups(all).forEach { g ->
@@ -594,7 +596,7 @@ class MainActivity : AppCompatActivity() {
             if (!fSignals.contains(typeOf(head))) return@forEach
             val sens = if (head.type.uppercase() == "BUY") "ACHAT" else "VENTE"
             if (!fSens.contains(sens)) return@forEach
-            if (applyExits && !fExits.contains(exitOf(head))) return@forEach
+            if (!fExits.contains(exitOf(head))) return@forEach
             val h = openHourUtc(head)
             if (h >= 0 && !fHours.contains(h)) return@forEach
             g.forEach { keep.add(it.ticket) }
@@ -633,25 +635,45 @@ class MainActivity : AppCompatActivity() {
         anchor.post { applyHistoryFilters() }
     }
 
-    /** Affiche sur chaque case Sortie le nombre de signaux du motif (controle visuel immediat).
-     *  Un motif a 0 sur une periode ou il existe = la lecture du commentaire est en cause. */
-    private fun majCompteursSortie() {
-        if (sortieChips.isEmpty()) return
-        val base = filterTrades(histTradesRaw, excl = true, applyExits = false)
-        val cnt = HashMap<String, Int>()
-        signalGroups(base).forEach { g ->
-            val k = exitOf(g.first())
-            cnt[k] = (cnt[k] ?: 0) + 1
+    /** Compteur sur chaque case : nombre de signaux qu'elle apporterait, tous les AUTRES filtres
+     *  restant appliques (comptage "par facette"). Une case a 0 est estompee. */
+    private fun majCompteurs() {
+        if (chipRefs.isEmpty()) return
+        val parType = HashMap<String, Int>()
+        val parSens = HashMap<String, Int>()
+        val parExit = HashMap<String, Int>()
+        val parHeure = HashMap<String, Int>()
+        signalGroups(histTradesRaw).forEach { g ->
+            val head = g.first()
+            val type = typeOf(head)
+            val sens = if (head.type.uppercase() == "BUY") "ACHAT" else "VENTE"
+            val ex = exitOf(head)
+            val h = openHourUtc(head)
+            val hk = if (h >= 0) String.format(Locale.US, "%02d", h) else ""
+            val okCh = !fExcluded.contains(head.comment.substringBefore("-"))
+            val okType = fSignals.contains(type)
+            val okSens = fSens.contains(sens)
+            val okExit = fExits.contains(ex)
+            val okHour = h < 0 || fHours.contains(h)
+            if (okCh && okSens && okExit && okHour) parType[type] = (parType[type] ?: 0) + 1
+            if (okCh && okType && okExit && okHour) parSens[sens] = (parSens[sens] ?: 0) + 1
+            if (okCh && okType && okSens && okHour) parExit[ex] = (parExit[ex] ?: 0) + 1
+            if (okCh && okType && okSens && okExit && hk.isNotEmpty()) parHeure[hk] = (parHeure[hk] ?: 0) + 1
         }
-        sortieChips.forEach { (k, tv) ->
-            val n = cnt[k] ?: 0
+        chipRefs.forEach { (k, tv) ->
+            val n = when (k) {
+                "MP", "PU", "QA", "ZN" -> parType[k]
+                "ACHAT", "VENTE" -> parSens[k]
+                "TP", "SL", "NWS", "NS", "TMO", "DTG", "DD", "BOT" -> parExit[k]
+                else -> parHeure[k]
+            } ?: 0
             tv.text = if (n > 0) "$k $n" else k
             tv.alpha = if (n > 0) 1f else 0.45f
         }
     }
 
     private fun applyHistoryFilters() {
-        majCompteursSortie()
+        majCompteurs()
         // Tableau par canal : tous les canaux (les exclus restent affiches, grises et decochables).
         val visibles = filterTrades(histTradesRaw, excl = false)
         // Calculs (totaux, tableaux signal et heure) : canaux exclus retires.
@@ -662,7 +684,13 @@ class MainActivity : AppCompatActivity() {
             .map { (ch, lst) -> ch to perfAgrege(lst) }
             .sortedBy { it.first }
         if (::tvFilterCount.isInitialized) {
-            tvFilterCount.text = String.format(Locale.US, "%d / %d signaux", signaux.size, totalSignaux)
+            // Temoin : combien de signaux ont un motif connu ECRIT dans le commentaire (diagnostic).
+            val vus = signalGroups(histTradesRaw).count { g ->
+                val c = g.first().comment.uppercase()
+                MOTIFS_FIXES.any { c.contains(it) }
+            }
+            tvFilterCount.text = String.format(java.util.Locale.US, "%d / %d signaux \u00b7 motif vu %d",
+                signaux.size, totalSignaux, vus)
         }
         // Toujours 1 signal = 1 trade ; le popup de detail garde les jambes une par une (canaux exclus compris).
         updatePerformance(signaux, visibles)
