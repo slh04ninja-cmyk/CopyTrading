@@ -552,7 +552,7 @@ class MainActivity : AppCompatActivity() {
     private fun exitOf(t: Trade): String {
         if (t.reason == 5) return "TP"
         if (t.reason == 4) return "SL"
-        val jetons = t.comment.uppercase().split(java.util.regex.Regex("[^A-Z0-9]+"))
+        val jetons = t.comment.uppercase().split(Regex("[^A-Z0-9]+"))
         for (j in jetons) {
             if (j in MOTIFS_FIXES) return j
         }
