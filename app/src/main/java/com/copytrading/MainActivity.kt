@@ -150,6 +150,7 @@ class MainActivity : AppCompatActivity() {
     private val fHours = linkedSetOf<Int>().apply { (0..23).forEach { add(it) } }
     private val fExcluded = mutableSetOf<String>()   // canaux exclus (CHxxx) - applique apres 3 s
     private var lastExcludedData: List<Pair<String, PerfData>> = emptyList()
+    private var totalSignaux = 0                     // signaux de la periode (denominateur du bandeau)
     private val filterHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var pendingFilterApply: Runnable? = null
 
@@ -431,7 +432,7 @@ class MainActivity : AppCompatActivity() {
             tv.setOnClickListener {
                 if (fHours.contains(h)) fHours.remove(h) else fHours.add(h)
                 styleChip(tv, fHours.contains(h))
-                applyHistoryFilters()
+                requestFilterApply(tv)
             }
             grid.addView(tv)
         }
@@ -460,7 +461,7 @@ class MainActivity : AppCompatActivity() {
             tv.setOnClickListener {
                 if (set.contains(k)) set.remove(k) else set.add(k)
                 styleChip(tv, set.contains(k))
-                applyHistoryFilters()
+                requestFilterApply(tv)
             }
             row.addView(tv)
         }
@@ -519,17 +520,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun openHourUtc(t: Trade): Int = try {
-        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
-        sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
-        val d = sdf.parse(t.open_time)
-        if (d == null) -1 else {
-            val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
-            cal.time = d
-            cal.get(java.util.Calendar.HOUR_OF_DAY)
-        }
-    } catch (_: Exception) {
-        -1
+    /** Heure UTC d'ouverture, lue directement dans la chaine ISO ("2026-10-12T08:35:00" -> 8).
+     *  Aucune allocation : avant, un SimpleDateFormat + Calendar etait cree pour CHAQUE trade a
+     *  CHAQUE application de filtre -> l'ecran se bloquait et des taps se perdaient. */
+    private fun openHourUtc(t: Trade): Int {
+        val s = t.open_time
+        if (s.length < 13 || s[10] != 'T') return -1
+        return s.substring(11, 13).toIntOrNull() ?: -1
     }
 
     /** Regroupe les positions en signaux, canal par canal : un MK ou un L3 ouvre, ses jambes suivent. */
@@ -593,6 +590,12 @@ class MainActivity : AppCompatActivity() {
         return out
     }
 
+    /** Applique les filtres APRES l'evenement de touch : sinon le recalcul se fait pendant la
+     *  distribution du tap et le premier cochage semble ne rien faire. */
+    private fun requestFilterApply(anchor: View) {
+        anchor.post { applyHistoryFilters() }
+    }
+
     private fun applyHistoryFilters() {
         // Tableau par canal : tous les canaux (les exclus restent affiches, grises et decochables).
         val visibles = filterTrades(histTradesRaw, excl = false)
@@ -604,18 +607,24 @@ class MainActivity : AppCompatActivity() {
             .map { (ch, lst) -> ch to perfAgrege(lst) }
             .sortedBy { it.first }
         if (::tvFilterCount.isInitialized) {
-            tvFilterCount.text = String.format(Locale.US, "%d / %d signaux", signaux.size,
-                signalAggregates(histTradesRaw).size)
+            tvFilterCount.text = String.format(Locale.US, "%d / %d signaux", signaux.size, totalSignaux)
         }
-        // Toujours 1 signal = 1 trade ; le popup de detail garde les jambes une par une.
-        updatePerformance(signaux, gardes)
+        // Toujours 1 signal = 1 trade ; le popup de detail garde les jambes une par une (canaux exclus compris).
+        updatePerformance(signaux, visibles)
     }
 
-    /** Statistiques d'un canal exclu (affiche grise, hors du total). */
+    /** Stats d'un canal exclu (affiche gris, hors total). */
     private fun perfAgrege(lst: List<Trade>): PerfData {
         val p = PerfData()
         signalAggregates(lst).forEach { p.add(it, typeOf(it)) }
         return p
+    }
+
+    /** Evite qu'un recalcul differe (3 s) touche des vues detruites = plantation. */
+    override fun onDestroy() {
+        pendingFilterApply?.let { filterHandler.removeCallbacks(it) }
+        pendingFilterApply = null
+        super.onDestroy()
     }
 
     private fun setupDatePicker() {
@@ -700,6 +709,7 @@ class MainActivity : AppCompatActivity() {
                         activeChannels.containsKey(ch) || !ch.startsWith("CH")
                     }
                     histTradesRaw = filtered
+                    totalSignaux = signalAggregates(filtered).size
                     applyHistoryFilters()
                 }
             } catch (_: Exception) {}
