@@ -1651,8 +1651,8 @@ class MainActivity : AppCompatActivity() {
     private fun renderTotaux() {
         if (!::perfTotaux.isInitialized) return
         perfTotaux.removeAllViews()
-        val weights = floatArrayOf(1.2f, 1f, 0.6f, 0.6f, 0.6f, 0.6f, 0.6f)
-        val entetes = arrayOf("", "P&L", "SN", "TR", "WN", "LS", "WR")
+        val weights = floatArrayOf(1.4f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f)
+        val entetes = arrayOf("P&L", "SN", "TR", "WN", "LS", "WR")
         val ligneH = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(4), 0, dp(6))
@@ -1687,14 +1687,13 @@ class MainActivity : AppCompatActivity() {
             }
             ligneV.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, w))
         }
-        cellule("", 1.2f, getColor(R.color.text_muted))
-        cellule(String.format("%+.2f", totalCh.pnl), 1f,
+        cellule(String.format("%+.2f", totalCh.pnl), 1.4f,
             getColor(if (totalCh.pnl >= 0) R.color.success else R.color.danger))
-        cellule(totalSn.toString(), 0.6f, getColor(R.color.text_primary))
-        cellule(totalCh.trades.toString(), 0.6f, getColor(R.color.text_primary))
-        cellule(totalCh.wins.toString(), 0.6f, getColor(R.color.success))
-        cellule(totalCh.losses.toString(), 0.6f, getColor(R.color.danger))
-        cellule("$wr", 0.6f, getColor(if (wr >= 50) R.color.success else R.color.danger))
+        cellule(totalSn.toString(), 0.8f, getColor(R.color.text_primary))
+        cellule(totalCh.trades.toString(), 0.8f, getColor(R.color.text_primary))
+        cellule(totalCh.wins.toString(), 0.8f, getColor(R.color.success))
+        cellule(totalCh.losses.toString(), 0.8f, getColor(R.color.danger))
+        cellule("$wr", 0.8f, getColor(if (wr >= 50) R.color.success else R.color.danger))
         perfTotaux.addView(ligneV)
     }
 
