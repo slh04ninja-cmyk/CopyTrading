@@ -1752,7 +1752,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun addPerfSignalHeader(container: LinearLayout, headers: Array<String>, weights: FloatArray, sortCol: Int, sortAsc: Boolean, onSort: (Int) -> Unit) {
-        addPerfHeader(container, headers, weights, sortCol, sortAsc, onSort)
+        addPerfHeader(container, headers, weights, sortCol, sortAsc, onSort = onSort)
     }
 
     private fun addPerfRow(container: LinearLayout, label: String, d: PerfData, sn: Int = 0, isTotal: Boolean = false, chKey: String? = null) {
