@@ -136,6 +136,7 @@ class MainActivity : AppCompatActivity() {
     private var sessionSortCol = 0 // 0=heure, 1=pnl, 2=cn, 3=tr, 4=wn, 5=ls, 6=wr
     private var sessionSortAsc = false
     private var lastChannelData: List<Pair<String, PerfData>> = emptyList()
+    private var channelExpanded = false   // 40 canaux affiches par defaut (fluidite du scroll)
     private var lastChannelMkCount: Map<String, Int> = emptyMap()
     private var lastSignalData: List<Pair<String, PerfData>> = emptyList()
     private var lastSessionData: List<Pair<String, PerfData>> = emptyList()
@@ -2074,9 +2075,27 @@ class MainActivity : AppCompatActivity() {
             renderChannelTable()
         }
         val sorted = sortPerfData(lastChannelData, channelSortCol, channelSortAsc)
-        for ((ch, d) in sorted) {
+        // 20/10/2026 : 269 lignes x 10 vues = 2 700 vues -> le scroll se bloquait.
+        // On n'affiche que les 40 premieres, le reste a la demande.
+        val visibles = if (channelExpanded) sorted else sorted.take(40)
+        visibles.forEachIndexed { idx, (ch, d) ->
             val sn = lastChannelMkCount[ch] ?: 0
-            addPerfRow(perfChannelTable, ch.removePrefix("CH"), d, sn = sn, chKey = ch)
+            addPerfRow(perfChannelTable, ch.removePrefix("CH"), d, sn = sn, chKey = ch, alt = idx % 2 == 1)
+        }
+        if (sorted.size > 40) {
+            val reste = sorted.size - 40
+            perfChannelTable.addView(TextView(this).apply {
+                text = if (channelExpanded) "\u25B2 Reduire aux 40 premiers canaux"
+                       else "\u25BC Afficher les $reste autres canaux"
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setTextColor(getColor(R.color.primary_light))
+                setPadding(0, dp(10), 0, dp(10))
+                setOnClickListener {
+                    channelExpanded = !channelExpanded
+                    renderChannelTable()
+                }
+            })
         }
         // Canaux exclus : conserves dans le tableau (grise) pour pouvoir les decocher.
         for ((ch, d) in lastExcludedData) {
@@ -2121,31 +2140,32 @@ class MainActivity : AppCompatActivity() {
         addPerfSignalRow(perfSessionTable, "TOTAL", totalSess, isTotal = true)
     }
 
+    /** Numero de canal : "CH123" -> 123 (tri par NOMBRE, pas par texte : 1, 2, 3...). */
+    private fun channelNumKey(name: String): Int =
+        Regex("\\d+").find(name)?.value?.toIntOrNull() ?: Int.MAX_VALUE
+
+    /** 20/10/2026 (demande SaLaH) : tri a 4 niveaux.
+     *  Colonne choisie, puis a egalite : P&L, puis WR, puis TR, puis numero de canal. */
     private fun sortPerfData(data: List<Pair<String, PerfData>>, col: Int, asc: Boolean, isSignal: Boolean = false): List<Pair<String, PerfData>> {
-        val sorted = if (isSignal) {
-            when (col) {
-                0 -> data.sortedBy { signalSortKey(it.first) }
-                1 -> data.sortedBy { it.second.pnl }
-                2 -> data.sortedBy { it.second.channelCount }
-                3 -> data.sortedBy { it.second.trades }
-                4 -> data.sortedBy { it.second.wins }
-                5 -> data.sortedBy { it.second.losses }
-                6 -> data.sortedBy { it.second.winrate() }
-                else -> data.sortedBy { it.second.pnl }
+        val primaire = Comparator<Pair<String, PerfData>> { a, b ->
+            val r = when (col) {
+                0 -> if (isSignal) signalSortKey(a.first).compareTo(signalSortKey(b.first))
+                     else channelNumKey(a.first).compareTo(channelNumKey(b.first))
+                2 -> (if (isSignal) a.second.channelCount else (lastChannelMkCount[a.first] ?: 0))
+                        .compareTo(if (isSignal) b.second.channelCount else (lastChannelMkCount[b.first] ?: 0))
+                3 -> a.second.trades.compareTo(b.second.trades)
+                4 -> a.second.wins.compareTo(b.second.wins)
+                5 -> a.second.losses.compareTo(b.second.losses)
+                6 -> a.second.winrate().compareTo(b.second.winrate())
+                else -> a.second.pnl.compareTo(b.second.pnl)
             }
-        } else {
-            when (col) {
-                0 -> data.sortedBy { it.first }
-                1 -> data.sortedBy { it.second.pnl }
-                2 -> data.sortedBy { lastChannelMkCount[it.first] ?: 0 }
-                3 -> data.sortedBy { it.second.trades }
-                4 -> data.sortedBy { it.second.wins }
-                5 -> data.sortedBy { it.second.losses }
-                6 -> data.sortedBy { it.second.winrate() }
-                else -> data.sortedBy { it.second.pnl }
-            }
+            if (asc) r else -r
         }
-        return if (asc) sorted else sorted.reversed()
+        val secondaire = compareByDescending<Pair<String, PerfData>> { it.second.pnl }
+                .thenByDescending { it.second.winrate() }
+                .thenByDescending { it.second.trades }
+                .thenBy { if (isSignal) 0 else channelNumKey(it.first) }
+        return data.sortedWith(primaire.then(secondaire))
     }
 
     /** Cle de tri des signaux : HZ (hors-zone L3/L4) juste apres ZN. */
@@ -2214,8 +2234,13 @@ class MainActivity : AppCompatActivity() {
         addPerfHeader(container, headers, weights, sortCol, sortAsc, onSort = onSort)
     }
 
-    private fun addPerfRow(container: LinearLayout, label: String, d: PerfData, sn: Int = 0, isTotal: Boolean = false, chKey: String? = null) {
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, dp(8)); if (isTotal) setBackgroundColor(Color.parseColor("#1A1A2E")) }
+    private fun addPerfRow(container: LinearLayout, label: String, d: PerfData, sn: Int = 0, isTotal: Boolean = false, chKey: String? = null, alt: Boolean = false) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(8), 0, dp(8))
+            if (isTotal) setBackgroundColor(Color.parseColor("#1A1A2E"))
+            else if (alt) setBackgroundColor(Color.parseColor("#0DFFFFFF"))
+        }
         fun cell(text: String, weight: Float, color: Int, bold: Boolean = false) {
             val tv = TextView(this).apply { this.text = text; setTextColor(color); textSize = 13f; if (bold) setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER }
             row.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weight))
@@ -2251,8 +2276,8 @@ class MainActivity : AppCompatActivity() {
             if (chKey != null && fExcluded.contains(chKey)) row.alpha = 0.32f
         }
 
+        // 20/10/2026 : separateur 1 dp supprime (269 vues en moins) -> fond alterne a la place.
         container.addView(row)
-        if (!isTotal) { container.addView(View(this).apply { setBackgroundColor(Color.parseColor("#2A2A4A")) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)) }
     }
 
     // ================= POPUP DETAIL CANAL (26/09) =================
