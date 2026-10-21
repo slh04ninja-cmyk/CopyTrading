@@ -81,6 +81,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvWinrate: TextView
 
     // Daily Limit
+    private lateinit var tvDailyGoalTitle: TextView
     private lateinit var tvDailyLimitPct: TextView
     private lateinit var progressDailyLimit: ProgressBar
 
@@ -245,6 +246,7 @@ class MainActivity : AppCompatActivity() {
         tvLosses = findViewById(R.id.tvLosses)
         tvWinrate = findViewById(R.id.tvWinrate)
 
+        tvDailyGoalTitle = findViewById(R.id.tvDailyGoalTitle)
         tvDailyLimitPct = findViewById(R.id.tvDailyLimitPct)
         progressDailyLimit = findViewById(R.id.progressDailyLimit)
 
@@ -1448,6 +1450,7 @@ class MainActivity : AppCompatActivity() {
         tvLosses.text = dash.losses.toString()
         tvWinrate.text = "${dash.winrate}%"
 
+        tvDailyGoalTitle.text = "Objectif quotidien (${dash.daily_limit.toInt()})"
         tvDailyLimitPct.text = "${dash.limit_pct.toInt()}%"
         progressDailyLimit.progress = dash.limit_pct.toInt().coerceIn(0, 100)
 

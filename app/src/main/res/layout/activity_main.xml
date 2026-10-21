@@ -342,13 +342,14 @@
                                 android:orientation="horizontal">
 
                                 <TextView
+                                    android:id="@+id/tvDailyGoalTitle"
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
                                     android:layout_weight="1"
                                     android:maxLines="1"
                                     android:singleLine="true"
-                                    android:text="Objectif Quotidien"
-                                    android:textColor="@color/text_primary"
+                                    android:text="Objectif quotidien (1000)"
+                                    android:textColor="@color/text_secondary"
                                     android:textSize="13sp"
                                     android:textStyle="bold"
                                     android:letterSpacing="0.03"/>
