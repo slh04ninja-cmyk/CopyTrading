@@ -156,7 +156,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_marginBottom="10dp">
+                        android:layout_marginBottom="6dp">
 
                         <com.google.android.material.card.MaterialCardView
                             android:layout_width="0dp"
@@ -173,11 +173,13 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:orientation="vertical"
-                                android:padding="14dp">
+                                android:gravity="center"
+                                android:padding="10dp">
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
+                                    android:textAlignment="center"
                                     android:text="P&amp;L Quotidien"
                                     android:textColor="@color/text_secondary"
                                     android:textSize="11sp"
@@ -191,7 +193,8 @@
                                     android:textColor="@color/profit"
                                     android:textSize="24sp"
                                     android:textStyle="bold"
-                                    android:layout_marginTop="4dp"/>
+                                    android:textAlignment="center"
+                                    android:layout_marginTop="2dp"/>
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
 
@@ -210,11 +213,13 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:orientation="vertical"
-                                android:padding="14dp">
+                                android:gravity="center"
+                                android:padding="10dp">
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
+                                    android:textAlignment="center"
                                     android:text="P&amp;L Flottant"
                                     android:textColor="@color/text_secondary"
                                     android:textSize="11sp"
@@ -228,7 +233,8 @@
                                     android:textColor="@color/profit"
                                     android:textSize="24sp"
                                     android:textStyle="bold"
-                                    android:layout_marginTop="4dp"/>
+                                    android:textAlignment="center"
+                                    android:layout_marginTop="2dp"/>
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
                     </LinearLayout>
@@ -237,7 +243,7 @@
                     <com.google.android.material.card.MaterialCardView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="10dp"
+                        android:layout_marginBottom="6dp"
                         app:cardBackgroundColor="@color/card_background"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp"
@@ -249,7 +255,7 @@
                             android:layout_height="wrap_content"
                             android:gravity="center"
                             android:orientation="vertical"
-                            android:padding="20dp">
+                            android:padding="14dp">
 
                             <TextView
                                 android:layout_width="wrap_content"
@@ -274,7 +280,7 @@
                                 android:layout_height="wrap_content"
                                 android:gravity="center"
                                 android:orientation="horizontal"
-                                android:layout_marginTop="10dp">
+                                android:layout_marginTop="6dp">
 
                                 <TextView
                                     android:layout_width="wrap_content"
@@ -316,7 +322,7 @@
                     <com.google.android.material.card.MaterialCardView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="10dp"
+                        android:layout_marginBottom="6dp"
                         app:cardBackgroundColor="@color/card_background"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp"
@@ -327,7 +333,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:padding="14dp">
+                            android:padding="10dp">
 
                             <LinearLayout
                                 android:layout_width="match_parent"
@@ -336,16 +342,11 @@
                                 android:orientation="horizontal">
 
                                 <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="🛡️"
-                                    android:textSize="14sp"
-                                    android:layout_marginEnd="8dp"/>
-
-                                <TextView
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
                                     android:layout_weight="1"
+                                    android:maxLines="1"
+                                    android:singleLine="true"
                                     android:text="Objectif Quotidien"
                                     android:textColor="@color/text_primary"
                                     android:textSize="13sp"
@@ -359,16 +360,7 @@
                                     android:text="0%"
                                     android:textColor="@color/warning"
                                     android:textSize="13sp"
-                                    android:textStyle="bold"
-                                    android:layout_marginEnd="8dp"/>
-
-                                <TextView
-                                    android:id="@+id/tvDailyLimit"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="0$ / 200$"
-                                    android:textColor="@color/text_secondary"
-                                    android:textSize="12sp"/>
+                                    android:textStyle="bold"/>
                             </LinearLayout>
 
                             <ProgressBar
@@ -376,7 +368,7 @@
                                 style="@android:style/Widget.ProgressBar.Horizontal"
                                 android:layout_width="match_parent"
                                 android:layout_height="6dp"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 android:max="100"
                                 android:progress="0"
                                 android:progressTint="@color/primary"
@@ -389,7 +381,7 @@
                     <com.google.android.material.card.MaterialCardView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="10dp"
+                        android:layout_marginBottom="6dp"
                         app:cardBackgroundColor="@color/card_background"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp"
@@ -400,14 +392,14 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:padding="14dp">
+                            android:padding="10dp">
 
                             <LinearLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:gravity="center_vertical"
                                 android:orientation="horizontal"
-                                android:paddingVertical="8dp">
+                                android:paddingVertical="4dp">
                                 <TextView
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
@@ -435,7 +427,7 @@
                                 android:layout_height="wrap_content"
                                 android:gravity="center_vertical"
                                 android:orientation="horizontal"
-                                android:paddingVertical="8dp">
+                                android:paddingVertical="4dp">
                                 <TextView
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
@@ -463,7 +455,7 @@
                                 android:layout_height="wrap_content"
                                 android:gravity="center_vertical"
                                 android:orientation="horizontal"
-                                android:paddingVertical="8dp">
+                                android:paddingVertical="4dp">
                                 <TextView
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
@@ -491,7 +483,7 @@
                                 android:layout_height="wrap_content"
                                 android:gravity="center_vertical"
                                 android:orientation="horizontal"
-                                android:paddingVertical="8dp">
+                                android:paddingVertical="4dp">
                                 <TextView
                                     android:layout_width="0dp"
                                     android:layout_height="wrap_content"
@@ -516,7 +508,7 @@
                         android:id="@+id/cardTradingHours"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="10dp"
+                        android:layout_marginBottom="6dp"
                         app:cardBackgroundColor="@color/card_background"
                         app:cornerRadius="16dp"
                         app:cardElevation="0dp"
@@ -598,7 +590,9 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Positions Ouvertes"
+                            android:gravity="center"
+                            android:textAlignment="center"
+                            android:text="BUY 0   ·   SELL 0"
                             android:textColor="@color/text_primary"
                             android:textSize="16sp"
                             android:textStyle="bold"
@@ -1150,7 +1144,7 @@
         android:layout_gravity="start"
         android:background="@color/bg_secondary"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="14dp">
 
         <TextView
             android:layout_width="wrap_content"

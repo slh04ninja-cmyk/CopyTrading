@@ -12,6 +12,9 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Bundle
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.View
 import android.view.animation.DecelerateInterpolator
@@ -78,7 +81,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvWinrate: TextView
 
     // Daily Limit
-    private lateinit var tvDailyLimit: TextView
     private lateinit var tvDailyLimitPct: TextView
     private lateinit var progressDailyLimit: ProgressBar
 
@@ -243,7 +245,6 @@ class MainActivity : AppCompatActivity() {
         tvLosses = findViewById(R.id.tvLosses)
         tvWinrate = findViewById(R.id.tvWinrate)
 
-        tvDailyLimit = findViewById(R.id.tvDailyLimit)
         tvDailyLimitPct = findViewById(R.id.tvDailyLimitPct)
         progressDailyLimit = findViewById(R.id.progressDailyLimit)
 
@@ -1447,12 +1448,11 @@ class MainActivity : AppCompatActivity() {
         tvLosses.text = dash.losses.toString()
         tvWinrate.text = "${dash.winrate}%"
 
-        tvDailyLimit.text = "${formatPnl(dash.total_pnl)} / ${formatMoney(dash.daily_limit)}"
         tvDailyLimitPct.text = "${dash.limit_pct.toInt()}%"
         progressDailyLimit.progress = dash.limit_pct.toInt().coerceIn(0, 100)
 
         positionAdapter.setPositions(dash.open_positions)
-        tvPositionsTitle.text = "Positions Ouvertes (${dash.open_positions.size})"
+        setPositionsHeader(dash.open_positions)
         tvNoPositions.visibility = if (dash.open_positions.isEmpty()) View.VISIBLE else View.GONE
         rvPositions.visibility = if (dash.open_positions.isEmpty()) View.GONE else View.VISIBLE
 
@@ -1470,12 +1470,32 @@ class MainActivity : AppCompatActivity() {
         updateTradingHoursDashboard()
     }
 
+    /** 20/10/2026 : en-tete des positions ouvertes = nombre de BUY et de SELL, centre. */
+    private fun setPositionsHeader(positions: List<Position>) {
+        val buy = positions.count { it.type.uppercase() == "BUY" }
+        val sell = positions.count { it.type.uppercase() == "SELL" }
+        val txt = SpannableStringBuilder()
+        var i = txt.length
+        txt.append("BUY $buy")
+        txt.setSpan(ForegroundColorSpan(getColor(R.color.success)), i, txt.length,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        i = txt.length
+        txt.append("   \u00b7   ")
+        txt.setSpan(ForegroundColorSpan(getColor(R.color.text_muted)), i, txt.length,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        i = txt.length
+        txt.append("SELL $sell")
+        txt.setSpan(ForegroundColorSpan(getColor(R.color.danger)), i, txt.length,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        tvPositionsTitle.text = txt
+    }
+
     private fun refreshPositions() {
         lifecycleScope.launch {
             val positions = client.getPositions()
             if (positions != null) {
                 positionAdapter.setPositions(positions.positions)
-                tvPositionsTitle.text = "Positions Ouvertes (${positions.positions.size})"
+                setPositionsHeader(positions.positions)
                 tvNoPositions.visibility = if (positions.positions.isEmpty()) View.VISIBLE else View.GONE
                 rvPositions.visibility = if (positions.positions.isEmpty()) View.GONE else View.VISIBLE
             }
