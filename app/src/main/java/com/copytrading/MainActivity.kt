@@ -159,9 +159,9 @@ class MainActivity : AppCompatActivity() {
     private val MOTIFS_FIXES = listOf("NWS", "NS", "TMO", "DTG", "DD")
     /** Toutes les cases de filtres -> pour afficher le nombre de signaux de chaque valeur. */
     private val chipRefs = mutableMapOf<String, TextView>()
-    // 24/10/2026 (valide SaLaH) : CANAUX RETIRES = UNION (WR <= 50% ou P&L negatif) 12-24/10.
-    // Ils n'apparaissent plus du tout dans l'historique (ni tableau, ni totaux, ni PDF).
-    private val CANAUX_RETIRES = setOf("CH4", "CH6", "CH15", "CH16", "CH17", "CH18", "CH20", "CH22", "CH25", "CH26", "CH36", "CH38", "CH45", "CH51", "CH56", "CH58", "CH60", "CH62", "CH63", "CH68", "CH76", "CH78", "CH84", "CH85", "CH86", "CH87", "CH88", "CH89", "CH91", "CH98", "CH99", "CH100", "CH101", "CH102", "CH107", "CH109", "CH111", "CH112", "CH113", "CH114", "CH115", "CH116", "CH119", "CH120", "CH121", "CH122", "CH126", "CH127", "CH128", "CH129", "CH130", "CH132", "CH136", "CH138", "CH142", "CH145", "CH146", "CH147", "CH149", "CH151", "CH154", "CH156", "CH157", "CH159", "CH161", "CH162", "CH169", "CH177", "CH179", "CH180", "CH181", "CH184", "CH187", "CH188", "CH189", "CH190", "CH192", "CH193", "CH195", "CH197", "CH200", "CH201", "CH205", "CH210", "CH212", "CH214", "CH220", "CH221", "CH223", "CH227", "CH228", "CH231", "CH234", "CH236", "CH242", "CH244", "CH245", "CH248", "CH249", "CH250", "CH254", "CH269", "CH272", "CH274", "CH282", "CH283", "CH289", "CH295", "CH297", "CH299")
+    // 24/10/2026 (valide SaLaH) : liste lue sur le SERVEUR (.env -> /api/config).
+    // Aucune liste en dur ici : cle absente = aucune exclusion.
+    private var canauxRetires: Set<String> = emptySet()
     private val fExcluded = mutableSetOf<String>()   // canaux exclus (CHxxx) - applique apres 3 s
     private var lastExcludedData: List<Pair<String, PerfData>> = emptyList()
     private var lastTradesComptes: List<Trade> = emptyList()   // jambes reellement comptees (pour le P&L par jour du PDF)
@@ -219,12 +219,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Charge silencieusement la config (heures de trading) au demarrage, sans ouvrir l'onglet Config. */
+    /** Canaux retires : lus dans CANAUX_RETIRES du .env (via /api/config). */
+    private fun majCanauxRetires(cfg: Map<String, String>?) {
+        val brut = (cfg?.get("CANAUX_RETIRES") ?: "").replace(" ", "")
+        canauxRetires = brut.split(",")
+            .mapNotNull { it.trim().toIntOrNull() }
+            .map { "CH" + it }
+            .toSet()
+    }
+
     private fun loadTradingHoursOnce() {
         lifecycleScope.launch {
             try {
                 val cfg = client.getConfig()?.config ?: return@launch
                 initTradingHoursFromConfig(cfg)
                 MotifCodes.setFromConfig(cfg)
+                majCanauxRetires(cfg)
+                if (histTradesRaw.isNotEmpty()) applyHistoryFilters()
             } catch (_: Exception) {}
         }
     }
@@ -1093,7 +1104,7 @@ class MainActivity : AppCompatActivity() {
                     val filtered = trades.trades.filter { t ->
                         val ch = t.comment.substringBefore("-")
                         // 24/10/2026 : canaux retires (non rentables) -> exclus de l'historique
-                        !CANAUX_RETIRES.contains(ch) &&
+                        !canauxRetires.contains(ch) &&
                             (activeChannels == null || activeChannels.containsKey(ch) || !ch.startsWith("CH"))
                     }
                     histTradesRaw = filtered
@@ -1524,6 +1535,7 @@ class MainActivity : AppCompatActivity() {
                     initTradingHoursFromConfig(cfg)
                     // Codes de fermeture (badge jaune) : lus sur le serveur (reglage MOTIF_CODES)
                     MotifCodes.setFromConfig(cfg)
+                    majCanauxRetires(cfg)
                     // Rendre les groupes dynamiquement
                     renderConfigGroups(configGroups)
                 } else {
