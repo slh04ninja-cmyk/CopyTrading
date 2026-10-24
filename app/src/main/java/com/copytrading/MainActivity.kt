@@ -159,6 +159,9 @@ class MainActivity : AppCompatActivity() {
     private val MOTIFS_FIXES = listOf("NWS", "NS", "TMO", "DTG", "DD")
     /** Toutes les cases de filtres -> pour afficher le nombre de signaux de chaque valeur. */
     private val chipRefs = mutableMapOf<String, TextView>()
+    // 24/10/2026 (valide SaLaH) : CANAUX RETIRES = WR <= 50% ET P&L negatif sur 12-24/10.
+    // Ils n'apparaissent plus du tout dans l'historique (ni tableau, ni totaux, ni PDF).
+    private val CANAUX_RETIRES = setOf("CH142", "CH168", "CH192", "CH4", "CH15", "CH16", "CH18", "CH20", "CH22", "CH25", "CH26", "CH36", "CH38", "CH45", "CH51", "CH56", "CH58", "CH60", "CH63", "CH68", "CH76", "CH86", "CH88", "CH89", "CH98", "CH100", "CH101", "CH102", "CH107", "CH112", "CH113", "CH114", "CH115", "CH116", "CH119", "CH121", "CH122", "CH126", "CH128", "CH130", "CH132", "CH138", "CH145", "CH149", "CH151", "CH154", "CH156", "CH157", "CH177", "CH179", "CH180", "CH181", "CH184", "CH187", "CH188", "CH189", "CH190", "CH193", "CH197", "CH200", "CH205", "CH210", "CH212", "CH214", "CH220", "CH221", "CH223", "CH231", "CH236", "CH242", "CH244", "CH245", "CH249", "CH254", "CH269", "CH272", "CH274", "CH282", "CH283", "CH289", "CH295", "CH297", "CH299")
     private val fExcluded = mutableSetOf<String>()   // canaux exclus (CHxxx) - applique apres 3 s
     private var lastExcludedData: List<Pair<String, PerfData>> = emptyList()
     private var lastTradesComptes: List<Trade> = emptyList()   // jambes reellement comptees (pour le P&L par jour du PDF)
@@ -1087,10 +1090,11 @@ class MainActivity : AppCompatActivity() {
                 channelNames = activeChannels ?: emptyMap()
                 val trades = tradesDeferred.await()
                 if (trades != null) {
-                    val filtered = if (activeChannels == null) trades.trades
-                    else trades.trades.filter { t ->
+                    val filtered = trades.trades.filter { t ->
                         val ch = t.comment.substringBefore("-")
-                        activeChannels.containsKey(ch) || !ch.startsWith("CH")
+                        // 24/10/2026 : canaux retires (non rentables) -> exclus de l'historique
+                        !CANAUX_RETIRES.contains(ch) &&
+                            (activeChannels == null || activeChannels.containsKey(ch) || !ch.startsWith("CH"))
                     }
                     histTradesRaw = filtered
                     totalSignaux = signalAggregates(filtered).size
