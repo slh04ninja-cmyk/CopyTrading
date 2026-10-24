@@ -56,10 +56,17 @@ object ConfigFieldView {
         if (field.key == "CANAUX_RETIRES") {
             et.apply {
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-                minLines = 4
-                maxLines = 8
+                // 24/10/2026 : hauteur ADAPTATIVE -> on affiche toute la liste d'un coup
+                // (maxLines eleve + wrap_content : le champ grandit avec le contenu)
+                minLines = 6
+                maxLines = 60
+                setSingleLine(false)
                 gravity = Gravity.TOP or Gravity.START
                 filters = arrayOf()
+                isVerticalScrollBarEnabled = false
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT)
             }
         }
         container.addView(et)
