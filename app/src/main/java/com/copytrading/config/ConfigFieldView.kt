@@ -48,8 +48,23 @@ object ConfigFieldView {
         }
 
         container.addView(createLabel(context, field))
-        container.addView(createEditText(context, field.value, false))
-        if (field.help.isNotEmpty()) container.addView(createHelp(context, field.help))
+        val et = createEditText(context, field.value, false)
+        // 24/10/2026 : la liste des canaux retires est longue (400+ caracteres) -> champ multiligne
+        if (field.key == "CANAUX_RETIRES") {
+            et.apply {
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                minLines = 4
+                maxLines = 8
+                gravity = Gravity.TOP or Gravity.START
+                filters = arrayOf()
+            }
+        }
+        container.addView(et)
+        if (field.key == "CANAUX_RETIRES") {
+            container.addView(createHelp(context, "Numeros separes par des virgules, sans CH. Ex : 4,6,15,231"))
+        } else if (field.help.isNotEmpty()) {
+            container.addView(createHelp(context, field.help))
+        }
 
         return container
     }
