@@ -49,6 +49,9 @@ object ConfigFieldView {
 
         container.addView(createLabel(context, field))
         val et = createEditText(context, field.value, false)
+        // 24/10/2026 : BUG corrige -> le tag doit etre la CLE, pas la valeur. Avec tag=valeur,
+        // getValue() ne retrouvait jamais le champ et renvoyait l'ancienne valeur (saisie perdue).
+        et.tag = field.key
         // 24/10/2026 : la liste des canaux retires est longue (400+ caracteres) -> champ multiligne
         if (field.key == "CANAUX_RETIRES") {
             et.apply {
@@ -78,6 +81,7 @@ object ConfigFieldView {
         container.addView(createLabel(context, field))
         val et = createEditText(context, field.value, false).apply {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED
+            tag = field.key   // 24/10/2026 : BUG corrige (tag=valeur -> saisie perdue)
         }
         container.addView(et)
         if (field.help.isNotEmpty()) container.addView(createHelp(context, field.help))
