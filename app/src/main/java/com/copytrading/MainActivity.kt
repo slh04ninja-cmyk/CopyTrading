@@ -161,7 +161,7 @@ class MainActivity : AppCompatActivity() {
     private val chipRefs = mutableMapOf<String, TextView>()
     // 24/10/2026 : canaux exclus par defaut = ceux qui ont eu DEUX semaines negatives
     // sur 12-23/10 (-1041 $ cumules). Decocher une case les reaffiche.
-    private val EXCLUS_DEFAUT = setOf("CH114", "CH179", "CH119", "CH15", "CH107", "CH121", "CH86", "CH245", "CH231", "CH132", "CH4", "CH26", "CH177", "CH151", "CH244", "CH60", "CH149", "CH45", "CH234", "CH184", "CH113", "CH189", "CH156", "CH242", "CH210", "CH76", "CH18", "CH68", "CH220", "CH180")
+    private val EXCLUS_DEFAUT = setOf("CH19", "CH36", "CH56", "CH86", "CH100", "CH119", "CH132", "CH164", "CH188", "CH200", "CH221", "CH234")
     // initialise avec la liste par defaut : actif des le demarrage de l'application
     private val fExcluded = mutableSetOf<String>().apply { addAll(EXCLUS_DEFAUT) }   // canaux exclus (CHxxx)
     private var lastExcludedData: List<Pair<String, PerfData>> = emptyList()
