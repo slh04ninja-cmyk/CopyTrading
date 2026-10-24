@@ -159,7 +159,11 @@ class MainActivity : AppCompatActivity() {
     private val MOTIFS_FIXES = listOf("NWS", "NS", "TMO", "DTG", "DD")
     /** Toutes les cases de filtres -> pour afficher le nombre de signaux de chaque valeur. */
     private val chipRefs = mutableMapOf<String, TextView>()
-    private val fExcluded = mutableSetOf<String>()   // canaux exclus (CHxxx) - applique apres 3 s
+    // 24/10/2026 : canaux exclus par defaut = ceux qui ont eu DEUX semaines negatives
+    // sur 12-23/10 (-1041 $ cumules). Decocher une case les reaffiche.
+    private val EXCLUS_DEFAUT = setOf("CH114", "CH179", "CH119", "CH15", "CH107", "CH121", "CH86", "CH245", "CH231", "CH132", "CH4", "CH26", "CH177", "CH151", "CH244", "CH60", "CH149", "CH45", "CH234", "CH184", "CH113", "CH189", "CH156", "CH242", "CH210", "CH76", "CH18", "CH68", "CH220", "CH180")
+    // initialise avec la liste par defaut : actif des le demarrage de l'application
+    private val fExcluded = mutableSetOf<String>().apply { addAll(EXCLUS_DEFAUT) }   // canaux exclus (CHxxx)
     private var lastExcludedData: List<Pair<String, PerfData>> = emptyList()
     private var lastTradesComptes: List<Trade> = emptyList()   // jambes reellement comptees (pour le P&L par jour du PDF)
     private var totalSignaux = 0                     // signaux de la periode (denominateur du bandeau)
@@ -548,7 +552,7 @@ class MainActivity : AppCompatActivity() {
         fSens.clear(); fSens.addAll(listOf("ACHAT", "VENTE"))
         fExits.clear(); fExits.addAll(listOf("TP", "SL", "NWS", "NS", "TMO", "DTG", "DD", "BOT"))
         fHours.clear(); (0..23).forEach { fHours.add(it) }
-        fExcluded.clear()
+        fExcluded.clear(); fExcluded.addAll(EXCLUS_DEFAUT)
         buildHistoryFilters()
         applyHistoryFilters()
     }
