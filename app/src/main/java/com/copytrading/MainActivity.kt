@@ -235,6 +235,8 @@ class MainActivity : AppCompatActivity() {
                 initTradingHoursFromConfig(cfg)
                 MotifCodes.setFromConfig(cfg)
                 majCanauxRetires(cfg)
+                // 25/10/2026 : la grille des heures doit refleter TRADING_HOURS -> on la reconstruit
+                buildHistoryFilters()
                 if (histTradesRaw.isNotEmpty()) applyHistoryFilters()
             } catch (_: Exception) {}
         }
@@ -470,7 +472,8 @@ class MainActivity : AppCompatActivity() {
         addFilterGrid("Sortie  \u00b7  depuis 12/10", listOf("TP", "SL") + MOTIFS_FIXES + "BOT", fExits)
         addFilterLabel("Heures de trading (UTC)")
         // Rangees de 6 cases a largeur egale (GridLayout ne transmettait pas les taps de facon fiable).
-        for (row in (0 until 24).chunked(6)) {
+        // 25/10/2026 (demande SaLaH) : les heures 18 a 23 ne sont plus affichees.
+        for (row in (0 until 18).chunked(6)) {
             val r = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 layoutParams = LinearLayout.LayoutParams(
@@ -483,10 +486,17 @@ class MainActivity : AppCompatActivity() {
                     topMargin = dp(4)
                 }
                 styleChip(tv, fHours.contains(h))
-                tv.setOnClickListener {
-                    if (fHours.contains(h)) fHours.remove(h) else fHours.add(h)
-                    styleChip(tv, fHours.contains(h))
-                    requestFilterApply(tv)
+                // 25/10/2026 (demande SaLaH) : une heure non activee dans les Parametres
+                // (grille TRADING_HOURS) est grisee et non cliquable dans l'Historique.
+                if (h in 0..23 && !tradingHours[h]) {
+                    tv.isEnabled = false
+                    tv.alpha = 0.35f
+                } else {
+                    tv.setOnClickListener {
+                        if (fHours.contains(h)) fHours.remove(h) else fHours.add(h)
+                        styleChip(tv, fHours.contains(h))
+                        requestFilterApply(tv)
+                    }
                 }
                 r.addView(tv)
             }
@@ -784,8 +794,10 @@ class MainActivity : AppCompatActivity() {
         if (fSens.size < 2) p.add(if (fSens.contains("ACHAT")) "achats seulement" else "ventes seulement")
         if (fSignals.size < 4) p.add("types " + fSignals.sorted().joinToString(","))
         if (fExits.size < 8) p.add("sorties " + fExits.sorted().joinToString(","))
-        if (fHours.size < 24) {
-            val excl = (0..23).filter { !fHours.contains(it) }
+        // 25/10/2026 : on ne compte que les heures affichees (00-17) et activees dans les parametres
+        val heuresUtiles = (0..17).filter { tradingHours[it] }
+        val excl = heuresUtiles.filter { !fHours.contains(it) }
+        if (excl.isNotEmpty()) {
             p.add("heures exclues " + excl.joinToString(",") { String.format(Locale.US, "%02dh", it) })
         }
         if (fExcluded.isNotEmpty()) p.add("canaux exclus " + fExcluded.map { it.removePrefix("CH") }.sorted().joinToString(","))
