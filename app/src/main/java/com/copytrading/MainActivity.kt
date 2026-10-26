@@ -1062,17 +1062,17 @@ class MainActivity : AppCompatActivity() {
 
         // 4) PERFORMANCE PAR HEURE D'OUVERTURE
         val colsH = listOf(
-            Triple("HEURE OUV.", 26f, Paint.Align.LEFT), Triple("P&L ($)", 22f, Paint.Align.CENTER),
-            Triple("CN", 12f, Paint.Align.CENTER), Triple("TR", 14f, Paint.Align.CENTER),
+            Triple("HEURE", 26f, Paint.Align.LEFT), Triple("P&L ($)", 22f, Paint.Align.CENTER),
+            Triple("BUY", 12f, Paint.Align.CENTER), Triple("SELL", 14f, Paint.Align.CENTER),
             Triple("WN", 14f, Paint.Align.CENTER), Triple("LS", 14f, Paint.Align.CENTER),
             Triple("WR %", 16f, Paint.Align.CENTER))
         val rowsH = lastSessionData.sortedBy { it.first }.map { p ->
-            listOf(p.first, fmtPnl(p.second.pnl), p.second.channelCount.toString(), p.second.trades.toString(),
+            listOf(p.first, fmtPnl(p.second.pnl), p.second.buyCount.toString(), p.second.sellCount.toString(),
                 p.second.wins.toString(), p.second.losses.toString(), p.second.winrate().toString())
         }
         val totH = lastSessionData.fold(PerfData()) { acc, p -> acc.merge(p.second) }
         tableSection("PERFORMANCE PAR HEURE D'OUVERTURE (UTC)", colsH, rowsH,
-            listOf("TOTAL", fmtPnl(totH.pnl), "", totH.trades.toString(), totH.wins.toString(),
+            listOf("TOTAL", fmtPnl(totH.pnl), totH.buyCount.toString(), totH.sellCount.toString(), totH.wins.toString(),
                 totH.losses.toString(), totH.winrate().toString()), 6 * MM, 1)
 
         besoin(10 * MM)
@@ -2153,20 +2153,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderSessionTable() {
         perfSessionTable.removeAllViews()
-        val headers = arrayOf("Heure ouv.", "P&L", "CN", "TR", "WN", "LS", "WR")
+        // 25/10/2026 (demande SaLaH) : colonnes BUY / SELL a la place de CN / TR
+        val headers = arrayOf("Heure", "P&L", "BUY", "SELL", "WN", "LS", "WR")
         val weights = floatArrayOf(0.8f, 1f, 0.6f, 0.6f, 0.6f, 0.6f, 0.6f)
         addPerfHeader(perfSessionTable, headers, weights, sessionSortCol, sessionSortAsc) { col ->
             if (sessionSortCol == col) sessionSortAsc = !sessionSortAsc else { sessionSortCol = col; sessionSortAsc = col == 0 }
             renderSessionTable()
         }
-        val sorted = sortPerfData(lastSessionData, sessionSortCol, sessionSortAsc, isSignal = true)
+        val sorted = sortPerfData(lastSessionData, sessionSortCol, sessionSortAsc, isSignal = true, sessionMode = true)
         for ((heure, d) in sorted) {
-            addPerfSignalRow(perfSessionTable, heure, d)
+            addPerfSignalRow(perfSessionTable, heure, d, sessionMode = true)
         }
         val totalSess = lastSessionData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
         // CN total = unique channels across all hours (not sum of per-hour CN)
-        totalSess.channelCount = lastChannelTrades.size
-        addPerfSignalRow(perfSessionTable, "TOTAL", totalSess, isTotal = true)
+        addPerfSignalRow(perfSessionTable, "TOTAL", totalSess, isTotal = true, sessionMode = true)
     }
 
     /** Numero de canal : "CH123" -> 123 (tri par NOMBRE, pas par texte : 1, 2, 3...). */
@@ -2175,14 +2175,16 @@ class MainActivity : AppCompatActivity() {
 
     /** 20/10/2026 (demande SaLaH) : tri a 4 niveaux.
      *  Colonne choisie, puis a egalite : P&L, puis WR, puis TR, puis numero de canal. */
-    private fun sortPerfData(data: List<Pair<String, PerfData>>, col: Int, asc: Boolean, isSignal: Boolean = false): List<Pair<String, PerfData>> {
+    private fun sortPerfData(data: List<Pair<String, PerfData>>, col: Int, asc: Boolean,
+                             isSignal: Boolean = false, sessionMode: Boolean = false): List<Pair<String, PerfData>> {
         val primaire = Comparator<Pair<String, PerfData>> { a, b ->
             val r = when (col) {
                 0 -> if (isSignal) signalSortKey(a.first).compareTo(signalSortKey(b.first))
                      else channelNumKey(a.first).compareTo(channelNumKey(b.first))
-                2 -> (if (isSignal) a.second.channelCount else (lastChannelMkCount[a.first] ?: 0))
-                        .compareTo(if (isSignal) b.second.channelCount else (lastChannelMkCount[b.first] ?: 0))
-                3 -> a.second.trades.compareTo(b.second.trades)
+                2 -> (if (sessionMode) a.second.buyCount else if (isSignal) a.second.channelCount else (lastChannelMkCount[a.first] ?: 0))
+                        .compareTo(if (sessionMode) b.second.buyCount else if (isSignal) b.second.channelCount else (lastChannelMkCount[b.first] ?: 0))
+                3 -> (if (sessionMode) a.second.sellCount else a.second.trades)
+                        .compareTo(if (sessionMode) b.second.sellCount else b.second.trades)
                 4 -> a.second.wins.compareTo(b.second.wins)
                 5 -> a.second.losses.compareTo(b.second.losses)
                 6 -> a.second.winrate().compareTo(b.second.winrate())
@@ -2204,10 +2206,13 @@ class MainActivity : AppCompatActivity() {
         var pnl: Double = 0.0, var trades: Int = 0, var wins: Int = 0, var losses: Int = 0,
         var gain: Double = 0.0, var loss: Double = 0.0,
         val signals: MutableSet<String> = mutableSetOf(), var channelCount: Int = 0,
-        val tradeProfits: MutableList<Double> = mutableListOf()
+        val tradeProfits: MutableList<Double> = mutableListOf(),
+        // 25/10/2026 (demande SaLaH) : nombre d'achats et de ventes (tableau par session)
+        var buyCount: Int = 0, var sellCount: Int = 0
     ) {
         fun add(t: Trade, signal: String = "") {
             pnl += t.profit; trades++
+            if (t.type.uppercase() == "BUY") buyCount++ else sellCount++
             if (t.profit >= 0) { wins++; gain += t.profit } else { losses++; loss += t.profit }
             if (signal.isNotEmpty()) signals.add(signal)
             tradeProfits.add(t.profit)
@@ -2216,6 +2221,8 @@ class MainActivity : AppCompatActivity() {
             val merged = PerfData(pnl + o.pnl, trades + o.trades, wins + o.wins, losses + o.losses, gain + o.gain, loss + o.loss)
             merged.signals.addAll(signals); merged.signals.addAll(o.signals)
             merged.channelCount = channelCount + o.channelCount
+            merged.buyCount = buyCount + o.buyCount
+            merged.sellCount = sellCount + o.sellCount
             merged.tradeProfits.addAll(tradeProfits); merged.tradeProfits.addAll(o.tradeProfits)
             return merged
         }
@@ -2591,7 +2598,8 @@ class MainActivity : AppCompatActivity() {
         dlg.show()
     }
 
-    private fun addPerfSignalRow(container: LinearLayout, label: String, d: PerfData, isTotal: Boolean = false) {
+    private fun addPerfSignalRow(container: LinearLayout, label: String, d: PerfData, isTotal: Boolean = false,
+                                 sessionMode: Boolean = false) {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, dp(8)); if (isTotal) setBackgroundColor(Color.parseColor("#1A1A2E")) }
         fun cell(text: String, weight: Float, color: Int, bold: Boolean = false) {
             val tv = TextView(this).apply { this.text = text; setTextColor(color); textSize = 13f; if (bold) setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER }
@@ -2599,8 +2607,9 @@ class MainActivity : AppCompatActivity() {
         }
         cell(label, 0.8f, getColor(R.color.primary_light), bold = true)
         cell(String.format("%+.2f", d.pnl), 1f, if (d.pnl >= 0) getColor(R.color.success) else getColor(R.color.danger), bold = true)
-        cell(d.channelCount.toString(), 0.6f, getColor(R.color.text_primary))
-        cell(d.trades.toString(), 0.6f, getColor(R.color.text_primary))
+        // 25/10/2026 : en mode session on affiche BUY / SELL au lieu de CN / TR
+        cell((if (sessionMode) d.buyCount else d.channelCount).toString(), 0.6f, getColor(R.color.text_primary))
+        cell((if (sessionMode) d.sellCount else d.trades).toString(), 0.6f, getColor(R.color.text_primary))
         cell(d.wins.toString(), 0.6f, getColor(R.color.success))
         cell(d.losses.toString(), 0.6f, getColor(R.color.danger))
         val wr = d.winrate()
