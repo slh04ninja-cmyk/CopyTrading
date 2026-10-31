@@ -40,6 +40,7 @@ data class DashboardResponse(
     val wins: Int = 0,
     val losses: Int = 0,
     val winrate: Double = 0.0,
+    val channels: Int = 0,
     val open_positions: List<Position> = emptyList(),
     val open_count: Int = 0,
     val daily_limit: Double = 0.0,

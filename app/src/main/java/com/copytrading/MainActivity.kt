@@ -79,6 +79,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvWins: TextView
     private lateinit var tvLosses: TextView
     private lateinit var tvWinrate: TextView
+    private lateinit var tvChannels: TextView
 
     // Daily Limit
     private lateinit var tvDailyGoalTitle: TextView
@@ -153,7 +154,9 @@ class MainActivity : AppCompatActivity() {
     private val fSignals = linkedSetOf("MP", "PU", "QA", "ZN")
     private val fSens = linkedSetOf("ACHAT", "VENTE")
     private val fExits = linkedSetOf("TP", "SL", "NWS", "NS", "TMO", "DTG", "DD", "BOT")
-    private val fHours = linkedSetOf<Int>().apply { (0..23).forEach { add(it) } }
+    // 31/10/2026 : ne contient que les heures AFFICHEES (0..17) et ACTIVES dans les Parametres.
+    // Les heures actives sont ajoutees apres chargement de la config (voir initHeuresFiltre).
+    private val fHours = linkedSetOf<Int>()
     /** Motifs de fermeture ecrits par le bot (fin du commentaire MT5). "BOT" ramasse tout le reste :
      *  un nouveau code ajoute au bot n'est jamais perdu, il tombe simplement dans BOT. */
     private val MOTIFS_FIXES = listOf("NWS", "NS", "TMO", "DTG", "DD")
@@ -235,7 +238,9 @@ class MainActivity : AppCompatActivity() {
                 initTradingHoursFromConfig(cfg)
                 MotifCodes.setFromConfig(cfg)
                 majCanauxRetires(cfg)
-                // 25/10/2026 : la grille des heures doit refleter TRADING_HOURS -> on la reconstruit
+                // 31/10/2026 : les heures cochees par defaut = celles ACTIVES dans les Parametres.
+                // (00/01/02 restent affichees et cliquables, mais decochees -> leurs trades sont filtres)
+                if (fHours.isEmpty()) fHours.addAll(heuresActives())
                 buildHistoryFilters()
                 if (histTradesRaw.isNotEmpty()) applyHistoryFilters()
             } catch (_: Exception) {}
@@ -262,6 +267,7 @@ class MainActivity : AppCompatActivity() {
         tvWins = findViewById(R.id.tvWins)
         tvLosses = findViewById(R.id.tvLosses)
         tvWinrate = findViewById(R.id.tvWinrate)
+        tvChannels = findViewById(R.id.tvChannels)
 
         tvDailyGoalTitle = findViewById(R.id.tvDailyGoalTitle)
         tvDailyLimitPct = findViewById(R.id.tvDailyLimitPct)
@@ -486,22 +492,23 @@ class MainActivity : AppCompatActivity() {
                     topMargin = dp(4)
                 }
                 styleChip(tv, fHours.contains(h))
-                // 25/10/2026 (demande SaLaH) : une heure non activee dans les Parametres
-                // (grille TRADING_HOURS) est grisee et non cliquable dans l'Historique.
-                if (h in 0..23 && !tradingHours[h]) {
-                    tv.isEnabled = false
-                    tv.alpha = 0.35f
-                } else {
-                    tv.setOnClickListener {
-                        if (fHours.contains(h)) fHours.remove(h) else fHours.add(h)
-                        styleChip(tv, fHours.contains(h))
-                        requestFilterApply(tv)
-                    }
+                // 31/10/2026 (demande SaLaH) : toutes les heures affichees sont CLIQUABLES,
+                // y compris 00/01/02 qui ne sont pas dans la grille des Parametres.
+                tv.setOnClickListener {
+                    if (fHours.contains(h)) fHours.remove(h) else fHours.add(h)
+                    styleChip(tv, fHours.contains(h))
+                    requestFilterApply(tv)
                 }
                 r.addView(tv)
             }
             historyFilters.addView(r)
         }
+    }
+
+    /** Heures affichees (0..17) ET activees dans la grille des Parametres. */
+    private fun heuresActives(): List<Int> {
+        val out = (0..17).filter { tradingHours[it] }
+        return if (out.isEmpty()) (3..17).toList() else out
     }
 
     private fun addFilterLabel(txt: String) {
@@ -571,7 +578,7 @@ class MainActivity : AppCompatActivity() {
         fSignals.clear(); fSignals.addAll(listOf("MP", "PU", "QA", "ZN"))
         fSens.clear(); fSens.addAll(listOf("ACHAT", "VENTE"))
         fExits.clear(); fExits.addAll(listOf("TP", "SL", "NWS", "NS", "TMO", "DTG", "DD", "BOT"))
-        fHours.clear(); (0..23).forEach { fHours.add(it) }
+        fHours.clear(); heuresActives().forEach { fHours.add(it) }
         fExcluded.clear()
         buildHistoryFilters()
         applyHistoryFilters()
@@ -1477,6 +1484,7 @@ class MainActivity : AppCompatActivity() {
         tvWins.text = dash.wins.toString()
         tvLosses.text = dash.losses.toString()
         tvWinrate.text = "${dash.winrate}%"
+        tvChannels.text = dash.channels.toString()
 
         tvDailyGoalTitle.text = "Objectif quotidien (${dash.daily_limit.toInt()})"
         tvDailyLimitPct.text = "${dash.limit_pct.toInt()}%"
