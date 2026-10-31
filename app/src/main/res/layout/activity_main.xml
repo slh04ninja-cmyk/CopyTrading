@@ -395,6 +395,35 @@
                             android:orientation="vertical"
                             android:padding="10dp">
 
+                            <!-- 31/10/2026 (demande SaLaH) : Canaux actifs en PREMIERE ligne -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:paddingVertical="4dp">
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="Canaux actifs"
+                                    android:textColor="@color/text_muted"
+                                    android:textSize="12sp"/>
+                                <TextView
+                                    android:id="@+id/tvChannels"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="0"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="16sp"
+                                    android:textStyle="bold"/>
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="@color/divider"/>
+
                             <LinearLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
@@ -498,35 +527,6 @@
                                     android:layout_height="wrap_content"
                                     android:text="0%"
                                     android:textColor="@color/primary_light"
-                                    android:textSize="16sp"
-                                    android:textStyle="bold"/>
-                            </LinearLayout>
-
-                            <View
-                                android:layout_width="match_parent"
-                                android:layout_height="1dp"
-                                android:background="@color/divider"/>
-
-                            <!-- 31/10/2026 (demande SaLaH) : nombre de canaux actifs du jour -->
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal"
-                                android:paddingVertical="4dp">
-                                <TextView
-                                    android:layout_width="0dp"
-                                    android:layout_height="wrap_content"
-                                    android:layout_weight="1"
-                                    android:text="Canaux actifs"
-                                    android:textColor="@color/text_muted"
-                                    android:textSize="12sp"/>
-                                <TextView
-                                    android:id="@+id/tvChannels"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="0"
-                                    android:textColor="@color/text_primary"
                                     android:textSize="16sp"
                                     android:textStyle="bold"/>
                             </LinearLayout>
