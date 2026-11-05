@@ -2059,7 +2059,8 @@ class MainActivity : AppCompatActivity() {
     private fun renderTotaux() {
         if (!::perfTotaux.isInitialized) return
         perfTotaux.removeAllViews()
-        val weights = floatArrayOf(1.4f, 0.85f, 0.95f, 0.9f, 0.75f)
+        // memes proportions que le tableau par canal : P&L 7, P/T 5.2, ML 3.4, L/TR 7.4, WR 3.2
+        val weights = floatArrayOf(7.0f, 5.2f, 3.4f, 7.4f, 3.2f)
         // 05/11/2026 : P&L / P/T / ML / L/TR / WR, comme le tableau par canal
         val entetes = arrayOf("P&L", "P/T", "ML", "L/TR", "WR")
         val ligneH = LinearLayout(this).apply {
@@ -2069,7 +2070,9 @@ class MainActivity : AppCompatActivity() {
         entetes.forEachIndexed { i, txt ->
             val tv = TextView(this).apply {
                 text = txt
-                textSize = 10f
+                textSize = 11f
+                maxLines = 1
+                isSingleLine = true
                 setTypeface(null, android.graphics.Typeface.BOLD)
                 setTextColor(getColor(R.color.accent))
                 gravity = Gravity.CENTER
@@ -2092,17 +2095,20 @@ class MainActivity : AppCompatActivity() {
                 textSize = 13f
                 setTypeface(null, android.graphics.Typeface.BOLD)
                 gravity = Gravity.CENTER
+                maxLines = 1
+                isSingleLine = true
+                setPadding(0, 0, 0, 0)
             }
             ligneV.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, w))
         }
-        cellule(String.format("%+.2f", totalCh.pnl), 1.4f,
+        cellule(String.format("%+.2f", totalCh.pnl), 7.0f,
             getColor(if (totalCh.pnl >= 0) R.color.success else R.color.danger))
-        cellule("${totalCh.joursPerdants()}/${totalCh.joursTrades()}", 0.85f, getColor(R.color.text_primary))
+        cellule("${totalCh.joursPerdants()}/${totalCh.joursTrades()}", 5.2f, getColor(R.color.text_primary))
         val mlT = totalCh.pireJour()
-        cellule(if (mlT < 0) String.format("%+.1f", mlT) else "-", 0.95f,
-            getColor(if (mlT < 0) R.color.danger else R.color.text_muted))
-        cellule("${totalCh.losses}/${totalCh.trades}", 0.9f, getColor(R.color.text_primary))
-        cellule("$wr", 0.75f, getColor(if (wr >= 50) R.color.success else R.color.danger))
+        val mlTxtT = if (mlT < 0) { val v = Math.round(-mlT).toInt(); if (v > 99) "99+" else v.toString() } else "-"
+        cellule(mlTxtT, 3.4f, getColor(if (mlT < 0) R.color.danger else R.color.text_muted))
+        cellule("${totalCh.losses}/${totalCh.trades}", 7.4f, getColor(R.color.text_primary))
+        cellule("$wr", 3.2f, getColor(if (wr >= 50) R.color.success else R.color.danger))
         perfTotaux.addView(ligneV)
     }
 
@@ -2110,7 +2116,8 @@ class MainActivity : AppCompatActivity() {
         perfChannelTable.removeAllViews()
         // 05/11/2026 : P/T (jours perdants/trades), ML (max loss du jour), L/TR (pertes/trades)
         val headers = arrayOf("Canal", "P&L", "P/T", "ML", "L/TR", "WR")
-        val weights = floatArrayOf(1.0f, 1.0f, 0.68f, 0.8f, 0.85f, 0.55f)
+        // largeurs calibrees sur le nombre de caracteres : canal 3, ML 2, WR 2, L/TR 7
+        val weights = floatArrayOf(3.3f, 7.0f, 5.2f, 3.4f, 7.4f, 3.2f)
         addPerfHeader(perfChannelTable, headers, weights, channelSortCol, channelSortAsc, true) { col ->
             if (channelSortCol == col) channelSortAsc = !channelSortAsc else { channelSortCol = col; channelSortAsc = col == 0 }
             renderChannelTable()
@@ -2346,19 +2353,19 @@ class MainActivity : AppCompatActivity() {
             }
             row.addView(cb, LinearLayout.LayoutParams(dp(30), LinearLayout.LayoutParams.WRAP_CONTENT))
         }
-        cell(label, 1.0f, getColor(R.color.primary_light), bold = true, taille = 11.5f)
-        cell(String.format("%+.2f", d.pnl), 1f, if (d.pnl >= 0) getColor(R.color.success) else getColor(R.color.danger), bold = true, taille = 11.5f)
+        cell(label, 3.3f, getColor(R.color.primary_light), bold = true, taille = 13f)
+        cell(String.format("%+.2f", d.pnl), 7.0f, if (d.pnl >= 0) getColor(R.color.success) else getColor(R.color.danger), bold = true, taille = 13f)
         // 05/11/2026 : P/T = jours perdants / jours trades
-        cell("${d.joursPerdants()}/${d.joursTrades()}", 0.68f,
-             getColor(if (d.joursPerdants() == 0) R.color.success else R.color.text_primary), taille = 11.5f)
-        // ML = pire journee (max loss)
+        cell("${d.joursPerdants()}/${d.joursTrades()}", 5.2f,
+             getColor(if (d.joursPerdants() == 0) R.color.success else R.color.text_primary), taille = 13f)
+        // ML = pire journee, 2 chiffres sans signe ni decimale
         val ml = d.pireJour()
-        cell(if (ml < 0) String.format("%+.1f", ml) else "-", 0.8f,
-             getColor(if (ml < 0) R.color.danger else R.color.text_muted), taille = 11.5f)
-        // L/TR = nombre de pertes / nombre de trades
-        cell("${d.losses}/${d.trades}", 0.85f, getColor(R.color.text_primary), taille = 11.5f)
+        val mlTxt = if (ml < 0) { val v = Math.round(-ml).toInt(); if (v > 99) "99+" else v.toString() } else "-"
+        cell(mlTxt, 3.4f, getColor(if (ml < 0) R.color.danger else R.color.text_muted), taille = 13f)
+        // L/TR = nombre de pertes / nombre de trades (7 caracteres)
+        cell("${d.losses}/${d.trades}", 7.4f, getColor(R.color.text_primary), taille = 13f)
         val wr = d.winrate()
-        cell("$wr", 0.55f, getColor(if (wr >= 50) R.color.success else R.color.danger), taille = 11.5f)
+        cell("$wr", 3.2f, getColor(if (wr >= 50) R.color.success else R.color.danger), taille = 13f)
 
         // ★ 26/09 : plus de depliant "PF | RR | MD" -> un appui ouvre le popup de detail du canal
         if (!isTotal) {
