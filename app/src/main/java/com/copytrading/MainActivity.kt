@@ -2110,7 +2110,7 @@ class MainActivity : AppCompatActivity() {
         perfChannelTable.removeAllViews()
         // 05/11/2026 : P/T (jours perdants/trades), ML (max loss du jour), L/TR (pertes/trades)
         val headers = arrayOf("Canal", "P&L", "P/T", "ML", "L/TR", "WR")
-        val weights = floatArrayOf(1.2f, 1.0f, 0.65f, 0.78f, 0.75f, 0.6f)
+        val weights = floatArrayOf(1.0f, 1.0f, 0.68f, 0.8f, 0.85f, 0.55f)
         addPerfHeader(perfChannelTable, headers, weights, channelSortCol, channelSortAsc, true) { col ->
             if (channelSortCol == col) channelSortAsc = !channelSortAsc else { channelSortCol = col; channelSortAsc = col == 0 }
             renderChannelTable()
@@ -2299,7 +2299,8 @@ class MainActivity : AppCompatActivity() {
             val arrow = if (i == sortCol) if (sortAsc) " \u25B2" else " \u25BC" else ""
             val tv = TextView(this).apply {
                 text = "$c$arrow"; setTextColor(getColor(if (i == sortCol) R.color.accent else R.color.text_muted))
-                textSize = 10f; setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER
+                textSize = 9.5f; setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER
+                maxLines = 1; isSingleLine = true; setPadding(0, 0, 0, 0)
                 setOnClickListener { onSort(i) }; isClickable = true
             }
             row.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weights.getOrElse(i) { 1f }))
@@ -2318,8 +2319,16 @@ class MainActivity : AppCompatActivity() {
             if (isTotal) setBackgroundColor(Color.parseColor("#1A1A2E"))
             else if (alt) setBackgroundColor(Color.parseColor("#0DFFFFFF"))
         }
-        fun cell(text: String, weight: Float, color: Int, bold: Boolean = false) {
-            val tv = TextView(this).apply { this.text = text; setTextColor(color); textSize = 13f; if (bold) setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER }
+        fun cell(text: String, weight: Float, color: Int, bold: Boolean = false, taille: Float = 12f) {
+            val tv = TextView(this).apply {
+                this.text = text; setTextColor(color); textSize = taille
+                if (bold) setTypeface(null, android.graphics.Typeface.BOLD)
+                gravity = Gravity.CENTER
+                // 05/11/2026 : jamais de retour a la ligne dans une cellule (ex : 9/19)
+                maxLines = 1
+                isSingleLine = true
+                setPadding(0, 0, 0, 0)
+            }
             row.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weight))
         }
         // Case d'exclusion du canal : cochee = canal retire des calculs (ligne conservee, grisee).
@@ -2337,19 +2346,19 @@ class MainActivity : AppCompatActivity() {
             }
             row.addView(cb, LinearLayout.LayoutParams(dp(30), LinearLayout.LayoutParams.WRAP_CONTENT))
         }
-        cell(label, 1.2f, getColor(R.color.primary_light), bold = true)
-        cell(String.format("%+.2f", d.pnl), 1f, if (d.pnl >= 0) getColor(R.color.success) else getColor(R.color.danger), bold = true)
+        cell(label, 1.0f, getColor(R.color.primary_light), bold = true, taille = 11.5f)
+        cell(String.format("%+.2f", d.pnl), 1f, if (d.pnl >= 0) getColor(R.color.success) else getColor(R.color.danger), bold = true, taille = 11.5f)
         // 05/11/2026 : P/T = jours perdants / jours trades
-        cell("${d.joursPerdants()}/${d.joursTrades()}", 0.62f,
-             getColor(if (d.joursPerdants() == 0) R.color.success else R.color.text_primary))
+        cell("${d.joursPerdants()}/${d.joursTrades()}", 0.68f,
+             getColor(if (d.joursPerdants() == 0) R.color.success else R.color.text_primary), taille = 11.5f)
         // ML = pire journee (max loss)
         val ml = d.pireJour()
-        cell(if (ml < 0) String.format("%+.1f", ml) else "-", 0.72f,
-             getColor(if (ml < 0) R.color.danger else R.color.text_muted))
+        cell(if (ml < 0) String.format("%+.1f", ml) else "-", 0.8f,
+             getColor(if (ml < 0) R.color.danger else R.color.text_muted), taille = 11.5f)
         // L/TR = nombre de pertes / nombre de trades
-        cell("${d.losses}/${d.trades}", 0.75f, getColor(R.color.text_primary))
+        cell("${d.losses}/${d.trades}", 0.85f, getColor(R.color.text_primary), taille = 11.5f)
         val wr = d.winrate()
-        cell("$wr", 0.6f, getColor(if (wr >= 50) R.color.success else R.color.danger))
+        cell("$wr", 0.55f, getColor(if (wr >= 50) R.color.success else R.color.danger), taille = 11.5f)
 
         // ★ 26/09 : plus de depliant "PF | RR | MD" -> un appui ouvre le popup de detail du canal
         if (!isTotal) {
@@ -2647,8 +2656,16 @@ class MainActivity : AppCompatActivity() {
     private fun addPerfSignalRow(container: LinearLayout, label: String, d: PerfData, isTotal: Boolean = false,
                                  sessionMode: Boolean = false) {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, dp(8)); if (isTotal) setBackgroundColor(Color.parseColor("#1A1A2E")) }
-        fun cell(text: String, weight: Float, color: Int, bold: Boolean = false) {
-            val tv = TextView(this).apply { this.text = text; setTextColor(color); textSize = 13f; if (bold) setTypeface(null, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER }
+        fun cell(text: String, weight: Float, color: Int, bold: Boolean = false, taille: Float = 12f) {
+            val tv = TextView(this).apply {
+                this.text = text; setTextColor(color); textSize = taille
+                if (bold) setTypeface(null, android.graphics.Typeface.BOLD)
+                gravity = Gravity.CENTER
+                // 05/11/2026 : jamais de retour a la ligne dans une cellule (ex : 9/19)
+                maxLines = 1
+                isSingleLine = true
+                setPadding(0, 0, 0, 0)
+            }
             row.addView(tv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, weight))
         }
         cell(label, 0.8f, getColor(R.color.primary_light), bold = true)
