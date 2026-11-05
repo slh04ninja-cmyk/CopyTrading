@@ -1046,14 +1046,14 @@ class MainActivity : AppCompatActivity() {
         // 3) PERFORMANCE PAR CANAL (tri P&L decroissant ; P&L en 3e colonne -> colPnl = 2)
         val colsC = listOf(
             Triple("CH", 9f, Paint.Align.CENTER), Triple("CANAL", 69f, Paint.Align.LEFT),
-            Triple("P&L ($)", 22f, Paint.Align.CENTER), Triple("SIG", 12f, Paint.Align.CENTER),
+            Triple("P&L ($)", 22f, Paint.Align.CENTER), Triple("P/T", 13f, Paint.Align.CENTER),
             Triple("TRADES", 15f, Paint.Align.CENTER), Triple("W", 12f, Paint.Align.CENTER),
             Triple("L", 12f, Paint.Align.CENTER), Triple("WR %", 14f, Paint.Align.CENTER))
         val rowsC = mutableListOf<List<String>>()
         for (p in lastChannelData.sortedByDescending { it.second.pnl }) {
             val d = p.second
             rowsC.add(listOf(p.first.removePrefix("CH"), channelNames[p.first] ?: "-", fmtPnl(d.pnl),
-                (lastChannelMkCount[p.first] ?: 0).toString(), d.trades.toString(),
+                "${d.joursPerdants()}/${d.joursTrades()}", d.trades.toString(),
                 d.wins.toString(), d.losses.toString(), d.winrate().toString()))
         }
         for (p in lastExcludedData) {
@@ -1063,7 +1063,7 @@ class MainActivity : AppCompatActivity() {
                 d.winrate().toString()))
         }
         tableSection("PERFORMANCE PAR CANAL (tri P&L decroissant)", colsC, rowsC,
-            listOf("", "TOTAL", fmtPnl(tot.pnl), lastChannelMkCount.values.sum().toString(),
+            listOf("", "TOTAL", fmtPnl(tot.pnl), "${tot.joursPerdants()}/${tot.joursTrades()}",
                 tot.trades.toString(), tot.wins.toString(), tot.losses.toString(),
                 tot.winrate().toString()), 5.5f * MM, 2)
 
@@ -2058,7 +2058,8 @@ class MainActivity : AppCompatActivity() {
         if (!::perfTotaux.isInitialized) return
         perfTotaux.removeAllViews()
         val weights = floatArrayOf(1.4f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f)
-        val entetes = arrayOf("P&L", "SN", "TR", "WN", "LS", "WR")
+        // 05/11/2026 : SN remplace par P/T, comme le tableau par canal
+        val entetes = arrayOf("P&L", "P/T", "TR", "WN", "LS", "WR")
         val ligneH = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(4), 0, dp(6))
@@ -2076,7 +2077,6 @@ class MainActivity : AppCompatActivity() {
         perfTotaux.addView(ligneH)
 
         val totalCh = lastChannelData.fold(PerfData()) { acc, (_, d) -> acc.merge(d) }
-        val totalSn = lastChannelMkCount.values.sum()
         val wr = totalCh.winrate()
         val ligneV = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -2095,7 +2095,7 @@ class MainActivity : AppCompatActivity() {
         }
         cellule(String.format("%+.2f", totalCh.pnl), 1.4f,
             getColor(if (totalCh.pnl >= 0) R.color.success else R.color.danger))
-        cellule(totalSn.toString(), 0.8f, getColor(R.color.text_primary))
+        cellule("${totalCh.joursPerdants()}/${totalCh.joursTrades()}", 0.8f, getColor(R.color.text_primary))
         cellule(totalCh.trades.toString(), 0.8f, getColor(R.color.text_primary))
         cellule(totalCh.wins.toString(), 0.8f, getColor(R.color.success))
         cellule(totalCh.losses.toString(), 0.8f, getColor(R.color.danger))
@@ -2105,8 +2105,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderChannelTable() {
         perfChannelTable.removeAllViews()
-        val headers = arrayOf("Canal", "P&L", "SN", "TR", "WN", "LS", "WR")
-        val weights = floatArrayOf(1.2f, 1f, 0.6f, 0.6f, 0.6f, 0.6f, 0.6f)
+        // 05/11/2026 (demande SaLaH) : SN remplace par P/T (jours perdants / jours trades)
+        val headers = arrayOf("Canal", "P&L", "P/T", "TR", "WN", "LS", "WR")
+        val weights = floatArrayOf(1.2f, 1f, 0.7f, 0.6f, 0.6f, 0.6f, 0.6f)
         addPerfHeader(perfChannelTable, headers, weights, channelSortCol, channelSortAsc, true) { col ->
             if (channelSortCol == col) channelSortAsc = !channelSortAsc else { channelSortCol = col; channelSortAsc = col == 0 }
             renderChannelTable()
@@ -2189,8 +2190,8 @@ class MainActivity : AppCompatActivity() {
             val r = when (col) {
                 0 -> if (isSignal) signalSortKey(a.first).compareTo(signalSortKey(b.first))
                      else channelNumKey(a.first).compareTo(channelNumKey(b.first))
-                2 -> (if (sessionMode) a.second.buyCount else if (isSignal) a.second.channelCount else (lastChannelMkCount[a.first] ?: 0))
-                        .compareTo(if (sessionMode) b.second.buyCount else if (isSignal) b.second.channelCount else (lastChannelMkCount[b.first] ?: 0))
+                2 -> (if (sessionMode) a.second.buyCount else if (isSignal) a.second.channelCount else a.second.joursPerdants())
+                        .compareTo(if (sessionMode) b.second.buyCount else if (isSignal) b.second.channelCount else b.second.joursPerdants())
                 3 -> (if (sessionMode) a.second.sellCount else a.second.trades)
                         .compareTo(if (sessionMode) b.second.sellCount else b.second.trades)
                 4 -> a.second.wins.compareTo(b.second.wins)
@@ -2216,10 +2217,20 @@ class MainActivity : AppCompatActivity() {
         val signals: MutableSet<String> = mutableSetOf(), var channelCount: Int = 0,
         val tradeProfits: MutableList<Double> = mutableListOf(),
         // 25/10/2026 (demande SaLaH) : nombre d'achats et de ventes (tableau par session)
-        var buyCount: Int = 0, var sellCount: Int = 0
+        var buyCount: Int = 0, var sellCount: Int = 0,
+        // 05/11/2026 (demande SaLaH) : jour -> P&L du canal, pour la colonne P/T
+        val joursPnl: MutableMap<String, Double> = mutableMapOf()
     ) {
+        /** Nombre de journees ou le bot a execute au moins un trade de ce canal. */
+        fun joursTrades(): Int = joursPnl.size
+
+        /** Nombre de journees terminees en perte. */
+        fun joursPerdants(): Int = joursPnl.count { it.value < 0 }
+
         fun add(t: Trade, signal: String = "") {
             pnl += t.profit; trades++
+            val jour = (t.close_time.ifEmpty { t.open_time }).take(10)
+            if (jour.isNotEmpty()) joursPnl[jour] = (joursPnl[jour] ?: 0.0) + t.profit
             if (t.type.uppercase() == "BUY") buyCount++ else sellCount++
             if (t.profit >= 0) { wins++; gain += t.profit } else { losses++; loss += t.profit }
             if (signal.isNotEmpty()) signals.add(signal)
@@ -2232,6 +2243,8 @@ class MainActivity : AppCompatActivity() {
             merged.buyCount = buyCount + o.buyCount
             merged.sellCount = sellCount + o.sellCount
             merged.tradeProfits.addAll(tradeProfits); merged.tradeProfits.addAll(o.tradeProfits)
+            for ((j, v) in joursPnl) merged.joursPnl[j] = (merged.joursPnl[j] ?: 0.0) + v
+            for ((j, v) in o.joursPnl) merged.joursPnl[j] = (merged.joursPnl[j] ?: 0.0) + v
             return merged
         }
         fun winrate() = if (trades > 0) (wins * 100 / trades) else 0
@@ -2306,7 +2319,9 @@ class MainActivity : AppCompatActivity() {
         }
         cell(label, 1.2f, getColor(R.color.primary_light), bold = true)
         cell(String.format("%+.2f", d.pnl), 1f, if (d.pnl >= 0) getColor(R.color.success) else getColor(R.color.danger), bold = true)
-        cell(sn.toString(), 0.6f, getColor(R.color.text_primary))
+        // 05/11/2026 : colonne P/T = jours perdants / jours ou le bot a execute un trade
+        cell("${d.joursPerdants()}/${d.joursTrades()}", 0.7f,
+             getColor(if (d.joursPerdants() == 0) R.color.success else R.color.text_primary))
         cell(d.trades.toString(), 0.6f, getColor(R.color.text_primary))
         cell(d.wins.toString(), 0.6f, getColor(R.color.success))
         cell(d.losses.toString(), 0.6f, getColor(R.color.danger))
