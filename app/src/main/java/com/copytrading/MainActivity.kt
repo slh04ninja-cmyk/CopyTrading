@@ -2195,16 +2195,23 @@ class MainActivity : AppCompatActivity() {
             val r = when (col) {
                 0 -> if (isSignal) signalSortKey(a.first).compareTo(signalSortKey(b.first))
                      else channelNumKey(a.first).compareTo(channelNumKey(b.first))
-                2 -> (if (sessionMode) a.second.buyCount else if (isSignal) a.second.channelCount else a.second.joursPerdants())
-                        .compareTo(if (sessionMode) b.second.buyCount else if (isSignal) b.second.channelCount else b.second.joursPerdants())
-                3 -> (if (sessionMode) a.second.sellCount
-                      else if (channelMode) a.second.pireJour() else a.second.trades)
-                        .compareTo(if (sessionMode) b.second.sellCount
-                      else if (channelMode) b.second.pireJour() else b.second.trades)
-                4 -> (if (channelMode) a.second.trades else a.second.wins)
-                        .compareTo(if (channelMode) b.second.trades else b.second.wins)
-                5 -> a.second.wins.compareTo(b.second.wins)
-                6 -> a.second.winrate().compareTo(b.second.winrate())
+                // toutes les branches renvoient un Double (evite le melange Int/Double dans le when)
+                2 -> (if (sessionMode) a.second.buyCount.toDouble()
+                      else if (isSignal) a.second.channelCount.toDouble()
+                      else a.second.joursPerdants().toDouble())
+                        .compareTo(if (sessionMode) b.second.buyCount.toDouble()
+                      else if (isSignal) b.second.channelCount.toDouble()
+                      else b.second.joursPerdants().toDouble())
+                3 -> (if (sessionMode) a.second.sellCount.toDouble()
+                      else if (channelMode) a.second.pireJour()
+                      else a.second.trades.toDouble())
+                        .compareTo(if (sessionMode) b.second.sellCount.toDouble()
+                      else if (channelMode) b.second.pireJour()
+                      else b.second.trades.toDouble())
+                4 -> (if (channelMode) a.second.trades.toDouble() else a.second.wins.toDouble())
+                        .compareTo(if (channelMode) b.second.trades.toDouble() else b.second.wins.toDouble())
+                5 -> a.second.wins.toDouble().compareTo(b.second.wins.toDouble())
+                6 -> a.second.winrate().toDouble().compareTo(b.second.winrate().toDouble())
                 else -> a.second.pnl.compareTo(b.second.pnl)
             }
             if (asc) r else -r
