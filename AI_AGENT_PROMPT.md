@@ -1,5 +1,7 @@
 # AI Agent Prompt — CopyTrading Bot + Android App
 
+> **MAJ 2026-11-13** — synchronise avec le serveur de production (bot_api.py actuel, compte MT5 253740841, auth Bearer sur toutes les routes).
+
 ## Overview
 
 Ce document decrit l'architecture du projet CopyTrading pour un agent AI qui doit travailler sur ce codebase.
@@ -41,13 +43,16 @@ Le token est dans le fichier `.env` du serveur (`C:\TradingBot\.env`), variable 
 | `/api/config` | GET/PUT | Variables .env |
 | `/api/config/raw` | GET/PUT | Contenu brut du .env |
 | `/api/logs` | GET | Logs du bot |
-| `/api/file` | POST | Upload un fichier sur le serveur |
-| `/api/file/read` | GET | Lire un fichier du serveur |
+| `/api/file` | GET | Lire un fichier (`?path=`) |
+| `/api/file` | POST | Upload un fichier (`path`, `content`) |
+| `/api/files` | GET | Lister les fichiers |
 | `/api/exec` | POST | Executer une commande shell |
+| `/api/report` | GET | Rapport genere |
 | `/api/bot/start` | POST | Demarrer le bot (telegram listener) |
 | `/api/bot/stop` | POST | Arreter le bot |
 | `/api/restart` | POST | Redemarrer uvicorn (recharge bot_api.py) |
 | `/api/positions/close-all` | POST | Fermer toutes les positions |
+| `/api/positions/{ticket}/close` | POST | Fermer une position |
 
 ### Exemples de commandes
 
@@ -65,7 +70,7 @@ curl -s -H "Authorization: Bearer <TOKEN>" http://38.247.138.124:8000/api/positi
 curl -s -H "Authorization: Bearer <TOKEN>" "http://38.247.138.124:8000/api/trades?days=30"
 
 # Lire un fichier du serveur
-curl -s -H "Authorization: Bearer <TOKEN>" "http://38.247.138.124:8000/api/file/read?path=bot_api.py"
+curl -s -H "Authorization: Bearer <TOKEN>" "http://38.247.138.124:8000/api/file?path=bot_api.py"
 
 # Executer une commande
 curl -X POST -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
@@ -180,15 +185,19 @@ git clone https://github.com/slh04ninja-cmyk/CT.git /data/data/com.termux/files/
 
 ### Variables d'environnement (.env)
 
-| Variable | Description | Defaut |
+| Variable | Description | Valeur actuelle (2026-11-13) |
 |---|---|---|
-| `TRADING_START_HOUR` | Heure debut trading UTC | 5 |
-| `TRADING_END_HOUR` | Heure fin trading UTC | 19 |
+| `TRADING_HOURS` | Heures actives trading UTC (prioritaire sur START/END) | 10,11,12,13,14,15 |
+| `TRADING_START_HOUR` / `TRADING_END_HOUR` | Fenetre stats UTC (fallback) | 0 / 19 |
+| `DAILY_RESET_HOUR` | Reset P&L quotidien (heure UTC) | 0 |
 | `MAX_SL_USD` | Stop loss max en USD | 10.0 |
-| `LIMIT_OFFSET_1` | Offset L1 en USD | 3.0 |
+| `LIMIT_ENABLED` | Ordres limite L1/L2 actifs | false |
+| `LIMIT_OFFSET_1` | Offset L1 en USD | 5.0 |
 | `LIMIT_OFFSET_2` | Offset L2 en USD | 6.0 |
-| `DAILY_PROFIT_LIMIT` | Limite P&L quotidien | 200.0 |
-| `API_TOKEN` | Token auth API | (generer) |
+| `DAILY_PROFIT_LIMIT` | Limite P&L quotidien (0 = off) | 0 |
+| `MAX_DAILY_DRAWDOWN` | Drawdown max quotidien | 2000 |
+| `LOT_TOTAL` / `LOT_MARKET` / `LOT_LIMIT1` / `LOT_LIMIT2` | Lots par ordre | 0.25 |
+| `API_TOKEN` | Token auth API | (voir .env — jamais commit) |
 
 ### Format des commentaires MT5
 
@@ -213,7 +222,7 @@ Format : `Canal_N : NomDuCanal`
 - Un seul prix SL calcule (via `_cap_sl` avec entry du MK)
 - Applique identiquement a MK, L1, L2
 - Risque total < 3×MAX_SL_USD car L1/L2 entrent plus proche du SL
-- `LIMIT_OFFSET_1 = 3.0$`, `LIMIT_OFFSET_2 = 6.0$`
+- `LIMIT_OFFSET_1 = 5.0$`, `LIMIT_OFFSET_2 = 6.0$` (valeurs actuelles)
 
 ### Deleted message tracker
 
@@ -333,7 +342,7 @@ cp apk_download/app-debug.apk /storage/emulated/0/Download/CopyTrading.apk
 
 ```bash
 # ETAPE 1: Lire un fichier du serveur
-curl -s -H "Authorization: Bearer <TOKEN>" "http://38.247.138.124:8000/api/file/read?path=bot_api.py"
+curl -s -H "Authorization: Bearer <TOKEN>" "http://38.247.138.124:8000/api/file?path=bot_api.py"
 # OU
 curl -s -X POST -H "Authorization: Bearer <TOKEN>" -H "Content-Type: application/json" \
   -d '{"command": "type C:\\TradingBot\\Channels.txt"}' \
@@ -450,8 +459,8 @@ gh run view <RUN_ID> --repo slh04ninja-cmyk/CopyTrading
 - **Pas de adb** — travail sur telephone Android
 - **Sous-agents** casses (DaemonThreadPoolExecutor) — modifications manuelles
 - **Variables .env** non reloaded dynamiquement — redemarrage necessaire
-- **P&L quotidien** reset a 5h UTC (TRADING_START_HOUR dans bot_api.py)
-- **Dashboard** reset a zero hors plage trading (5h-19h UTC)
+- **P&L quotidien** reset a DAILY_RESET_HOUR (actuellement 0h UTC)
+- **Trading actif** uniquement pendant TRADING_HOURS (actuellement 10h-15h UTC)
 - **Sous-agents max 3** en parallele
 - **Reponses courtes** — minimiser le temps de reponse
 - **Francais** — langue principale
@@ -464,10 +473,11 @@ gh run view <RUN_ID> --repo slh04ninja-cmyk/CopyTrading
 
 ## Donnees MT5
 
-- **Compte** : 262342460
-- **Serveur** : Exness-MT5Trial16
-- **Leverage** : 500
-- **Données deals** : 2650 trades sur 30 jours
+- **Compte** : 253740841
+- **Serveur** : Exness-MT5Real34
+- **Leverage** : 2000
+- **Devise** : USC (centimes USD)
+- **Données deals** : ~87 trades sur 30 jours (maj 2026-11-13)
 - **Channels.txt** : 108 canaux
 
 ---

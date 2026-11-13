@@ -105,6 +105,12 @@ L'API démarre sur `http://0.0.0.0:8000`.
 | GET | `/api/dashboard` | P&L, stats, positions |
 | GET | `/api/positions` | Positions ouvertes |
 | GET | `/api/trades?days=7` | Historique trades |
+| GET | `/api/report` | Rapport |
+| GET | `/api/file?path=` | Lire un fichier serveur |
+| POST | `/api/file` | Upload un fichier |
+| GET | `/api/files` | Lister les fichiers |
+| POST | `/api/exec` | Exécuter une commande shell |
+| POST | `/api/restart` | Redémarrer uvicorn (recharge l'API) |
 | POST | `/api/bot/start` | Démarrer le bot |
 | POST | `/api/bot/stop` | Arrêter le bot |
 | GET | `/api/config` | Lire la config (.env) |
